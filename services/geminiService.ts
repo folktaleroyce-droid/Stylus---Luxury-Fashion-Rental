@@ -1,7 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 const SYSTEM_INSTRUCTION = `
 You are 'Stylus AI', the premier digital concierge for Stylus, a luxury fashion rental platform. 
 Your tone is sophisticated, elegant, warm, and professional. 
@@ -16,8 +14,32 @@ When advising:
 4. Do not make up specific item IDs, but describe items that would fit the user's request generally (e.g., "A velvet tuxedo would suit you well").
 `;
 
+// Helper to safely get the API key without crashing if 'process' is undefined
+const getApiKey = () => {
+  try {
+    return process.env.API_KEY;
+  } catch (e) {
+    console.warn("API Key not found in environment.");
+    return undefined;
+  }
+};
+
+let aiInstance: GoogleGenAI | null = null;
+
+const getAiClient = () => {
+  if (!aiInstance) {
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      throw new Error("API Key is missing. Please check your configuration.");
+    }
+    aiInstance = new GoogleGenAI({ apiKey });
+  }
+  return aiInstance;
+};
+
 export const getStylingAdvice = async (userMessage: string): Promise<string> => {
   try {
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: userMessage,
@@ -30,6 +52,6 @@ export const getStylingAdvice = async (userMessage: string): Promise<string> => 
     return response.text || "I apologize, I am currently consulting with our head stylists. Please try again in a moment.";
   } catch (error) {
     console.error("Gemini API Error:", error);
-    return "I am having trouble connecting to the styling mainframe. Please ensure your API key is valid.";
+    return "I am unable to access the styling archives at this moment. Please ensure your concierge connection (API Key) is active.";
   }
 };
