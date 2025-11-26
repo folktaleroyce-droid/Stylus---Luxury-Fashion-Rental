@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { MOCK_PRODUCTS } from '../constants';
 import { Button } from '../components/Button';
-import { Shield, Clock, Calendar, Check, ArrowLeft } from 'lucide-react';
+import { Shield, Clock, Calendar, Check, ArrowLeft, Ruler } from 'lucide-react';
 
 export const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -36,9 +36,23 @@ export const ProductDetail: React.FC = () => {
 
   const handleRent = () => {
     if (!selectedSize) return;
-    // In a real app, this would dispatch to a store or API
-    alert(`Success! The ${product.name} (Size: ${selectedSize}) has been reserved for ${selectedDuration} days.\n\nTotal: $${currentPrice}`);
-    navigate('/dashboard');
+    
+    // Navigate to dashboard with rental details
+    navigate('/dashboard', { 
+        state: { 
+            newRental: {
+                product,
+                size: selectedSize,
+                duration: selectedDuration,
+                price: currentPrice,
+                date: new Date().toLocaleDateString()
+            }
+        } 
+    });
+  };
+
+  const handleSizeGuide = () => {
+      alert("Stylus Sizing Guide:\n\nWe use standard Italian sizing for most garments.\n\nXS / IT 38 / US 2\nS / IT 40 / US 4\nM / IT 42 / US 6\nL / IT 44 / US 8\n\nFor accessories, 'One Size' fits all.");
   };
 
   return (
@@ -93,7 +107,10 @@ export const ProductDetail: React.FC = () => {
             <div className="mb-8">
               <div className="flex justify-between items-center mb-4">
                  <h4 className="text-sm text-cream/80 uppercase tracking-widest font-bold">Select Size</h4>
-                 <button className="text-xs text-golden-orange hover:text-white underline decoration-golden-orange/50">Size Guide</button>
+                 <button onClick={handleSizeGuide} className="flex items-center text-xs text-golden-orange hover:text-white underline decoration-golden-orange/50">
+                    <Ruler size={14} className="mr-1" />
+                    Size Guide
+                 </button>
               </div>
              
               <div className="flex flex-wrap gap-3">
@@ -111,7 +128,7 @@ export const ProductDetail: React.FC = () => {
                   </button>
                 ))}
               </div>
-              {!selectedSize && <p className="text-red-400 text-xs mt-2 animate-pulse">* Please select a size</p>}
+              {!selectedSize && <p className="text-red-400 text-xs mt-2 animate-pulse">* Please select a size to proceed</p>}
             </div>
 
             {/* Duration Selector */}

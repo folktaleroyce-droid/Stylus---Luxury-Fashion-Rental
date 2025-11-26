@@ -1,15 +1,20 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MOCK_USER, MOCK_PRODUCTS } from '../constants';
-import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, ArrowRight } from 'lucide-react';
+import { Package, Calendar, CreditCard, Settings, LogOut, Diamond } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const handleSidebarClick = (feature: string) => {
     if (feature === 'Sign Out') {
       const confirm = window.confirm("Are you sure you wish to sign out?");
-      if (confirm) navigate('/');
+      if (confirm) {
+        logout();
+        navigate('/login');
+      }
     } else {
       alert(`Stylus Demo: The '${feature}' feature is available in the full production release.`);
     }

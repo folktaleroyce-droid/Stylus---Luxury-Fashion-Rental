@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingBag, User, Menu, X, Diamond, Check } from 'lucide-react';
+import { ShoppingBag, User, Menu, X, Diamond, Check, LogIn } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -10,6 +11,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const location = useLocation();
+  const { isAuthenticated } = useAuth();
 
   const isActive = (path: string) => location.pathname === path ? "text-golden-orange border-b border-golden-orange" : "text-cream hover:text-golden-orange transition-colors";
 
@@ -41,7 +43,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               <Link to="/" className={`font-serif uppercase tracking-wider text-xs ${isActive('/')}`}>Home</Link>
               <Link to="/catalog" className={`font-serif uppercase tracking-wider text-xs ${isActive('/catalog')}`}>Collection</Link>
               <Link to="/ai-stylist" className={`font-serif uppercase tracking-wider text-xs ${isActive('/ai-stylist')}`}>AI Stylist</Link>
-              <Link to="/dashboard" className={`font-serif uppercase tracking-wider text-xs ${isActive('/dashboard')}`}>My Wardrobe</Link>
+              {isAuthenticated && (
+                <Link to="/dashboard" className={`font-serif uppercase tracking-wider text-xs ${isActive('/dashboard')}`}>My Wardrobe</Link>
+              )}
             </div>
 
             {/* Icons */}
@@ -49,9 +53,16 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               <button className="text-cream hover:text-golden-orange transition-colors">
                 <ShoppingBag size={20} />
               </button>
-              <Link to="/dashboard" className="text-cream hover:text-golden-orange transition-colors">
-                <User size={20} />
-              </Link>
+              {isAuthenticated ? (
+                <Link to="/dashboard" className="text-cream hover:text-golden-orange transition-colors" title="My Dashboard">
+                  <User size={20} />
+                </Link>
+              ) : (
+                <Link to="/login" className="flex items-center space-x-2 text-golden-orange hover:text-white transition-colors">
+                  <span className="text-xs uppercase tracking-widest font-bold">Sign In</span>
+                  <LogIn size={18} />
+                </Link>
+              )}
             </div>
 
             {/* Mobile Menu Button */}
@@ -70,7 +81,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-4 font-serif text-golden-orange uppercase tracking-widest hover:bg-white/5">Home</Link>
               <Link to="/catalog" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-4 font-serif text-cream uppercase tracking-widest hover:bg-white/5">Collection</Link>
               <Link to="/ai-stylist" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-4 font-serif text-cream uppercase tracking-widest hover:bg-white/5">AI Stylist</Link>
-              <Link to="/dashboard" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-4 font-serif text-cream uppercase tracking-widest hover:bg-white/5">My Wardrobe</Link>
+              {isAuthenticated ? (
+                <Link to="/dashboard" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-4 font-serif text-cream uppercase tracking-widest hover:bg-white/5">My Wardrobe</Link>
+              ) : (
+                <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-4 font-serif text-golden-orange uppercase tracking-widest hover:bg-white/5">Sign In</Link>
+              )}
             </div>
           </div>
         )}
