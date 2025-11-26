@@ -1,11 +1,63 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/Button';
-import { ArrowRight, ShieldCheck, Truck, Sparkles } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Truck, Sparkles, Diamond } from 'lucide-react';
 
 export const Home: React.FC = () => {
+  const [showIntro, setShowIntro] = useState(true);
+  const [animationStep, setAnimationStep] = useState(0);
+
+  useEffect(() => {
+    // Sequence the animation steps
+    const step1 = setTimeout(() => setAnimationStep(1), 500); // Logo Fade In
+    const step2 = setTimeout(() => setAnimationStep(2), 1500); // Text Reveal
+    const step3 = setTimeout(() => setAnimationStep(3), 3000); // Exit trigger
+    const step4 = setTimeout(() => setShowIntro(false), 4000); // Remove from DOM
+
+    return () => {
+      clearTimeout(step1);
+      clearTimeout(step2);
+      clearTimeout(step3);
+      clearTimeout(step4);
+    };
+  }, []);
+
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in relative">
+      
+      {/* CINEMATIC INTRO OVERLAY */}
+      {showIntro && (
+        <div 
+          className={`fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#1a0a04] transition-all duration-1000 ease-in-out ${
+            animationStep >= 3 ? 'opacity-0 -translate-y-full' : 'opacity-100'
+          }`}
+        >
+          {/* Animated Diamond */}
+          <div className={`transition-all duration-1000 transform ${animationStep >= 1 ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}>
+            <Diamond size={64} className="text-golden-orange animate-pulse" />
+          </div>
+
+          {/* Text Reveal */}
+          <div className={`mt-6 text-center transition-all duration-1000 ${animationStep >= 2 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+            <h1 className="font-serif text-5xl md:text-7xl font-bold tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-golden-orange via-golden-light to-golden-orange">
+              STYLUS
+            </h1>
+            <p className="mt-4 text-cream/60 uppercase tracking-[0.4em] text-xs md:text-sm font-light">
+              Wear Royalty Without Cost
+            </p>
+          </div>
+
+          {/* Loading Line */}
+          <div className="absolute bottom-20 w-64 h-0.5 bg-white/10 rounded-full overflow-hidden">
+            <div 
+              className={`h-full bg-golden-orange transition-all duration-[3000ms] ease-out ${
+                animationStep >= 1 ? 'w-full' : 'w-0'
+              }`}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Hero Section */}
       <section className="relative h-[90vh] flex items-center justify-center overflow-hidden">
         {/* Background Image with Overlay */}
@@ -13,7 +65,7 @@ export const Home: React.FC = () => {
           <img 
             src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2070&auto=format&fit=crop" 
             alt="Luxury Fashion" 
-            className="w-full h-full object-cover opacity-60"
+            className="w-full h-full object-cover opacity-60 animate-ken-burns" 
           />
           <div className="absolute inset-0 bg-gradient-to-t from-espresso via-espresso/40 to-transparent"></div>
         </div>
