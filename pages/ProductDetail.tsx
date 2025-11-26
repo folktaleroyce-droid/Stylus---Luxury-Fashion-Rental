@@ -89,7 +89,7 @@ export const ProductDetail: React.FC = () => {
             
             <div className="flex items-center space-x-6 mb-8 border-b border-white/10 pb-8">
               <div>
-                <p className="text-4xl font-serif text-cream">${currentPrice}</p>
+                <p className="text-4xl font-serif text-cream animate-fade-in">${currentPrice}</p>
                 <p className="text-xs text-golden-orange uppercase tracking-wide font-bold mt-1">Rental ({selectedDuration} Days)</p>
               </div>
               <div className="h-12 w-px bg-white/10"></div>
