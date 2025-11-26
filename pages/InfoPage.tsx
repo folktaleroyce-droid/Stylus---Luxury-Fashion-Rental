@@ -1,10 +1,10 @@
 import React from 'react';
-import { ShieldCheck, FileText, Sparkles, Lock } from 'lucide-react';
+import { ShieldCheck, FileText, Sparkles, Lock, ShoppingBag } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/Button';
 
 interface InfoPageProps {
-  type: 'privacy' | 'terms' | 'authenticity' | 'edit';
+  type: 'privacy' | 'terms' | 'authenticity' | 'edit' | 'bag';
 }
 
 export const InfoPage: React.FC<InfoPageProps> = ({ type }) => {
@@ -69,6 +69,19 @@ export const InfoPage: React.FC<InfoPageProps> = ({ type }) => {
           </div>
         </>
       )
+    },
+    bag: {
+      title: 'Shopping Bag',
+      icon: <ShoppingBag className="w-12 h-12 text-golden-orange mb-6" />,
+      text: (
+        <>
+           <p className="mb-6 text-xl font-light">Your shopping bag is currently empty.</p>
+           <p className="mb-8 text-cream/60">Explore our curated collection to find your next statement piece.</p>
+           <Link to="/catalog">
+             <Button>Explore Collection</Button>
+           </Link>
+        </>
+      )
     }
   };
 
@@ -82,17 +95,19 @@ export const InfoPage: React.FC<InfoPageProps> = ({ type }) => {
         </div>
         <h1 className="font-serif text-5xl text-cream mb-12">{current.title}</h1>
         
-        <div className="text-left bg-[#1f0c05] p-10 border border-white/5 shadow-2xl rounded-sm">
-          <div className="text-cream/80 leading-relaxed text-lg font-light">
+        <div className="text-left bg-[#1f0c05] p-10 border border-white/5 shadow-2xl rounded-sm flex flex-col items-center text-center">
+          <div className="text-cream/80 leading-relaxed text-lg font-light w-full">
             {current.text}
           </div>
         </div>
 
-        <div className="mt-12">
-          <Link to="/">
-            <Button variant="outline">Return Home</Button>
-          </Link>
-        </div>
+        {type !== 'bag' && (
+          <div className="mt-12">
+            <Link to="/">
+              <Button variant="outline">Return Home</Button>
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MOCK_PRODUCTS } from '../constants';
 import { Category, Product } from '../types';
 import { Filter, ArrowRight } from 'lucide-react';
+import { useProduct } from '../context/ProductContext';
 
 export const Catalog: React.FC = () => {
+  const { products } = useProduct();
   const [selectedCategory, setSelectedCategory] = useState<Category | 'All'>('All');
 
   const filteredProducts = selectedCategory === 'All' 
-    ? MOCK_PRODUCTS 
-    : MOCK_PRODUCTS.filter(p => p.category === selectedCategory);
+    ? products 
+    : products.filter(p => p.category === selectedCategory);
 
   return (
     <div className="min-h-screen bg-espresso pb-20">

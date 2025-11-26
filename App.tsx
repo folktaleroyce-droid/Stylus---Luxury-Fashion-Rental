@@ -9,46 +9,50 @@ import { AIStylistPage } from './pages/AIStylistPage';
 import { InfoPage } from './pages/InfoPage';
 import { Login } from './pages/Login';
 import { AuthProvider } from './context/AuthContext';
+import { ProductProvider } from './context/ProductContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
   return (
     <AuthProvider>
-      <HashRouter>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/catalog" element={<Catalog />} />
-            
-            {/* Protected Routes */}
-            <Route 
-              path="/product/:id" 
-              element={
-                <ProtectedRoute>
-                  <ProductDetail />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/dashboard" 
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              } 
-            />
-            
-            <Route path="/ai-stylist" element={<AIStylistPage />} />
-            
-            {/* Footer / Info Routes */}
-            <Route path="/the-edit" element={<InfoPage type="edit" />} />
-            <Route path="/privacy" element={<InfoPage type="privacy" />} />
-            <Route path="/terms" element={<InfoPage type="terms" />} />
-            <Route path="/authenticity" element={<InfoPage type="authenticity" />} />
-          </Routes>
-        </Layout>
-      </HashRouter>
+      <ProductProvider>
+        <HashRouter>
+          <Layout>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/catalog" element={<Catalog />} />
+              
+              {/* Protected Routes */}
+              <Route 
+                path="/product/:id" 
+                element={
+                  <ProtectedRoute>
+                    <ProductDetail />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/dashboard" 
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              
+              <Route path="/ai-stylist" element={<AIStylistPage />} />
+              
+              {/* Footer / Info / Utility Routes */}
+              <Route path="/the-edit" element={<InfoPage type="edit" />} />
+              <Route path="/privacy" element={<InfoPage type="privacy" />} />
+              <Route path="/terms" element={<InfoPage type="terms" />} />
+              <Route path="/authenticity" element={<InfoPage type="authenticity" />} />
+              <Route path="/bag" element={<InfoPage type="bag" />} />
+            </Routes>
+          </Layout>
+        </HashRouter>
+      </ProductProvider>
     </AuthProvider>
   );
 }

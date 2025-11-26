@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { MOCK_PRODUCTS } from '../constants';
 import { Button } from '../components/Button';
 import { Shield, Clock, Calendar, Check, ArrowLeft, Ruler } from 'lucide-react';
+import { useProduct } from '../context/ProductContext';
 
 export const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const product = MOCK_PRODUCTS.find(p => p.id === id);
+  const { products } = useProduct();
+  const product = products.find(p => p.id === id);
   
   const [selectedDuration, setSelectedDuration] = useState<4 | 8 | 12>(4);
   const [selectedSize, setSelectedSize] = useState<string>('');
@@ -128,7 +129,7 @@ export const ProductDetail: React.FC = () => {
                   </button>
                 ))}
               </div>
-              {!selectedSize && <p className="text-red-400 text-xs mt-2 animate-pulse">* Please select a size to proceed</p>}
+              {!selectedSize && <p className="text-golden-orange text-xs mt-3 flex items-center animate-pulse font-bold tracking-wide"><span className="mr-2">●</span> Please select a size to proceed</p>}
             </div>
 
             {/* Duration Selector */}

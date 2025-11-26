@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingBag, User, Menu, X, Diamond, Check, LogIn } from 'lucide-react';
+import { ShoppingBag, User, Menu, X, Diamond, Check, LogIn, UserPlus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface LayoutProps {
@@ -50,18 +50,26 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
             {/* Icons */}
             <div className="hidden md:flex items-center space-x-6">
-              <button className="text-cream hover:text-golden-orange transition-colors">
+              <Link to="/bag" className="text-cream hover:text-golden-orange transition-colors" title="Shopping Bag">
                 <ShoppingBag size={20} />
-              </button>
+              </Link>
               {isAuthenticated ? (
                 <Link to="/dashboard" className="text-cream hover:text-golden-orange transition-colors" title="My Dashboard">
                   <User size={20} />
                 </Link>
               ) : (
-                <Link to="/login" className="flex items-center space-x-2 text-golden-orange hover:text-white transition-colors">
-                  <span className="text-xs uppercase tracking-widest font-bold">Sign In</span>
-                  <LogIn size={18} />
-                </Link>
+                <div className="flex items-center space-x-6">
+                  <Link to="/login" className="flex items-center space-x-2 text-cream hover:text-golden-orange transition-colors">
+                    <span className="text-xs uppercase tracking-widest font-bold">Sign In</span>
+                  </Link>
+                  <Link 
+                    to="/login" 
+                    state={{ mode: 'signup' }}
+                    className="flex items-center space-x-2 text-golden-orange border border-golden-orange/50 px-4 py-2 hover:bg-golden-orange hover:text-espresso transition-all"
+                  >
+                    <span className="text-xs uppercase tracking-widest font-bold">Join</span>
+                  </Link>
+                </div>
               )}
             </div>
 
@@ -81,10 +89,14 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-4 font-serif text-golden-orange uppercase tracking-widest hover:bg-white/5">Home</Link>
               <Link to="/catalog" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-4 font-serif text-cream uppercase tracking-widest hover:bg-white/5">Collection</Link>
               <Link to="/ai-stylist" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-4 font-serif text-cream uppercase tracking-widest hover:bg-white/5">AI Stylist</Link>
+              <Link to="/bag" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-4 font-serif text-cream uppercase tracking-widest hover:bg-white/5">Shopping Bag</Link>
               {isAuthenticated ? (
                 <Link to="/dashboard" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-4 font-serif text-cream uppercase tracking-widest hover:bg-white/5">My Wardrobe</Link>
               ) : (
-                <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-4 font-serif text-golden-orange uppercase tracking-widest hover:bg-white/5">Sign In</Link>
+                <>
+                  <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-4 font-serif text-cream uppercase tracking-widest hover:bg-white/5">Sign In</Link>
+                  <Link to="/login" state={{ mode: 'signup' }} onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-4 font-serif text-golden-orange uppercase tracking-widest hover:bg-white/5 font-bold">Join Stylus</Link>
+                </>
               )}
             </div>
           </div>
