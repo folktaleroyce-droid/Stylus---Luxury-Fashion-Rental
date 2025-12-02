@@ -1,11 +1,60 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { MOCK_USER } from '../constants';
-import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag } from 'lucide-react';
+import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useProduct } from '../context/ProductContext';
 import { Category, Product } from '../types';
 import { Button } from '../components/Button';
+
+// Countdown Timer Component
+const RentalCountdown: React.FC<{ dueDate: string }> = ({ dueDate }) => {
+    const [timeLeft, setTimeLeft] = useState<{days: number, hours: number, minutes: number} | null>(null);
+
+    useEffect(() => {
+        const calculateTime = () => {
+            const now = new Date().getTime();
+            // Handle various date formats by ensuring a standard constructor works
+            const due = new Date(dueDate);
+            // Set to end of day (11:59:59 PM)
+            due.setHours(23, 59, 59);
+            
+            const difference = due.getTime() - now;
+
+            if (difference > 0) {
+                const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+                setTimeLeft({ days, hours, minutes });
+            } else {
+                setTimeLeft(null); // Overdue
+            }
+        };
+
+        calculateTime();
+        const timer = setInterval(calculateTime, 60000); // Update every minute
+        return () => clearInterval(timer);
+    }, [dueDate]);
+
+    if (!timeLeft) return <div className="text-red-500 font-bold uppercase tracking-widest text-xs flex items-center mt-2"><Clock size={12} className="mr-1" /> Return Overdue</div>;
+
+    return (
+        <div className="flex items-center space-x-3 bg-golden-orange/5 px-4 py-2 rounded border border-golden-orange/20 mt-3 max-w-max">
+             <Clock size={14} className="text-golden-orange" />
+             <div className="flex items-baseline space-x-1">
+                <span className="font-serif text-lg text-golden-orange font-bold leading-none">{timeLeft.days}</span>
+                <span className="text-[10px] text-cream/50 uppercase mr-1">Days</span>
+                
+                <span className="font-serif text-lg text-golden-orange font-bold leading-none">{timeLeft.hours}</span>
+                <span className="text-[10px] text-cream/50 uppercase mr-1">Hr</span>
+
+                <span className="font-serif text-lg text-golden-orange font-bold leading-none">{timeLeft.minutes}</span>
+                <span className="text-[10px] text-cream/50 uppercase">Min</span>
+            </div>
+            <span className="text-[10px] text-cream/40 uppercase tracking-widest ml-1 border-l border-white/10 pl-2">Remaining</span>
+        </div>
+    );
+};
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -19,6 +68,13 @@ export const Dashboard: React.FC = () => {
   // Use the logged-in user's name if available, otherwise fallback to Mock
   const displayName = user?.name || MOCK_USER.name;
 
+  // Create dynamic dates for mock rentals so the countdown always looks good
+  const today = new Date();
+  const dateIn3Days = new Date(today); dateIn3Days.setDate(today.getDate() + 3);
+  const dateIn5Days = new Date(today); dateIn5Days.setDate(today.getDate() + 5);
+
+  const formatDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
   // Combine dynamic new rental with mock active rentals for display
   const activeRentals = [
     ...(newRental ? [{
@@ -29,11 +85,19 @@ export const Dashboard: React.FC = () => {
       status: 'New Rental',
       statusColor: 'text-golden-orange border-golden-orange bg-golden-orange/10'
     }] : []),
-    ...products.slice(0, 2).map((p, idx) => ({
-      id: `existing-${idx}`,
+    ...products.slice(0, 1).map((p, idx) => ({
+      id: `existing-1`,
       product: p,
-      dueDate: 'Oct 24, 2024',
+      dueDate: formatDate(dateIn3Days),
       tracking: '#STY-8829',
+      status: 'Active',
+      statusColor: 'text-green-400 border-green-900 bg-green-900/30'
+    })),
+     ...products.slice(3, 4).map((p, idx) => ({
+      id: `existing-2`,
+      product: p,
+      dueDate: formatDate(dateIn5Days),
+      tracking: '#STY-9941',
       status: 'Active',
       statusColor: 'text-green-400 border-green-900 bg-green-900/30'
     }))
@@ -212,6 +276,9 @@ export const Dashboard: React.FC = () => {
                             <span>Tracking: {rental.tracking}</span>
                           </div>
                         </div>
+
+                        {/* Countdown Timer */}
+                        <RentalCountdown dueDate={rental.dueDate} />
 
                         <div className="mt-6 flex space-x-4">
                           <button 

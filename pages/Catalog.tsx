@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Category, Product, ProductFilter } from '../types';
-import { Filter, Search, X } from 'lucide-react';
+import { Filter, Search, X, Eye } from 'lucide-react';
 import { useProduct } from '../context/ProductContext';
 import { Button } from '../components/Button';
 
 export const Catalog: React.FC = () => {
   const { products } = useProduct();
+  const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   
   // Consolidated Filter State using the Interface
   const [filters, setFilters] = useState<ProductFilter>({
@@ -54,6 +55,47 @@ export const Catalog: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-espresso pb-20">
+      
+      {/* Quick View Modal */}
+      {quickViewProduct && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setQuickViewProduct(null)}>
+            <div className="bg-[#1f0c05] border border-golden-orange w-full max-w-4xl rounded-sm relative shadow-[0_0_50px_rgba(0,0,0,0.8)] flex flex-col md:flex-row overflow-hidden" onClick={e => e.stopPropagation()}>
+                <button 
+                    onClick={() => setQuickViewProduct(null)} 
+                    className="absolute top-4 right-4 text-cream/50 hover:text-golden-orange z-10 p-2 bg-black/20 rounded-full transition-colors"
+                >
+                    <X size={24} />
+                </button>
+                <div className="w-full md:w-1/2 h-64 md:h-auto bg-white/5 relative">
+                    <img src={quickViewProduct.images[0]} alt={quickViewProduct.name} className="w-full h-full object-cover" />
+                </div>
+                <div className="p-8 w-full md:w-1/2 flex flex-col justify-center bg-[#1f0c05]">
+                    <span className="text-golden-orange text-xs uppercase tracking-widest mb-2 font-bold">{quickViewProduct.brand}</span>
+                    <h2 className="font-serif text-3xl md:text-4xl text-cream mb-4">{quickViewProduct.name}</h2>
+                    <p className="text-cream/70 mb-6 leading-relaxed line-clamp-4 font-light">{quickViewProduct.description}</p>
+                    
+                    <div className="flex items-center justify-between mb-8 border-t border-white/10 pt-6">
+                        <div>
+                             <p className="font-serif text-3xl text-cream animate-pulse">${quickViewProduct.rentalPrice}</p>
+                             <p className="text-xs text-cream/40 uppercase tracking-wide">Rental / 4 Days</p>
+                        </div>
+                        <div>
+                             <p className="font-serif text-xl text-cream/50 line-through">${quickViewProduct.retailPrice}</p>
+                             <p className="text-xs text-cream/30 uppercase tracking-wide text-right">Retail</p>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-3">
+                        <Button fullWidth onClick={() => setQuickViewProduct(null)} variant="outline">Close</Button>
+                        <Link to={`/product/${quickViewProduct.id}`} className="w-full">
+                            <Button fullWidth>Rent Now</Button>
+                        </Link>
+                    </div>
+                </div>
+            </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-[#1a0a04] py-12 px-4 mb-8 border-b border-white/5">
         <div className="max-w-7xl mx-auto">
@@ -95,7 +137,7 @@ export const Catalog: React.FC = () => {
                </select>
             </div>
 
-            {/* Size Filter (NEW) */}
+            {/* Size Filter */}
             <div className="w-full">
                <label className="text-xs text-golden-orange uppercase tracking-widest mb-2 block font-bold">Size</label>
                <select 
@@ -166,7 +208,11 @@ export const Catalog: React.FC = () => {
         {/* Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
           {filteredProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard 
+                key={product.id} 
+                product={product} 
+                onQuickView={setQuickViewProduct} 
+            />
           ))}
           {filteredProducts.length === 0 && (
             <div className="col-span-full text-center py-20 text-cream/50">
@@ -180,7 +226,7 @@ export const Catalog: React.FC = () => {
   );
 };
 
-const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
+const ProductCard: React.FC<{ product: Product; onQuickView: (p: Product) => void }> = ({ product, onQuickView }) => {
   return (
     <div className="group relative flex flex-col h-full">
       <div className="relative h-[450px] w-full overflow-hidden bg-cream/5 mb-4">
@@ -198,11 +244,17 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
         )}
         <div className="absolute inset-0 bg-black/10 group-hover:bg-black/30 transition-colors duration-500"></div>
         
-        {/* Strong CTA Button on Card */}
-        <div className="absolute bottom-6 left-6 right-6 translate-y-4 opacity-0 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
+        {/* Strong CTA Button + Quick View on Card */}
+        <div className="absolute bottom-6 left-6 right-6 translate-y-4 opacity-0 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 flex flex-col gap-3">
           <Link to={`/product/${product.id}`}>
             <Button fullWidth variant="primary" className="shadow-lg">Rent Now</Button>
           </Link>
+          <button 
+            onClick={(e) => { e.preventDefault(); onQuickView(product); }}
+            className="w-full bg-espresso/90 backdrop-blur-md text-cream border border-golden-orange/30 py-3 uppercase tracking-widest text-xs font-bold hover:bg-golden-orange hover:text-espresso transition-all duration-300 flex items-center justify-center gap-2"
+          >
+             <Eye size={14} /> Quick View
+          </button>
         </div>
       </div>
       
