@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { MOCK_USER } from '../constants';
-import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock } from 'lucide-react';
+import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock, X, Check } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useProduct } from '../context/ProductContext';
 import { Category, Product } from '../types';
@@ -56,13 +56,28 @@ const RentalCountdown: React.FC<{ dueDate: string }> = ({ dueDate }) => {
     );
 };
 
+interface ActiveRental {
+  id: string;
+  product: Product;
+  dueDate: string;
+  tracking: string;
+  status: string;
+  statusColor: string;
+}
+
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout, user } = useAuth();
   const { products, addProduct } = useProduct();
   const [currentView, setCurrentView] = useState<'overview' | 'list-item'>('overview');
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   
+  // Extension State
+  const [extendingRental, setExtendingRental] = useState<ActiveRental | null>(null);
+  const [extensionDays, setExtensionDays] = useState<4 | 8>(4);
+  const [extendedDueDates, setExtendedDueDates] = useState<Record<string, string>>({}); // Track extensions locally
+
   const newRental = location.state?.newRental;
 
   // Use the logged-in user's name if available, otherwise fallback to Mock
@@ -76,7 +91,7 @@ export const Dashboard: React.FC = () => {
   const formatDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
   // Combine dynamic new rental with mock active rentals for display
-  const activeRentals = [
+  const activeRentals: ActiveRental[] = [
     ...(newRental ? [{
       id: 'new-rental',
       product: newRental.product as Product,
@@ -103,6 +118,12 @@ export const Dashboard: React.FC = () => {
     }))
   ];
 
+  // Apply overrides if any rentals have been extended
+  const displayRentals = activeRentals.map(rental => ({
+      ...rental,
+      dueDate: extendedDueDates[rental.id] || rental.dueDate
+  }));
+
   // Form State
   const [newItem, setNewItem] = useState<Partial<Product>>({
     name: '',
@@ -121,11 +142,7 @@ export const Dashboard: React.FC = () => {
 
   const handleSidebarClick = (feature: string) => {
     if (feature === 'Sign Out') {
-      const confirm = window.confirm("Are you sure you wish to sign out?");
-      if (confirm) {
-        logout();
-        navigate('/login');
-      }
+      setShowLogoutConfirm(true);
     } else if (feature === 'List Item') {
       setCurrentView('list-item');
     } else if (feature === 'My Orders') {
@@ -135,8 +152,43 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  const handleAction = (action: string, item: string) => {
-    alert(`Request received: ${action} for ${item}.\nA concierge will contact you shortly to coordinate.`);
+  const performLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const handleAction = (action: string, rental: ActiveRental) => {
+    if (action === 'Extend') {
+        setExtendingRental(rental);
+        setExtensionDays(4); // Reset to default
+    } else {
+        alert(`Request received: ${action} for ${rental.product.name}.\nA concierge will contact you shortly to coordinate.`);
+    }
+  };
+
+  const confirmExtension = () => {
+      if (!extendingRental) return;
+
+      const currentDueDate = new Date(extendedDueDates[extendingRental.id] || extendingRental.dueDate);
+      const newDueDate = new Date(currentDueDate);
+      newDueDate.setDate(newDueDate.getDate() + extensionDays);
+      
+      const newDateString = newDueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+      setExtendedDueDates(prev => ({
+          ...prev,
+          [extendingRental.id]: newDateString
+      }));
+
+      // In a real app, we would charge the card here
+      setExtendingRental(null);
+      alert("Extension confirmed. Your return date has been updated.");
+  };
+
+  const getExtensionCost = (days: number, basePrice: number) => {
+      // 50% of base price for 4 days, 90% for 8 days
+      if (days === 4) return Math.round(basePrice * 0.5);
+      return Math.round(basePrice * 0.9);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -183,6 +235,92 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-espresso pb-20 animate-fade-in">
+      
+      {/* Logout Confirmation Modal */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setShowLogoutConfirm(false)}>
+            <div className="bg-[#1f0c05] border border-golden-orange w-full max-w-md p-8 text-center relative shadow-[0_0_50px_rgba(0,0,0,0.8)]" onClick={e => e.stopPropagation()}>
+                <Diamond size={32} className="mx-auto text-golden-orange mb-4" />
+                <h2 className="font-serif text-2xl text-cream mb-2">Sign Out</h2>
+                <p className="text-cream/60 mb-8 font-light text-sm leading-relaxed">Are you sure you wish to depart from the Stylus inner circle?</p>
+                <div className="flex gap-4 justify-center">
+                    <Button variant="outline" onClick={() => setShowLogoutConfirm(false)} className="w-32">Cancel</Button>
+                    <Button onClick={performLogout} className="w-32">Confirm</Button>
+                </div>
+            </div>
+        </div>
+      )}
+
+      {/* Extend Rental Modal */}
+      {extendingRental && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setExtendingRental(null)}>
+              <div className="bg-[#1f0c05] border border-golden-orange w-full max-w-lg relative shadow-[0_0_50px_rgba(0,0,0,0.8)] flex flex-col" onClick={e => e.stopPropagation()}>
+                  
+                  {/* Modal Header */}
+                  <div className="flex justify-between items-start p-6 border-b border-white/10 bg-white/5">
+                      <div>
+                          <p className="text-xs text-golden-orange uppercase tracking-widest mb-1">Modify Rental</p>
+                          <h2 className="font-serif text-2xl text-cream">Extend Your Style</h2>
+                      </div>
+                      <button onClick={() => setExtendingRental(null)} className="text-cream/50 hover:text-golden-orange transition-colors">
+                          <X size={24} />
+                      </button>
+                  </div>
+
+                  {/* Modal Body */}
+                  <div className="p-6">
+                      <div className="flex items-center gap-4 mb-6">
+                          <img src={extendingRental.product.images[0]} alt="Product" className="w-16 h-20 object-cover border border-white/10" />
+                          <div>
+                              <p className="text-sm font-bold text-cream">{extendingRental.product.name}</p>
+                              <p className="text-xs text-cream/50">Current Due Date: <span className="text-golden-orange">{extendedDueDates[extendingRental.id] || extendingRental.dueDate}</span></p>
+                          </div>
+                      </div>
+
+                      <h3 className="text-xs text-cream/60 uppercase tracking-widest mb-4">Select Extension Duration</h3>
+                      
+                      <div className="grid grid-cols-2 gap-4 mb-8">
+                          {[4, 8].map((days) => {
+                              const cost = getExtensionCost(days, extendingRental.product.rentalPrice);
+                              const isSelected = extensionDays === days;
+                              return (
+                                  <button
+                                      key={days}
+                                      onClick={() => setExtensionDays(days as 4 | 8)}
+                                      className={`p-4 border text-center transition-all duration-300 relative group ${
+                                          isSelected 
+                                          ? 'bg-golden-orange/10 border-golden-orange' 
+                                          : 'bg-white/5 border-white/10 hover:border-golden-orange/50'
+                                      }`}
+                                  >
+                                      {isSelected && <div className="absolute top-2 right-2 text-golden-orange"><Check size={14} /></div>}
+                                      <p className="font-serif text-lg text-cream mb-1">+{days} Days</p>
+                                      <p className={`text-sm ${isSelected ? 'text-golden-orange font-bold' : 'text-cream/50'}`}>${cost}</p>
+                                  </button>
+                              );
+                          })}
+                      </div>
+
+                      <div className="bg-white/5 p-4 rounded mb-6">
+                          <div className="flex justify-between mb-2">
+                              <span className="text-sm text-cream/70">Extension Fee</span>
+                              <span className="text-sm text-cream">${getExtensionCost(extensionDays, extendingRental.product.rentalPrice)}</span>
+                          </div>
+                          <div className="flex justify-between pt-2 border-t border-white/10">
+                              <span className="text-sm font-bold text-golden-orange uppercase tracking-wide">Total Charge</span>
+                              <span className="text-lg font-serif text-golden-orange">${getExtensionCost(extensionDays, extendingRental.product.rentalPrice)}</span>
+                          </div>
+                      </div>
+
+                      <div className="flex gap-4">
+                          <Button variant="outline" fullWidth onClick={() => setExtendingRental(null)}>Cancel</Button>
+                          <Button fullWidth onClick={confirmExtension}>Confirm & Pay</Button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )}
+
       {/* Header Pattern */}
       <div className="h-48 bg-[#1a0a04] border-b border-white/5 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#e1af4d 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>
@@ -207,7 +345,7 @@ export const Dashboard: React.FC = () => {
                 
                 <div className="grid grid-cols-2 gap-4 border-t border-white/10 pt-6">
                   <div className="text-center">
-                    <p className="text-2xl text-white font-bold">{activeRentals.length}</p>
+                    <p className="text-2xl text-white font-bold">{displayRentals.length}</p>
                     <p className="text-xs text-white/40 uppercase">Active Rentals</p>
                   </div>
                   <div className="text-center">
@@ -250,7 +388,7 @@ export const Dashboard: React.FC = () => {
                 <h3 className="font-serif text-2xl text-cream mb-6 border-l-4 border-golden-orange pl-4">Active Rentals</h3>
                 
                 <div className="space-y-6">
-                  {activeRentals.map((rental) => (
+                  {displayRentals.map((rental) => (
                     <div key={rental.id} className="bg-white/5 border border-white/5 p-6 flex flex-col sm:flex-row gap-6 hover:border-golden-orange/30 transition-colors group">
                       <div className="w-full sm:w-32 h-40 bg-black/20 flex-shrink-0 relative overflow-hidden">
                         <img src={rental.product.images[0]} alt={rental.product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -282,13 +420,13 @@ export const Dashboard: React.FC = () => {
 
                         <div className="mt-6 flex space-x-4">
                           <button 
-                            onClick={() => handleAction('Return', rental.product.name)}
+                            onClick={() => handleAction('Return', rental)}
                             className="text-xs uppercase font-bold text-cream hover:text-golden-orange transition-colors border-b border-transparent hover:border-golden-orange pb-1"
                           >
                             Return Item
                           </button>
                           <button 
-                            onClick={() => handleAction('Extend', rental.product.name)}
+                            onClick={() => handleAction('Extend', rental)}
                             className="text-xs uppercase font-bold text-cream hover:text-golden-orange transition-colors border-b border-transparent hover:border-golden-orange pb-1"
                           >
                             Extend Rental
