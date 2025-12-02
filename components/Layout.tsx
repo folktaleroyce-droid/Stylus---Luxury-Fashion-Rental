@@ -38,11 +38,12 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               </span>
             </Link>
 
-            {/* Desktop Links */}
+            {/* Desktop Links (Main Navigation - Improved Labels) */}
             <div className="hidden md:flex space-x-12 items-center">
               <Link to="/" className={`font-serif uppercase tracking-wider text-xs ${isActive('/')}`}>Home</Link>
               <Link to="/catalog" className={`font-serif uppercase tracking-wider text-xs ${isActive('/catalog')}`}>Collection</Link>
-              <Link to="/ai-stylist" className={`font-serif uppercase tracking-wider text-xs ${isActive('/ai-stylist')}`}>AI Stylist</Link>
+              <Link to="/the-edit" className={`font-serif uppercase tracking-wider text-xs ${isActive('/the-edit')}`}>The Edit</Link>
+              <Link to="/ai-stylist" className={`font-serif uppercase tracking-wider text-xs ${isActive('/ai-stylist')}`}>Concierge</Link>
               {isAuthenticated && (
                 <Link to="/dashboard" className={`font-serif uppercase tracking-wider text-xs ${isActive('/dashboard')}`}>My Wardrobe</Link>
               )}
@@ -50,7 +51,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
             {/* Icons */}
             <div className="hidden md:flex items-center space-x-6">
-              <Link to="/bag" className="text-cream hover:text-golden-orange transition-colors" title="Shopping Bag">
+              <Link to="/bag" className="text-cream hover:text-golden-orange transition-colors relative" title="Shopping Bag">
                 <ShoppingBag size={20} />
               </Link>
               {isAuthenticated ? (
@@ -88,7 +89,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 text-center">
               <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-4 font-serif text-golden-orange uppercase tracking-widest hover:bg-white/5">Home</Link>
               <Link to="/catalog" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-4 font-serif text-cream uppercase tracking-widest hover:bg-white/5">Collection</Link>
-              <Link to="/ai-stylist" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-4 font-serif text-cream uppercase tracking-widest hover:bg-white/5">AI Stylist</Link>
+              <Link to="/the-edit" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-4 font-serif text-cream uppercase tracking-widest hover:bg-white/5">The Edit</Link>
+              <Link to="/ai-stylist" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-4 font-serif text-cream uppercase tracking-widest hover:bg-white/5">Concierge</Link>
               <Link to="/bag" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-4 font-serif text-cream uppercase tracking-widest hover:bg-white/5">Shopping Bag</Link>
               {isAuthenticated ? (
                 <Link to="/dashboard" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-4 font-serif text-cream uppercase tracking-widest hover:bg-white/5">My Wardrobe</Link>

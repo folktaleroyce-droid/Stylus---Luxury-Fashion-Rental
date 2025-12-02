@@ -25,7 +25,9 @@ export const Dashboard: React.FC = () => {
     retailPrice: 0,
     description: '',
     availableSizes: [],
-    imageUrl: ''
+    images: [], // Changed to array
+    color: '',
+    occasion: ''
   });
   const [sizeInput, setSizeInput] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -55,7 +57,7 @@ export const Dashboard: React.FC = () => {
       const file = e.target.files[0];
       setImageFile(file);
       // Create a fake local URL for demo purposes
-      setNewItem({ ...newItem, imageUrl: URL.createObjectURL(file) });
+      setNewItem({ ...newItem, images: [URL.createObjectURL(file)] });
     }
   };
 
@@ -74,15 +76,20 @@ export const Dashboard: React.FC = () => {
         rentalPrice: Number(newItem.rentalPrice),
         retailPrice: Number(newItem.retailPrice),
         description: newItem.description || '',
-        imageUrl: newItem.imageUrl || 'https://images.unsplash.com/photo-1549439602-43ebca2327af?q=80&w=1000&auto=format&fit=crop',
-        availableSizes: sizeInput.split(',').map(s => s.trim()).filter(s => s)
+        images: newItem.images && newItem.images.length > 0 
+          ? newItem.images 
+          : ['https://images.unsplash.com/photo-1549439602-43ebca2327af?q=80&w=1000&auto=format&fit=crop'],
+        availableSizes: sizeInput.split(',').map(s => s.trim()).filter(s => s),
+        color: newItem.color || 'Multi',
+        occasion: newItem.occasion || 'General',
+        reviews: []
     };
 
     addProduct(product);
     alert("Item listed successfully! It is now available in the collection.");
     setCurrentView('overview');
     // Reset form
-    setNewItem({ name: '', brand: '', category: Category.WOMEN, rentalPrice: 0, retailPrice: 0, description: '', availableSizes: [], imageUrl: '' });
+    setNewItem({ name: '', brand: '', category: Category.WOMEN, rentalPrice: 0, retailPrice: 0, description: '', availableSizes: [], images: [], color: '', occasion: '' });
     setSizeInput('');
     setImageFile(null);
   };
@@ -160,7 +167,7 @@ export const Dashboard: React.FC = () => {
                   {products.slice(0, 2).map((product, idx) => (
                     <div key={idx} className="bg-white/5 border border-white/5 p-6 flex flex-col sm:flex-row gap-6 hover:border-golden-orange/30 transition-colors group">
                       <div className="w-full sm:w-32 h-40 bg-black/20 flex-shrink-0 relative overflow-hidden">
-                        <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                       </div>
                       <div className="flex-grow">
                         <div className="flex justify-between items-start mb-2">
@@ -209,7 +216,7 @@ export const Dashboard: React.FC = () => {
                     {products.length > 2 && (
                         <div className="flex flex-col items-center">
                           <div className="w-48 h-64 overflow-hidden mb-4 border border-golden-orange/20 shadow-lg">
-                            <img src={products[2].imageUrl} alt="Suggestion" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                            <img src={products[2].images[0]} alt="Suggestion" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                           </div>
                           <p className="text-golden-orange text-xs uppercase tracking-widest mb-1">{products[2].brand}</p>
                           <p className="font-serif text-xl text-cream mb-4">{products[2].name}</p>
@@ -264,6 +271,29 @@ export const Dashboard: React.FC = () => {
                                 </select>
                             </div>
                             <div>
+                                <label className="block text-xs uppercase tracking-widest text-cream/60 mb-2">Color</label>
+                                <input 
+                                    type="text" 
+                                    value={newItem.color}
+                                    onChange={(e) => setNewItem({...newItem, color: e.target.value})}
+                                    className="w-full bg-black/20 border border-white/10 text-cream px-4 py-3 focus:outline-none focus:border-golden-orange transition-colors"
+                                    placeholder="e.g. Black"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs uppercase tracking-widest text-cream/60 mb-2">Occasion</label>
+                                <input 
+                                    type="text" 
+                                    value={newItem.occasion}
+                                    onChange={(e) => setNewItem({...newItem, occasion: e.target.value})}
+                                    className="w-full bg-black/20 border border-white/10 text-cream px-4 py-3 focus:outline-none focus:border-golden-orange transition-colors"
+                                    placeholder="e.g. Gala"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
                                 <label className="block text-xs uppercase tracking-widest text-cream/60 mb-2">Rental Price ($)</label>
                                 <input 
                                     type="number" 
@@ -316,9 +346,9 @@ export const Dashboard: React.FC = () => {
                                     onChange={handleImageUpload}
                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                 />
-                                {newItem.imageUrl ? (
+                                {newItem.images && newItem.images.length > 0 ? (
                                     <div className="flex flex-col items-center">
-                                        <img src={newItem.imageUrl} alt="Preview" className="h-32 object-contain mb-2" />
+                                        <img src={newItem.images[0]} alt="Preview" className="h-32 object-contain mb-2" />
                                         <span className="text-xs text-green-400">Image Loaded</span>
                                     </div>
                                 ) : (

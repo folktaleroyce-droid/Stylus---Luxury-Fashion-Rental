@@ -6,6 +6,14 @@ export enum Category {
   BAGS = 'Bags'
 }
 
+export interface Review {
+  id: string;
+  author: string;
+  rating: number;
+  comment: string;
+  date: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -13,9 +21,21 @@ export interface Product {
   category: Category;
   rentalPrice: number;
   retailPrice: number;
-  imageUrl: string;
+  images: string[]; // Changed from single imageUrl to array
   description: string;
   availableSizes: string[];
+  color: string;
+  occasion: string;
+  reviews: Review[];
+}
+
+export interface ProductFilter {
+  category: Category | 'All';
+  searchQuery: string;
+  color: string;
+  size: string;
+  occasion: string;
+  maxPrice: number;
 }
 
 export interface ChatMessage {
