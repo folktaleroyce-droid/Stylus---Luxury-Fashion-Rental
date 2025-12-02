@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ShoppingBag, User, Menu, X, Diamond, Check, LogIn, UserPlus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -12,6 +13,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const location = useLocation();
   const { isAuthenticated } = useAuth();
+  const { cartCount } = useCart();
 
   const isActive = (path: string) => location.pathname === path ? "text-golden-orange border-b border-golden-orange" : "text-cream hover:text-golden-orange transition-colors";
 
@@ -53,6 +55,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             <div className="hidden md:flex items-center space-x-6">
               <Link to="/bag" className="text-cream hover:text-golden-orange transition-colors relative" title="Shopping Bag">
                 <ShoppingBag size={20} />
+                {cartCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-golden-orange text-espresso text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                    {cartCount}
+                  </span>
+                )}
               </Link>
               {isAuthenticated ? (
                 <Link to="/dashboard" className="text-cream hover:text-golden-orange transition-colors" title="My Dashboard">
@@ -91,7 +98,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               <Link to="/catalog" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-4 font-serif text-cream uppercase tracking-widest hover:bg-white/5">Collection</Link>
               <Link to="/the-edit" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-4 font-serif text-cream uppercase tracking-widest hover:bg-white/5">The Edit</Link>
               <Link to="/ai-stylist" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-4 font-serif text-cream uppercase tracking-widest hover:bg-white/5">Concierge</Link>
-              <Link to="/bag" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-4 font-serif text-cream uppercase tracking-widest hover:bg-white/5">Shopping Bag</Link>
+              <Link to="/bag" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-4 font-serif text-cream uppercase tracking-widest hover:bg-white/5">
+                Shopping Bag {cartCount > 0 ? `(${cartCount})` : ''}
+              </Link>
               {isAuthenticated ? (
                 <Link to="/dashboard" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-4 font-serif text-cream uppercase tracking-widest hover:bg-white/5">My Wardrobe</Link>
               ) : (

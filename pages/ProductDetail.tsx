@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
-import { Shield, Clock, Calendar, Check, ArrowLeft, Ruler, Star, Truck, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Shield, Clock, Calendar, Check, ArrowLeft, Ruler, Star, Truck, RotateCcw, AlertTriangle, X } from 'lucide-react';
 import { useProduct } from '../context/ProductContext';
+import { useCart } from '../context/CartContext';
 
 export const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { products } = useProduct();
+  const { addToCart } = useCart();
   const product = products.find(p => p.id === id);
   
   const [selectedDuration, setSelectedDuration] = useState<4 | 8 | 12>(4);
@@ -15,6 +17,7 @@ export const ProductDetail: React.FC = () => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [startDate, setStartDate] = useState<string>('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [showAgreementModal, setShowAgreementModal] = useState(false);
 
   if (!product) {
     return (
@@ -67,6 +70,26 @@ export const ProductDetail: React.FC = () => {
     });
   };
 
+  const handleAddToBag = () => {
+    if (!selectedSize || !startDate || !agreedToTerms) {
+        alert("Please select a size, start date, and agree to the terms.");
+        return;
+    }
+    
+    const cartItem = {
+        id: `${product.id}-${Date.now()}`,
+        product,
+        selectedSize,
+        duration: selectedDuration,
+        price: currentPrice,
+        startDate: new Date(startDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        endDate: endDateString || ''
+    };
+
+    addToCart(cartItem);
+    alert("Item added to your shopping bag.");
+  };
+
   const handleSizeGuide = () => {
       alert("Stylus Sizing Guide:\n\nWe use standard Italian sizing for most garments.\n\nXS / IT 38 / US 2\nS / IT 40 / US 4\nM / IT 42 / US 6\nL / IT 44 / US 8\n\nFor accessories, 'One Size' fits all.");
   };
@@ -75,7 +98,47 @@ export const ProductDetail: React.FC = () => {
   const today = new Date().toISOString().split('T')[0];
 
   return (
-    <div className="min-h-screen bg-espresso pt-8 pb-20 animate-fade-in">
+    <div className="min-h-screen bg-espresso pt-8 pb-20 animate-fade-in relative">
+      
+      {/* Rental Agreement Modal */}
+      {showAgreementModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-[#1f0c05] border border-golden-orange w-full max-w-2xl max-h-[80vh] overflow-y-auto rounded-sm relative shadow-[0_0_50px_rgba(0,0,0,0.8)]">
+             <button 
+                onClick={() => setShowAgreementModal(false)}
+                className="absolute top-4 right-4 text-cream/50 hover:text-golden-orange transition-colors"
+             >
+                <X size={24} />
+             </button>
+             
+             <div className="p-8">
+                <h2 className="font-serif text-3xl text-golden-orange mb-6 text-center">Rental Agreement</h2>
+                <div className="space-y-4 text-cream/80 font-light leading-relaxed text-sm h-[50vh] overflow-y-auto pr-4 custom-scrollbar">
+                    <p><strong>1. Introduction.</strong> This Rental Agreement ("Agreement") serves as a binding contract between you ("Renter") and Stylus Luxury Rentals ("Stylus"). By clicking "I Agree" or proceeding with a transaction, you accept the terms outlined below.</p>
+                    
+                    <p><strong>2. Ownership.</strong> All rental items remain the sole property of Stylus. This transaction is a temporary lease, not a sale.</p>
+                    
+                    <p><strong>3. Condition of Items.</strong> We guarantee that items are authentic, cleaned, and inspected prior to shipment. You agree to treat all items with extreme care. You are responsible for loss, theft, or irreparable damage (e.g., major tears, burns, permanent stains).</p>
+                    
+                    <p><strong>4. Returns & Late Fees.</strong> Items must be postmarked for return by the "Return Due" date listed on your receipt. Late returns disrupt our ability to serve other clients. 
+                    <br/><br/>
+                    <span className="text-golden-orange">Late Fee Policy:</span> A fee of 20% of the total rental cost will be charged for each day the item is late, up to 100% of the retail value of the item.</p>
+                    
+                    <p><strong>5. Cancellations.</strong> You may cancel your order for a full refund up to 48 hours before the scheduled dispatch date. Cancellations made within 48 hours of dispatch are subject to a 50% restocking fee.</p>
+
+                    <p><strong>6. Insurance.</strong> A minor damage waiver is included in your rental price, covering small spills (e.g., wine, coffee) and loose hems. It does not cover major damage or theft.</p>
+                </div>
+                
+                <div className="mt-8 flex justify-center">
+                    <Button onClick={() => { setAgreedToTerms(true); setShowAgreementModal(false); }} fullWidth>
+                        I Understand & Agree
+                    </Button>
+                </div>
+             </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Breadcrumb */}
@@ -232,20 +295,38 @@ export const ProductDetail: React.FC = () => {
                       />
                     </div>
                     <label htmlFor="rental-terms" className="text-xs text-cream/80 leading-relaxed cursor-pointer select-none">
-                      I agree to the <span className="text-golden-orange font-bold">Rental Agreement</span>. 
+                      I agree to the 
+                      <button 
+                        onClick={(e) => { e.preventDefault(); setShowAgreementModal(true); }}
+                        className="text-golden-orange font-bold hover:underline mx-1 focus:outline-none"
+                      >
+                        Rental Agreement
+                      </button>. 
                       I understand that <span className="text-white font-bold">late returns incur a 20% daily fee</span> based on the total rental price.
                     </label>
                   </div>
                 </div>
 
-                <Button 
-                  fullWidth 
-                  disabled={!selectedSize || !startDate || !agreedToTerms} 
-                  onClick={handleRent}
-                  className="h-14 text-lg"
-                >
-                  {!selectedSize ? 'Select Size to Rent' : !startDate ? 'Select Date to Rent' : !agreedToTerms ? 'Accept Terms to Continue' : `Rent Now • $${currentPrice}`}
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Button 
+                    fullWidth 
+                    variant="secondary"
+                    onClick={handleAddToBag}
+                    disabled={!selectedSize || !startDate || !agreedToTerms}
+                    className="h-14 text-sm sm:w-1/2"
+                  >
+                    Add to Bag
+                  </Button>
+                  <Button 
+                    fullWidth 
+                    variant="primary"
+                    disabled={!selectedSize || !startDate || !agreedToTerms} 
+                    onClick={handleRent}
+                    className="h-14 text-lg sm:w-1/2"
+                  >
+                     Rent Now • ${currentPrice}
+                  </Button>
+                </div>
             </div>
 
             {/* Clear Policies Section */}
