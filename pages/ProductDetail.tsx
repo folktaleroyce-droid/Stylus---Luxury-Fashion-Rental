@@ -53,7 +53,10 @@ export const ProductDetail: React.FC = () => {
   const endDateString = getEndDate(startDate, selectedDuration);
 
   const handleRent = () => {
-    if (!selectedSize || !startDate || !agreedToTerms) return;
+    if (!selectedSize || !startDate || !agreedToTerms) {
+        alert("Please select a size, start date, and agree to the terms to proceed with rental.");
+        return;
+    }
     
     // Navigate to dashboard with rental details including calculated return date
     navigate('/dashboard', { 
@@ -72,7 +75,7 @@ export const ProductDetail: React.FC = () => {
 
   const handleAddToBag = () => {
     if (!selectedSize || !startDate || !agreedToTerms) {
-        alert("Please select a size, start date, and agree to the terms.");
+        alert("Please select a size, start date, and agree to the terms to add to bag.");
         return;
     }
     
@@ -102,7 +105,7 @@ export const ProductDetail: React.FC = () => {
       
       {/* Rental Agreement Modal */}
       {showAgreementModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="bg-[#1f0c05] border border-golden-orange w-full max-w-2xl max-h-[80vh] overflow-y-auto rounded-sm relative shadow-[0_0_50px_rgba(0,0,0,0.8)]">
              <button 
                 onClick={() => setShowAgreementModal(false)}
@@ -312,7 +315,6 @@ export const ProductDetail: React.FC = () => {
                     fullWidth 
                     variant="secondary"
                     onClick={handleAddToBag}
-                    disabled={!selectedSize || !startDate || !agreedToTerms}
                     className="h-14 text-sm sm:w-1/2"
                   >
                     Add to Bag
@@ -320,7 +322,6 @@ export const ProductDetail: React.FC = () => {
                   <Button 
                     fullWidth 
                     variant="primary"
-                    disabled={!selectedSize || !startDate || !agreedToTerms} 
                     onClick={handleRent}
                     className="h-14 text-lg sm:w-1/2"
                   >

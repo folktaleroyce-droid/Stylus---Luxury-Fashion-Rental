@@ -30,7 +30,7 @@ export const MOCK_PRODUCTS: Product[] = [
     rentalPrice: 200,
     retailPrice: 4500,
     images: [
-      'https://images.unsplash.com/photo-1593030761757-71bd90dbe3e4?q=80&w=1000&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?q=80&w=1000&auto=format&fit=crop',
       'https://images.unsplash.com/photo-1507679799987-c73779587ccf?q=80&w=1000&auto=format&fit=crop',
       'https://images.unsplash.com/photo-1617137984095-74e4e5e3613f?q=80&w=1000&auto=format&fit=crop'
     ],
