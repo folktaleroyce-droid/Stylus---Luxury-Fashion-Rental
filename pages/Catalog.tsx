@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Category, Product, ProductFilter } from '../types';
-import { Filter, Search, X, Eye } from 'lucide-react';
+import { Category, Product, ProductFilter, SortOption } from '../types';
+import { Filter, Search, X, Eye, ArrowUpDown } from 'lucide-react';
 import { useProduct } from '../context/ProductContext';
 import { Button } from '../components/Button';
 
@@ -16,7 +16,8 @@ export const Catalog: React.FC = () => {
     color: 'All',
     size: 'All',
     occasion: 'All',
-    maxPrice: 1000
+    maxPrice: 1000,
+    sortBy: 'newest'
   });
 
   // Extract unique values for dynamic filter options
@@ -36,6 +37,14 @@ export const Catalog: React.FC = () => {
     const matchPrice = p.rentalPrice <= filters.maxPrice;
 
     return matchCategory && matchSearch && matchColor && matchOccasion && matchSize && matchPrice;
+  }).sort((a, b) => {
+    if (filters.sortBy === 'price_asc') {
+      return a.rentalPrice - b.rentalPrice;
+    } else if (filters.sortBy === 'price_desc') {
+      return b.rentalPrice - a.rentalPrice;
+    }
+    // Default to newest (index based/original order which is effectively newest first in this context)
+    return 0;
   });
 
   const clearFilters = () => {
@@ -45,7 +54,8 @@ export const Catalog: React.FC = () => {
       color: 'All',
       size: 'All',
       occasion: 'All',
-      maxPrice: 1000
+      maxPrice: 1000,
+      sortBy: 'newest'
     });
   };
 
@@ -200,9 +210,25 @@ export const Catalog: React.FC = () => {
           </div>
         </div>
 
-        {/* Results Count */}
-        <div className="mb-6 flex justify-between items-center text-cream/60 text-sm">
+        {/* Results Count & Sort */}
+        <div className="mb-6 flex flex-col sm:flex-row justify-between items-center text-cream/60 text-sm gap-4">
           <span>Showing {filteredProducts.length} results</span>
+          
+          <div className="flex items-center space-x-3">
+             <div className="flex items-center text-golden-orange space-x-2 bg-[#1f0c05] px-3 py-1 border border-white/10">
+                <ArrowUpDown size={14} />
+                <span className="uppercase tracking-widest text-xs font-bold">Sort</span>
+             </div>
+             <select
+                value={filters.sortBy}
+                onChange={(e) => updateFilter('sortBy', e.target.value as SortOption)}
+                className="bg-[#1f0c05] border border-white/10 text-cream px-3 py-1.5 text-sm focus:outline-none focus:border-golden-orange rounded-sm min-w-[180px]"
+            >
+                <option value="newest">Newest Arrivals</option>
+                <option value="price_asc">Price: Low to High</option>
+                <option value="price_desc">Price: High to Low</option>
+            </select>
+          </div>
         </div>
 
         {/* Grid */}

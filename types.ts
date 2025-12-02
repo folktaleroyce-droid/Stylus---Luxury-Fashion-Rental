@@ -6,6 +6,8 @@ export enum Category {
   BAGS = 'Bags'
 }
 
+export type SortOption = 'newest' | 'price_asc' | 'price_desc';
+
 export interface Review {
   id: string;
   author: string;
@@ -36,6 +38,7 @@ export interface ProductFilter {
   size: string;
   occasion: string;
   maxPrice: number;
+  sortBy: SortOption;
 }
 
 export interface ChatMessage {
