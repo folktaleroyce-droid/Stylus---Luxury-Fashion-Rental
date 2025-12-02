@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { MOCK_USER } from '../constants';
 import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -9,12 +9,35 @@ import { Button } from '../components/Button';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { logout, user } = useAuth();
   const { products, addProduct } = useProduct();
   const [currentView, setCurrentView] = useState<'overview' | 'list-item'>('overview');
+  
+  const newRental = location.state?.newRental;
 
   // Use the logged-in user's name if available, otherwise fallback to Mock
   const displayName = user?.name || MOCK_USER.name;
+
+  // Combine dynamic new rental with mock active rentals for display
+  const activeRentals = [
+    ...(newRental ? [{
+      id: 'new-rental',
+      product: newRental.product as Product,
+      dueDate: newRental.returnDate,
+      tracking: 'Processing',
+      status: 'New Rental',
+      statusColor: 'text-golden-orange border-golden-orange bg-golden-orange/10'
+    }] : []),
+    ...products.slice(0, 2).map((p, idx) => ({
+      id: `existing-${idx}`,
+      product: p,
+      dueDate: 'Oct 24, 2024',
+      tracking: '#STY-8829',
+      status: 'Active',
+      statusColor: 'text-green-400 border-green-900 bg-green-900/30'
+    }))
+  ];
 
   // Form State
   const [newItem, setNewItem] = useState<Partial<Product>>({
@@ -120,7 +143,7 @@ export const Dashboard: React.FC = () => {
                 
                 <div className="grid grid-cols-2 gap-4 border-t border-white/10 pt-6">
                   <div className="text-center">
-                    <p className="text-2xl text-white font-bold">{MOCK_USER.activeRentals}</p>
+                    <p className="text-2xl text-white font-bold">{activeRentals.length}</p>
                     <p className="text-xs text-white/40 uppercase">Active Rentals</p>
                   </div>
                   <div className="text-center">
@@ -163,41 +186,42 @@ export const Dashboard: React.FC = () => {
                 <h3 className="font-serif text-2xl text-cream mb-6 border-l-4 border-golden-orange pl-4">Active Rentals</h3>
                 
                 <div className="space-y-6">
-                  {/* Just showing the first 2 dynamic products as active rentals example */}
-                  {products.slice(0, 2).map((product, idx) => (
-                    <div key={idx} className="bg-white/5 border border-white/5 p-6 flex flex-col sm:flex-row gap-6 hover:border-golden-orange/30 transition-colors group">
+                  {activeRentals.map((rental) => (
+                    <div key={rental.id} className="bg-white/5 border border-white/5 p-6 flex flex-col sm:flex-row gap-6 hover:border-golden-orange/30 transition-colors group">
                       <div className="w-full sm:w-32 h-40 bg-black/20 flex-shrink-0 relative overflow-hidden">
-                        <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        <img src={rental.product.images[0]} alt={rental.product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                       </div>
                       <div className="flex-grow">
                         <div className="flex justify-between items-start mb-2">
                           <div>
-                            <p className="text-xs text-golden-orange uppercase tracking-wide">{product.brand}</p>
-                            <h4 className="font-serif text-xl text-cream">{product.name}</h4>
+                            <p className="text-xs text-golden-orange uppercase tracking-wide">{rental.product.brand}</p>
+                            <h4 className="font-serif text-xl text-cream">{rental.product.name}</h4>
                           </div>
-                          <span className="bg-green-900/30 text-green-400 text-xs px-2 py-1 uppercase tracking-wide border border-green-900">Active</span>
+                          <span className={`text-xs px-2 py-1 uppercase tracking-wide border ${rental.statusColor}`}>
+                            {rental.status}
+                          </span>
                         </div>
                         
                         <div className="flex items-center text-sm text-cream/60 mt-4 space-x-6">
                           <div className="flex items-center">
                             <Calendar size={16} className="mr-2 text-golden-orange" />
-                            <span>Due: Oct 24, 2024</span>
+                            <span>Due: {rental.dueDate}</span>
                           </div>
                           <div className="flex items-center">
                             <Package size={16} className="mr-2 text-golden-orange" />
-                            <span>Tracking: #STY-8829</span>
+                            <span>Tracking: {rental.tracking}</span>
                           </div>
                         </div>
 
                         <div className="mt-6 flex space-x-4">
                           <button 
-                            onClick={() => handleAction('Return', product.name)}
+                            onClick={() => handleAction('Return', rental.product.name)}
                             className="text-xs uppercase font-bold text-cream hover:text-golden-orange transition-colors border-b border-transparent hover:border-golden-orange pb-1"
                           >
                             Return Item
                           </button>
                           <button 
-                            onClick={() => handleAction('Extend', product.name)}
+                            onClick={() => handleAction('Extend', rental.product.name)}
                             className="text-xs uppercase font-bold text-cream hover:text-golden-orange transition-colors border-b border-transparent hover:border-golden-orange pb-1"
                           >
                             Extend Rental

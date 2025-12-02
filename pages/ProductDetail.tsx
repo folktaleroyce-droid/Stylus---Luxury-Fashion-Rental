@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
-import { Shield, Clock, Calendar, Check, ArrowLeft, Ruler, Star, Truck, RotateCcw } from 'lucide-react';
+import { Shield, Clock, Calendar, Check, ArrowLeft, Ruler, Star, Truck, RotateCcw, AlertTriangle } from 'lucide-react';
 import { useProduct } from '../context/ProductContext';
 
 export const ProductDetail: React.FC = () => {
@@ -14,6 +14,7 @@ export const ProductDetail: React.FC = () => {
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [startDate, setStartDate] = useState<string>('');
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   if (!product) {
     return (
@@ -37,10 +38,21 @@ export const ProductDetail: React.FC = () => {
 
   const currentPrice = getPrice(selectedDuration);
 
+  // Calculate End Date
+  const getEndDate = (start: string, days: number) => {
+    if (!start) return null;
+    // Create date as local time to avoid UTC offsets shifting the day
+    const date = new Date(start + 'T00:00:00'); 
+    date.setDate(date.getDate() + days);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const endDateString = getEndDate(startDate, selectedDuration);
+
   const handleRent = () => {
-    if (!selectedSize || !startDate) return;
+    if (!selectedSize || !startDate || !agreedToTerms) return;
     
-    // Navigate to dashboard with rental details
+    // Navigate to dashboard with rental details including calculated return date
     navigate('/dashboard', { 
         state: { 
             newRental: {
@@ -48,7 +60,8 @@ export const ProductDetail: React.FC = () => {
                 size: selectedSize,
                 duration: selectedDuration,
                 price: currentPrice,
-                date: new Date(startDate).toLocaleDateString()
+                date: new Date(startDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                returnDate: endDateString
             }
         } 
     });
@@ -168,7 +181,7 @@ export const ProductDetail: React.FC = () => {
                 </div>
 
                 {/* Duration Selector */}
-                <div className="mb-8">
+                <div className="mb-6">
                   <h4 className="text-sm text-cream/80 uppercase tracking-widest mb-3 font-bold">3. Select Duration</h4>
                   <div className="grid grid-cols-3 gap-3">
                     {[4, 8, 12].map((days) => (
@@ -190,13 +203,48 @@ export const ProductDetail: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Return Date Display */}
+                {startDate && (
+                  <div className="mb-6 p-4 bg-white/5 border border-white/10 rounded-sm flex justify-between items-center animate-fade-in">
+                      <div>
+                        <p className="text-xs text-cream/50 uppercase tracking-wide">Rental Period</p>
+                        <p className="text-sm text-cream mt-1 font-mono">
+                          {new Date(startDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — {endDateString}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-golden-orange uppercase tracking-wide font-bold">Return Due</p>
+                        <p className="text-lg text-golden-orange font-bold font-serif">{endDateString}</p>
+                      </div>
+                  </div>
+                )}
+
+                {/* Terms Agreement */}
+                <div className="mb-6 p-4 border border-golden-orange/20 bg-golden-orange/5 rounded-sm">
+                  <div className="flex gap-3">
+                    <div className="pt-1">
+                      <input 
+                        type="checkbox" 
+                        id="rental-terms"
+                        checked={agreedToTerms}
+                        onChange={(e) => setAgreedToTerms(e.target.checked)}
+                        className="w-4 h-4 accent-golden-orange cursor-pointer"
+                      />
+                    </div>
+                    <label htmlFor="rental-terms" className="text-xs text-cream/80 leading-relaxed cursor-pointer select-none">
+                      I agree to the <span className="text-golden-orange font-bold">Rental Agreement</span>. 
+                      I understand that <span className="text-white font-bold">late returns incur a 20% daily fee</span> based on the total rental price.
+                    </label>
+                  </div>
+                </div>
+
                 <Button 
                   fullWidth 
-                  disabled={!selectedSize || !startDate} 
+                  disabled={!selectedSize || !startDate || !agreedToTerms} 
                   onClick={handleRent}
                   className="h-14 text-lg"
                 >
-                  {!selectedSize ? 'Select Size to Rent' : !startDate ? 'Select Date to Rent' : `Rent Now • $${currentPrice}`}
+                  {!selectedSize ? 'Select Size to Rent' : !startDate ? 'Select Date to Rent' : !agreedToTerms ? 'Accept Terms to Continue' : `Rent Now • $${currentPrice}`}
                 </Button>
             </div>
 
@@ -211,10 +259,10 @@ export const ProductDetail: React.FC = () => {
                     </div>
                 </div>
                 <div className="flex items-start space-x-4">
-                    <RotateCcw className="text-golden-orange h-6 w-6 mt-1 flex-shrink-0" />
+                    <AlertTriangle className="text-golden-orange h-6 w-6 mt-1 flex-shrink-0" />
                     <div>
-                        <h5 className="font-bold text-cream">Easy Returns</h5>
-                        <p className="text-cream/60 text-sm">Simply pack the item in the reusable bag and attach the pre-paid label. Drop off at any courier location.</p>
+                        <h5 className="font-bold text-cream">Late Returns</h5>
+                        <p className="text-cream/60 text-sm">To ensure availability for all members, items returned after {endDateString || 'the due date'} are subject to strict late fees.</p>
                     </div>
                 </div>
                 <div className="flex items-start space-x-4">
