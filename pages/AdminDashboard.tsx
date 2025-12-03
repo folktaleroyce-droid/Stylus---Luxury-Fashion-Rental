@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
-import { Users, BarChart3, Package, Megaphone, TrendingUp, DollarSign, Activity, AlertTriangle, Star, Truck, ShoppingBag, LogOut, X, Mail, Ban, Key, Check, Plus, Search, Trash2, Shield, UserCog, Briefcase, Filter } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Users, Package, Megaphone, TrendingUp, DollarSign, Activity, AlertTriangle, Star, LogOut, X, Mail, Ban, Key, Check, Plus, Search, Trash2, Shield, UserCog, Briefcase, Filter, FileText, Save } from 'lucide-react';
 import { Button } from '../components/Button';
 import { useAuth, RegisteredUser } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 // --- Interfaces ---
-// InventoryItem remains local for now as requested to only touch user registration flow
 interface InventoryItem {
   id: string;
   name: string;
@@ -18,15 +17,26 @@ interface InventoryItem {
 
 export const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'users' | 'analytics' | 'inventory' | 'marketing'>('users');
-  const { logout, registeredUsers, updateUserStatus, updateUserRole, deleteUser } = useAuth();
+  const { logout, registeredUsers, updateUserStatus, updateUserRole, updateUserNotes, deleteUser } = useAuth();
   const navigate = useNavigate();
 
   // --- State for Interactive Features ---
   
-  // 1. User Management State (Consumed from Context)
-  const [selectedUser, setSelectedUser] = useState<RegisteredUser | null>(null);
+  // 1. User Management State
+  // We store ID instead of the object to ensure we always render the latest data from Context
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  
+  // Derived state: Find the user in the live list
+  const selectedUser = selectedUserId ? registeredUsers.find(u => u.id === selectedUserId) : null;
+
   const [userRoleFilter, setUserRoleFilter] = useState<string>('All');
   const [userStatusFilter, setUserStatusFilter] = useState<string>('All');
+  const [noteInput, setNoteInput] = useState('');
+
+  // Suspension Modal State
+  const [showSuspensionModal, setShowSuspensionModal] = useState(false);
+  const [pendingSuspensionId, setPendingSuspensionId] = useState<string | null>(null);
+  const [suspensionReasonInput, setSuspensionReasonInput] = useState('');
 
   // 2. Inventory State
   const [inventory, setInventory] = useState<InventoryItem[]>([
@@ -41,6 +51,13 @@ export const AdminDashboard: React.FC = () => {
   // 3. Analytics State
   const [timeframe, setTimeframe] = useState('This Month');
 
+  // Update notes input when user selection changes
+  useEffect(() => {
+    if (selectedUser) {
+        setNoteInput(selectedUser.adminNotes || '');
+    }
+  }, [selectedUser]);
+
   // --- Actions ---
 
   const handleLogout = () => {
@@ -52,48 +69,54 @@ export const AdminDashboard: React.FC = () => {
 
   // User Actions
   const toggleUserStatus = (userId: string, currentStatus: string) => {
-    const newStatus = currentStatus === 'Active' ? 'Suspended' : 'Active';
-    let reason = '';
-
-    if (newStatus === 'Suspended') {
-        const input = window.prompt("Please enter a reason for suspension:");
-        if (input === null) return; // Cancelled
-        reason = input || 'Violation of terms'; // Default fallback
+    if (currentStatus === 'Active') {
+        // Initiate Suspension Flow
+        setPendingSuspensionId(userId);
+        setSuspensionReasonInput('');
+        setShowSuspensionModal(true);
+    } else {
+        // Reactivate Immediately
+        updateUserStatus(userId, 'Active');
     }
+  };
 
-    updateUserStatus(userId, newStatus, reason);
-    
-    // Update local modal state if open
-    if (selectedUser && selectedUser.id === userId) {
-        setSelectedUser({ 
-            ...selectedUser, 
-            status: newStatus,
-            suspensionReason: newStatus === 'Suspended' ? reason : undefined
-        });
-    }
-    alert(`User status updated to ${newStatus}.`);
+  const confirmSuspension = () => {
+      if (!pendingSuspensionId) return;
+
+      const reason = suspensionReasonInput.trim() || 'Violation of community standards';
+      updateUserStatus(pendingSuspensionId, 'Suspended', reason);
+
+      setShowSuspensionModal(false);
+      setPendingSuspensionId(null);
   };
 
   const handleChangeRole = (userId: string, currentRole: string, newRole: 'User' | 'Collaborator' | 'Admin') => {
+      // Prevent redundant updates
       if (currentRole === newRole) return;
       
-      const confirmMessage = newRole === 'Admin' 
-          ? `WARNING: You are about to grant ADMIN privileges to this user. They will have full access to the dashboard. Proceed?` 
-          : `Are you sure you want to change this user's role from ${currentRole} to ${newRole}?`;
-
-      if (window.confirm(confirmMessage)) {
-          updateUserRole(userId, newRole);
-          // Update local modal state if open
-          if (selectedUser && selectedUser.id === userId) {
-              setSelectedUser({ ...selectedUser, role: newRole });
+      // If promoting to Admin, ask for confirmation for security
+      if (newRole === 'Admin') {
+          if (window.confirm(`Security Warning: You are about to grant ADMIN privileges to user ${selectedUser?.name}. They will have full access to the dashboard. Are you sure?`)) {
+              updateUserRole(userId, newRole);
           }
+      } 
+      // For demoting/changing to non-admin roles, do it immediately for better UX
+      else {
+          updateUserRole(userId, newRole);
       }
+  };
+
+  const handleSaveNotes = () => {
+    if (selectedUser) {
+        updateUserNotes(selectedUser.id, noteInput);
+        alert('Admin notes saved successfully.');
+    }
   };
 
   const handleDeleteUser = (userId: string) => {
       if (window.confirm("WARNING: This action is permanent. Are you sure you want to delete this user data?")) {
           deleteUser(userId);
-          setSelectedUser(null);
+          setSelectedUserId(null);
       }
   };
 
@@ -148,9 +171,50 @@ export const AdminDashboard: React.FC = () => {
       
       {/* --- MODALS --- */}
 
+      {/* Suspension Reason Modal (High Z-Index to appear over Details) */}
+      {showSuspensionModal && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setShowSuspensionModal(false)}>
+              <div className="bg-[#1f0c05] border border-red-500/50 w-full max-w-md rounded-sm shadow-[0_0_50px_rgba(239,68,68,0.2)]" onClick={e => e.stopPropagation()}>
+                  <div className="bg-red-500/10 p-6 border-b border-red-500/20 flex justify-between items-center">
+                      <h2 className="font-serif text-xl text-red-400 flex items-center gap-2">
+                          <Ban size={20} /> Suspend User
+                      </h2>
+                      <button onClick={() => setShowSuspensionModal(false)} className="text-cream/50 hover:text-red-400 transition-colors"><X size={20}/></button>
+                  </div>
+                  <div className="p-6">
+                      <p className="text-cream/80 text-sm mb-4 leading-relaxed">
+                          You are about to suspend this user's account. This will restrict their access to rentals and the platform. Please provide a reason for this action.
+                      </p>
+                      
+                      <div className="mb-6">
+                          <label className="block text-xs uppercase tracking-widest text-red-400 mb-2">Suspension Reason</label>
+                          <textarea 
+                              autoFocus
+                              rows={4}
+                              value={suspensionReasonInput}
+                              onChange={(e) => setSuspensionReasonInput(e.target.value)}
+                              placeholder="e.g. Violation of rental agreement section 4, Non-payment of late fees..."
+                              className="w-full bg-black/20 border border-white/10 text-cream p-3 focus:outline-none focus:border-red-500 transition-colors resize-none rounded-sm"
+                          />
+                      </div>
+
+                      <div className="flex gap-3">
+                          <Button variant="outline" fullWidth onClick={() => setShowSuspensionModal(false)}>Cancel</Button>
+                          <button 
+                            onClick={confirmSuspension}
+                            className="w-full bg-red-600 hover:bg-red-700 text-white font-serif uppercase tracking-widest text-sm font-bold py-3 transition-colors"
+                          >
+                              Confirm Suspension
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )}
+
       {/* User Details Modal */}
       {selectedUser && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setSelectedUser(null)}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setSelectedUserId(null)}>
             <div className="bg-[#1f0c05] border border-golden-orange w-full max-w-2xl rounded-sm shadow-[0_0_50px_rgba(225,175,77,0.1)] overflow-hidden" onClick={e => e.stopPropagation()}>
                 <div className="bg-white/5 p-6 border-b border-white/10 flex justify-between items-center">
                     <h2 className="font-serif text-2xl text-cream flex items-center gap-3">
@@ -159,7 +223,7 @@ export const AdminDashboard: React.FC = () => {
                         </div>
                         {selectedUser.name}
                     </h2>
-                    <button onClick={() => setSelectedUser(null)} className="text-cream/50 hover:text-golden-orange transition-colors"><X size={24}/></button>
+                    <button onClick={() => setSelectedUserId(null)} className="text-cream/50 hover:text-golden-orange transition-colors"><X size={24}/></button>
                 </div>
                 <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="space-y-4">
@@ -180,10 +244,15 @@ export const AdminDashboard: React.FC = () => {
                                         {selectedUser.status}
                                     </span>
                                 </p>
-                                {selectedUser.status === 'Suspended' && selectedUser.suspensionReason && (
-                                    <div className="mt-2 p-3 bg-red-500/10 border border-red-500/30 rounded-sm">
-                                        <p className="text-[10px] text-red-400 uppercase font-bold tracking-widest mb-1">Suspension Reason</p>
-                                        <p className="text-sm text-cream/80 italic">"{selectedUser.suspensionReason}"</p>
+                                {selectedUser.status === 'Suspended' && (
+                                    <div className="mt-3 p-4 bg-red-900/20 border border-red-500/40 rounded-sm animate-fade-in relative overflow-hidden">
+                                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500/50"></div>
+                                        <p className="text-[10px] text-red-400 uppercase font-bold tracking-widest mb-1 flex items-center gap-1">
+                                            <AlertTriangle size={12} /> Suspension Reason
+                                        </p>
+                                        <p className="text-sm text-cream/90 italic pl-1">
+                                            {selectedUser.suspensionReason || "No specific reason recorded."}
+                                        </p>
                                     </div>
                                 )}
                             </div>
@@ -196,31 +265,34 @@ export const AdminDashboard: React.FC = () => {
                              </p>
                              <div className="flex gap-2">
                                 <button 
+                                    type="button"
                                     onClick={() => handleChangeRole(selectedUser.id, selectedUser.role, 'User')}
-                                    className={`flex-1 px-2 py-2 text-xs border rounded transition-colors flex items-center justify-center gap-1 ${
+                                    className={`flex-1 px-2 py-2 text-xs border rounded transition-colors flex items-center justify-center gap-1 cursor-pointer ${
                                         selectedUser.role === 'User' 
                                         ? 'bg-cream text-espresso border-cream font-bold' 
-                                        : 'border-white/20 text-cream/60 hover:border-golden-orange'
+                                        : 'border-white/20 text-cream/60 hover:border-golden-orange hover:bg-white/5'
                                     }`}
                                 >
                                     User
                                 </button>
                                 <button 
+                                    type="button"
                                     onClick={() => handleChangeRole(selectedUser.id, selectedUser.role, 'Collaborator')}
-                                    className={`flex-1 px-2 py-2 text-xs border rounded transition-colors flex items-center justify-center gap-1 ${
+                                    className={`flex-1 px-2 py-2 text-xs border rounded transition-colors flex items-center justify-center gap-1 cursor-pointer ${
                                         selectedUser.role === 'Collaborator' 
                                         ? 'bg-blue-500 text-white border-blue-500 font-bold' 
-                                        : 'border-white/20 text-cream/60 hover:border-blue-500'
+                                        : 'border-white/20 text-cream/60 hover:border-blue-500 hover:bg-blue-500/10'
                                     }`}
                                 >
                                     Partner
                                 </button>
                                 <button 
+                                    type="button"
                                     onClick={() => handleChangeRole(selectedUser.id, selectedUser.role, 'Admin')}
-                                    className={`flex-1 px-2 py-2 text-xs border rounded transition-colors flex items-center justify-center gap-1 ${
+                                    className={`flex-1 px-2 py-2 text-xs border rounded transition-colors flex items-center justify-center gap-1 cursor-pointer ${
                                         selectedUser.role === 'Admin' 
                                         ? 'bg-golden-orange text-espresso border-golden-orange font-bold' 
-                                        : 'border-white/20 text-cream/60 hover:border-golden-orange'
+                                        : 'border-white/20 text-cream/60 hover:border-golden-orange hover:bg-golden-orange/10'
                                     }`}
                                 >
                                     <Shield size={10} /> Admin
@@ -245,7 +317,29 @@ export const AdminDashboard: React.FC = () => {
                                  </div>
                              </div>
                         </div>
-                        <div className="pt-4 flex flex-col gap-3">
+
+                         {/* Admin Notes Section */}
+                         <div className="pt-2">
+                            <p className="text-xs uppercase text-cream/40 tracking-widest mb-2 flex items-center gap-2">
+                                <FileText size={14} className="text-golden-orange"/> Internal Admin Notes
+                            </p>
+                            <textarea 
+                                value={noteInput}
+                                onChange={(e) => setNoteInput(e.target.value)}
+                                placeholder="Add private notes about this user (e.g., 'Requires special packaging', 'High return rate')..."
+                                className="w-full h-24 bg-black/20 border border-white/10 text-cream text-sm p-3 focus:outline-none focus:border-golden-orange resize-none rounded-sm placeholder-cream/20"
+                            />
+                            <div className="flex justify-end mt-2">
+                                <button 
+                                    onClick={handleSaveNotes}
+                                    className="text-xs bg-golden-orange/10 text-golden-orange border border-golden-orange/50 px-3 py-1 hover:bg-golden-orange hover:text-espresso transition-colors flex items-center gap-1"
+                                >
+                                    <Save size={12}/> Save Notes
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="pt-4 flex flex-col gap-3 border-t border-white/5">
                             <Button variant="outline" onClick={() => emailUser(selectedUser.name)} className="flex items-center justify-center gap-2 h-10 text-sm">
                                 <Mail size={14} /> Send Email
                             </Button>
@@ -440,7 +534,7 @@ export const AdminDashboard: React.FC = () => {
                                         <td className="px-6 py-4 font-mono text-xs">{u.lastActive}</td>
                                         <td className="px-6 py-4 text-golden-orange">{u.avgSpend}</td>
                                         <td className="px-6 py-4 flex gap-2">
-                                            <button onClick={() => setSelectedUser(u)} className="text-golden-orange hover:text-white underline">Details</button>
+                                            <button onClick={() => setSelectedUserId(u.id)} className="text-golden-orange hover:text-white underline">Details</button>
                                             
                                             {/* Quick Actions in Table */}
                                             {u.status === 'Suspended' && (

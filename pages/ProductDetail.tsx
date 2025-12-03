@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
-import { Shield, Clock, Calendar, Check, ArrowLeft, Ruler, Star, Truck, RotateCcw, AlertTriangle, X, Heart } from 'lucide-react';
+import { Shield, Clock, Calendar, Check, ArrowLeft, Ruler, Star, Truck, RotateCcw, AlertTriangle, X, Heart, ShoppingBag } from 'lucide-react';
 import { useProduct } from '../context/ProductContext';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -319,15 +319,15 @@ export const ProductDetail: React.FC = () => {
                   <div className="flex flex-col sm:flex-row gap-4">
                     <Button 
                       fullWidth 
-                      variant="secondary"
+                      variant="primary"
                       onClick={handleAddToBag}
-                      className="h-14 text-sm sm:w-1/2"
+                      className="h-14 text-sm sm:w-1/2 flex items-center justify-center gap-2"
                     >
-                      Add to Bag
+                      <ShoppingBag size={18} /> Add to Bag
                     </Button>
                     <Button 
                       fullWidth 
-                      variant="primary"
+                      variant="secondary"
                       onClick={handleRent}
                       className="h-14 text-lg sm:w-1/2"
                     >

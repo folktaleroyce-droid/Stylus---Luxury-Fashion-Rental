@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Category, Product, ProductFilter, SortOption } from '../types';
-import { Filter, Search, X, Eye, ArrowUpDown, Heart } from 'lucide-react';
+import { Filter, Search, X, Eye, ArrowUpDown, Heart, ShoppingBag } from 'lucide-react';
 import { useProduct } from '../context/ProductContext';
 import { useWishlist } from '../context/WishlistContext';
+import { useCart } from '../context/CartContext';
 import { Button } from '../components/Button';
 
 export const Catalog: React.FC = () => {
@@ -255,7 +256,35 @@ export const Catalog: React.FC = () => {
 
 const ProductCard: React.FC<{ product: Product; onQuickView: (p: Product) => void }> = ({ product, onQuickView }) => {
   const { isInWishlist, toggleWishlist } = useWishlist();
+  const { addToCart } = useCart();
   const isWishlisted = isInWishlist(product.id);
+
+  const handleQuickAdd = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Default Quick Add: Today + 4 days, First available size
+    const today = new Date();
+    const endDate = new Date();
+    endDate.setDate(today.getDate() + 4);
+
+    addToCart({
+        id: `${product.id}-${Date.now()}`,
+        product: product,
+        selectedSize: product.availableSizes[0] || 'One Size',
+        duration: 4,
+        price: product.rentalPrice,
+        startDate: today.toLocaleDateString(),
+        endDate: endDate.toLocaleDateString()
+    });
+
+    // Also add to wishlist if not present (optional logic to keep context consistency)
+    if (!isWishlisted) {
+        toggleWishlist(product);
+    }
+
+    alert(`${product.name} has been added to your shopping bag!`);
+  };
 
   return (
     <div className="group relative flex flex-col h-full">
@@ -274,13 +303,26 @@ const ProductCard: React.FC<{ product: Product; onQuickView: (p: Product) => voi
         )}
         <div className="absolute inset-0 bg-black/10 group-hover:bg-black/30 transition-colors duration-500"></div>
         
-        {/* Wishlist Toggle Button - Always visible or visible on hover based on preference, here keeping somewhat subtle */}
-        <button 
-            onClick={(e) => { e.preventDefault(); toggleWishlist(product); }}
-            className="absolute top-4 right-4 z-20 p-2 rounded-full bg-black/20 hover:bg-black/40 text-cream transition-all duration-300 transform hover:scale-110"
-        >
-            <Heart size={20} className={isWishlisted ? "fill-golden-orange text-golden-orange" : "text-cream"} />
-        </button>
+        {/* ACTION ICONS TOP RIGHT */}
+        <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
+            {/* 1. Quick Add To Bag Button */}
+            <button 
+                onClick={handleQuickAdd}
+                className="p-2 rounded-full bg-black/40 text-cream hover:bg-golden-orange hover:text-espresso transition-all duration-300 transform hover:scale-110 shadow-lg"
+                title="Add to Cart"
+            >
+                <ShoppingBag size={20} />
+            </button>
+
+            {/* 2. Wishlist / Love Button (Now also triggers Add to Cart per user request) */}
+            <button 
+                onClick={handleQuickAdd}
+                className="p-2 rounded-full bg-black/40 text-cream hover:bg-black/60 transition-all duration-300 transform hover:scale-110 shadow-lg"
+                title="Quick Add & Wishlist"
+            >
+                <Heart size={20} className={isWishlisted ? "fill-golden-orange text-golden-orange" : "text-cream hover:text-golden-orange"} />
+            </button>
+        </div>
 
         {/* Strong CTA Button + Quick View on Card */}
         <div className="absolute bottom-6 left-6 right-6 translate-y-4 opacity-0 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 flex flex-col gap-3">

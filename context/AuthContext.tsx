@@ -10,7 +10,8 @@ export interface RegisteredUser {
   tier: string;
   role: 'User' | 'Collaborator' | 'Admin';
   status: 'Active' | 'Suspended';
-  suspensionReason?: string; // Added field
+  suspensionReason?: string;
+  adminNotes?: string; // Added field for internal notes
   joined: string;
   lastActive: string;
   avgSpend: string;
@@ -30,8 +31,9 @@ interface AuthContextType {
   login: (email: string, password?: string) => boolean;
   logout: () => void;
   registerUser: (name: string, email: string) => void;
-  updateUserStatus: (id: string, newStatus: 'Active' | 'Suspended', reason?: string) => void; // Updated signature
+  updateUserStatus: (id: string, newStatus: 'Active' | 'Suspended', reason?: string) => void;
   updateUserRole: (id: string, newRole: 'User' | 'Collaborator' | 'Admin') => void;
+  updateUserNotes: (id: string, notes: string) => void; // New function
   deleteUser: (id: string) => void;
 }
 
@@ -45,6 +47,7 @@ const AuthContext = createContext<AuthContextType>({
   registerUser: () => {},
   updateUserStatus: () => {},
   updateUserRole: () => {},
+  updateUserNotes: () => {},
   deleteUser: () => {},
 });
 
@@ -52,7 +55,7 @@ export const useAuth = () => useContext(AuthContext);
 
 // Initial Mock Data
 const MOCK_USERS_DB: RegisteredUser[] = [
-  { id: '1', name: 'Victoria Sterling', email: 'v.sterling@example.com', phone: '+1 (555) 010-9988', address: '125 Park Ave, NYC', tier: 'Diamond', role: 'User', status: 'Active', joined: 'Oct 2023', lastActive: '2 mins ago', avgSpend: '$450', rentalHistoryCount: 12 },
+  { id: '1', name: 'Victoria Sterling', email: 'v.sterling@example.com', phone: '+1 (555) 010-9988', address: '125 Park Ave, NYC', tier: 'Diamond', role: 'User', status: 'Active', joined: 'Oct 2023', lastActive: '2 mins ago', avgSpend: '$450', rentalHistoryCount: 12, adminNotes: 'VIP client. Prefers private fittings.' },
   { id: '2', name: 'James Bond', email: 'j.bond@example.com', phone: '+44 20 7946 0958', address: '85 Albert Embankment, London', tier: 'Platinum', role: 'Collaborator', status: 'Active', joined: 'Nov 2023', lastActive: '1 day ago', avgSpend: '$820', rentalHistoryCount: 5 },
   { id: '3', name: 'Sarah Connor', email: 's.connor@example.com', phone: '+1 (555) 019-2834', address: '1984 Cyberdyne Ln, LA', tier: 'Gold', role: 'User', status: 'Suspended', suspensionReason: 'Violation of rental agreement section 4.', joined: 'Dec 2023', lastActive: '3 months ago', avgSpend: '$150', rentalHistoryCount: 1 },
   { id: '4', name: 'Ellen Ripley', email: 'e.ripley@example.com', phone: '+1 (555) 011-3344', address: 'Nostromo Station', tier: 'Diamond', role: 'Admin', status: 'Active', joined: 'Jan 2024', lastActive: '5 hours ago', avgSpend: '$1,200', rentalHistoryCount: 8 },
@@ -166,6 +169,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setRegisteredUsers(prev => prev.map(u => u.id === id ? { ...u, role: newRole } : u));
   }
 
+  const updateUserNotes = (id: string, notes: string) => {
+    setRegisteredUsers(prev => prev.map(u => u.id === id ? { ...u, adminNotes: notes } : u));
+  };
+
   const deleteUser = (id: string) => {
     setRegisteredUsers(prev => prev.filter(u => u.id !== id));
   };
@@ -190,6 +197,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       registerUser,
       updateUserStatus,
       updateUserRole,
+      updateUserNotes,
       deleteUser 
     }}>
       {children}
