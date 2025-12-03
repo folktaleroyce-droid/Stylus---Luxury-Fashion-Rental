@@ -11,10 +11,11 @@ export const Login: React.FC = () => {
   const [isLoginMode, setIsLoginMode] = useState(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const { login } = useAuth();
+  const { login, registerUser } = useAuth();
   const navigate = useNavigate();
 
   const from = location.state?.from?.pathname || '/dashboard';
@@ -28,39 +29,63 @@ export const Login: React.FC = () => {
   const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Check for Admin Credentials
+    if (!email || !password) return;
+
+    // Check for Admin Credentials strictly
     if (email === 'Stylus' && password === 'Sty!usAdm1n#29XQ') {
-      processLogin('Stylus Admin', true);
+      setIsLoading(true);
+      setTimeout(() => {
+        login(email, password);
+        setIsLoading(false);
+        navigate('/admin', { replace: true });
+      }, 1500);
       return;
     }
 
-    // Regular user login simulation
-    if (!email || !password) return;
-    processLogin(isLoginMode ? undefined : fullName, false);
-  };
+    // Validation for Signup
+    if (!isLoginMode && password !== confirmPassword) {
+        alert("Passwords do not match. Please try again.");
+        return;
+    }
 
-  const processLogin = (name?: string, isAdmin: boolean = false) => {
     setIsLoading(true);
+    
     setTimeout(() => {
-      login(name, isAdmin);
-      setIsLoading(false);
-      if (isAdmin) {
-        navigate('/admin', { replace: true });
-      } else {
-        navigate(from, { replace: true });
+      if (!isLoginMode) {
+        // REGISTER FLOW: Add user to the global database
+        // The registerUser function in AuthContext sets default Tier, Status, etc.
+        registerUser(fullName, email);
       }
+      
+      // Attempt login
+      login(isLoginMode ? email : fullName);
+      
+      setIsLoading(false);
+      navigate(from, { replace: true });
     }, 1500);
   };
 
   const handleSocialLogin = (provider: 'Google' | 'Apple') => {
       const mockName = provider === 'Google' ? 'Alex Mercer' : 'Jordan Lee';
-      processLogin(mockName);
+      const mockEmail = provider === 'Google' ? 'alex.m@gmail.com' : 'jordan.l@icloud.com';
+      
+      setIsLoading(true);
+      setTimeout(() => {
+          // If in signup mode, actually register them
+          if (!isLoginMode) {
+             registerUser(mockName, mockEmail);
+          }
+          login(mockName);
+          setIsLoading(false);
+          navigate(from, { replace: true });
+      }, 1000);
   };
 
   const toggleMode = () => {
     setIsLoginMode(!isLoginMode);
     setEmail('');
     setPassword('');
+    setConfirmPassword('');
     setFullName('');
   };
 
@@ -151,9 +176,22 @@ export const Login: React.FC = () => {
                 </button>
             </div>
 
+            {!isLoginMode && (
+                <div className="relative">
+                    <label className="block text-xs uppercase tracking-widest text-cream/50 mb-2">Confirm Password</label>
+                    <input 
+                        type={showPassword ? "text" : "password"} 
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="w-full bg-black/20 border border-white/10 text-cream px-4 py-3 focus:border-golden-orange outline-none transition-colors"
+                        required
+                    />
+                </div>
+            )}
+
             <Button fullWidth disabled={isLoading} className="mt-4">
                 {isLoading ? (
-                    <span className="animate-pulse">Authenticating...</span>
+                    <span className="animate-pulse">Processing...</span>
                 ) : (
                     <span className="flex items-center justify-center gap-2">
                         {isLoginMode ? 'Sign In' : 'Create Account'} <ArrowRight size={16} />

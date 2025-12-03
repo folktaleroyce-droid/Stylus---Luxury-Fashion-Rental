@@ -1,24 +1,11 @@
 import React, { useState } from 'react';
-import { Users, BarChart3, Package, Megaphone, TrendingUp, DollarSign, Activity, AlertTriangle, Star, Truck, ShoppingBag, LogOut, X, Mail, Ban, Key, Check, Plus, Search } from 'lucide-react';
+import { Users, BarChart3, Package, Megaphone, TrendingUp, DollarSign, Activity, AlertTriangle, Star, Truck, ShoppingBag, LogOut, X, Mail, Ban, Key, Check, Plus, Search, Trash2, Shield, UserCog, Briefcase } from 'lucide-react';
 import { Button } from '../components/Button';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, RegisteredUser } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 // --- Interfaces ---
-interface AdminUser {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  address: string;
-  tier: string;
-  status: 'Active' | 'Suspended';
-  joined: string;
-  lastActive: string;
-  avgSpend: string;
-  rentalHistoryCount: number;
-}
-
+// InventoryItem remains local for now as requested to only touch user registration flow
 interface InventoryItem {
   id: string;
   name: string;
@@ -31,19 +18,13 @@ interface InventoryItem {
 
 export const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'users' | 'analytics' | 'inventory' | 'marketing'>('users');
-  const { logout } = useAuth();
+  const { logout, registeredUsers, updateUserStatus, updateUserRole, deleteUser } = useAuth();
   const navigate = useNavigate();
 
   // --- State for Interactive Features ---
   
-  // 1. User Management State
-  const [users, setUsers] = useState<AdminUser[]>([
-      { id: '1', name: 'Victoria Sterling', email: 'v.sterling@example.com', phone: '+1 (555) 010-9988', address: '125 Park Ave, NYC', tier: 'Diamond', status: 'Active', joined: 'Oct 2023', lastActive: '2 mins ago', avgSpend: '$450', rentalHistoryCount: 12 },
-      { id: '2', name: 'James Bond', email: 'j.bond@example.com', phone: '+44 20 7946 0958', address: '85 Albert Embankment, London', tier: 'Platinum', status: 'Active', joined: 'Nov 2023', lastActive: '1 day ago', avgSpend: '$820', rentalHistoryCount: 5 },
-      { id: '3', name: 'Sarah Connor', email: 's.connor@example.com', phone: '+1 (555) 019-2834', address: '1984 Cyberdyne Ln, LA', tier: 'Gold', status: 'Suspended', joined: 'Dec 2023', lastActive: '3 months ago', avgSpend: '$150', rentalHistoryCount: 1 },
-      { id: '4', name: 'Ellen Ripley', email: 'e.ripley@example.com', phone: '+1 (555) 011-3344', address: 'Nostromo Station', tier: 'Diamond', status: 'Active', joined: 'Jan 2024', lastActive: '5 hours ago', avgSpend: '$1,200', rentalHistoryCount: 8 },
-  ]);
-  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+  // 1. User Management State (Consumed from Context)
+  const [selectedUser, setSelectedUser] = useState<RegisteredUser | null>(null);
 
   // 2. Inventory State
   const [inventory, setInventory] = useState<InventoryItem[]>([
@@ -68,18 +49,31 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // User Actions
-  const toggleUserStatus = (userId: string) => {
-    setUsers(users.map(u => {
-        if (u.id === userId) {
-            const newStatus = u.status === 'Active' ? 'Suspended' : 'Active';
-            alert(`User ${u.name} has been ${newStatus}.`);
-            return { ...u, status: newStatus };
-        }
-        return u;
-    }));
+  const toggleUserStatus = (userId: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'Active' ? 'Suspended' : 'Active';
+    updateUserStatus(userId, newStatus);
+    
+    // Update local modal state if open
     if (selectedUser && selectedUser.id === userId) {
-        setSelectedUser(prev => prev ? { ...prev, status: prev.status === 'Active' ? 'Suspended' : 'Active'} : null);
+        setSelectedUser({ ...selectedUser, status: newStatus });
     }
+    alert(`User status updated to ${newStatus}.`);
+  };
+
+  const handleChangeRole = (userId: string, newRole: 'User' | 'Collaborator' | 'Admin') => {
+      updateUserRole(userId, newRole);
+      // Update local modal state if open
+      if (selectedUser && selectedUser.id === userId) {
+          setSelectedUser({ ...selectedUser, role: newRole });
+      }
+      alert(`User role updated to ${newRole}.`);
+  };
+
+  const handleDeleteUser = (userId: string) => {
+      if (window.confirm("WARNING: This action is permanent. Are you sure you want to delete this user data?")) {
+          deleteUser(userId);
+          setSelectedUser(null);
+      }
   };
 
   const resetPassword = (userName: string) => {
@@ -144,14 +138,40 @@ export const AdminDashboard: React.FC = () => {
                         <div>
                             <p className="text-xs uppercase text-cream/40 tracking-widest">Contact Information</p>
                             <p className="text-cream mt-1 flex items-center gap-2"><Mail size={14} className="text-golden-orange"/> {selectedUser.email}</p>
-                            <p className="text-cream mt-1">{selectedUser.phone}</p>
-                            <p className="text-cream mt-1 text-sm opacity-70">{selectedUser.address}</p>
+                            <p className="text-cream mt-1">{selectedUser.phone || 'N/A'}</p>
+                            <p className="text-cream mt-1 text-sm opacity-70">{selectedUser.address || 'N/A'}</p>
                         </div>
                         <div>
                             <p className="text-xs uppercase text-cream/40 tracking-widest">Account Details</p>
                             <p className="text-cream mt-1">Tier: <span className="text-golden-orange">{selectedUser.tier}</span></p>
+                            <p className="text-cream mt-1">Role: <span className="text-white font-bold">{selectedUser.role}</span></p>
                             <p className="text-cream mt-1">Member Since: {selectedUser.joined}</p>
                             <p className="text-cream mt-1">Status: <span className={selectedUser.status === 'Active' ? 'text-green-400' : 'text-red-400'}>{selectedUser.status}</span></p>
+                        </div>
+                        
+                        {/* Role Management */}
+                        <div className="pt-2">
+                             <p className="text-xs uppercase text-cream/40 tracking-widest mb-2">Change Role</p>
+                             <div className="flex gap-2">
+                                <button 
+                                    onClick={() => handleChangeRole(selectedUser.id, 'User')}
+                                    className={`px-3 py-1 text-xs border rounded transition-colors ${selectedUser.role === 'User' ? 'bg-cream text-espresso border-cream font-bold' : 'border-white/20 text-cream/60 hover:border-golden-orange'}`}
+                                >
+                                    User
+                                </button>
+                                <button 
+                                    onClick={() => handleChangeRole(selectedUser.id, 'Collaborator')}
+                                    className={`px-3 py-1 text-xs border rounded transition-colors ${selectedUser.role === 'Collaborator' ? 'bg-blue-500 text-white border-blue-500 font-bold' : 'border-white/20 text-cream/60 hover:border-blue-500'}`}
+                                >
+                                    Collaborator
+                                </button>
+                                <button 
+                                    onClick={() => handleChangeRole(selectedUser.id, 'Admin')}
+                                    className={`px-3 py-1 text-xs border rounded transition-colors ${selectedUser.role === 'Admin' ? 'bg-golden-orange text-espresso border-golden-orange font-bold' : 'border-white/20 text-cream/60 hover:border-golden-orange'}`}
+                                >
+                                    Admin
+                                </button>
+                             </div>
                         </div>
                     </div>
                     <div className="space-y-4">
@@ -175,16 +195,28 @@ export const AdminDashboard: React.FC = () => {
                             <Button variant="outline" onClick={() => resetPassword(selectedUser.name)} className="flex items-center justify-center gap-2 h-10 text-sm">
                                 <Key size={14} /> Reset Password
                             </Button>
-                            <button 
-                                onClick={() => toggleUserStatus(selectedUser.id)}
-                                className={`flex items-center justify-center gap-2 h-10 text-sm font-bold uppercase tracking-widest border transition-colors ${
-                                    selectedUser.status === 'Active' 
-                                    ? 'border-red-500/50 text-red-400 hover:bg-red-500/10' 
-                                    : 'border-green-500/50 text-green-400 hover:bg-green-500/10'
-                                }`}
-                            >
-                                {selectedUser.status === 'Active' ? <><Ban size={14}/> Suspend User</> : <><Check size={14}/> Activate User</>}
-                            </button>
+                            
+                            <div className="flex gap-2">
+                                <button 
+                                    onClick={() => toggleUserStatus(selectedUser.id, selectedUser.status)}
+                                    className={`flex-1 flex items-center justify-center gap-2 h-10 text-sm font-bold uppercase tracking-widest border transition-colors ${
+                                        selectedUser.status === 'Active' 
+                                        ? 'border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/10' 
+                                        : 'border-green-500/50 text-green-400 hover:bg-green-500/10'
+                                    }`}
+                                >
+                                    {selectedUser.status === 'Active' ? <><Ban size={14}/> Suspend</> : <><Check size={14}/> Activate</>}
+                                </button>
+                                
+                                {selectedUser.status === 'Suspended' && (
+                                    <button 
+                                        onClick={() => handleDeleteUser(selectedUser.id)}
+                                        className="flex-1 flex items-center justify-center gap-2 h-10 text-sm font-bold uppercase tracking-widest border border-red-500/50 text-red-500 hover:bg-red-500/10 hover:text-red-400 transition-colors"
+                                    >
+                                        <Trash2 size={14}/> Delete
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -268,11 +300,11 @@ export const AdminDashboard: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                     <div className="bg-[#1f0c05] p-6 border border-white/5 border-l-4 border-l-golden-orange">
                         <p className="text-cream/60 text-xs uppercase tracking-wide">Total Users</p>
-                        <p className="text-3xl text-cream font-serif font-bold">1,248</p>
+                        <p className="text-3xl text-cream font-serif font-bold">{registeredUsers.length}</p>
                     </div>
                      <div className="bg-[#1f0c05] p-6 border border-white/5 border-l-4 border-l-green-500">
                         <p className="text-cream/60 text-xs uppercase tracking-wide">Active Members</p>
-                        <p className="text-3xl text-cream font-serif font-bold">892</p>
+                        <p className="text-3xl text-cream font-serif font-bold">{registeredUsers.filter(u => u.status === 'Active').length}</p>
                     </div>
                      <div className="bg-[#1f0c05] p-6 border border-white/5 border-l-4 border-l-blue-500">
                         <p className="text-cream/60 text-xs uppercase tracking-wide">Avg. Session Time</p>
@@ -294,6 +326,7 @@ export const AdminDashboard: React.FC = () => {
                                 <tr>
                                     <th className="px-6 py-4">Name</th>
                                     <th className="px-6 py-4">Email</th>
+                                    <th className="px-6 py-4">Role</th>
                                     <th className="px-6 py-4">Membership</th>
                                     <th className="px-6 py-4">Status</th>
                                     <th className="px-6 py-4">Last Active</th>
@@ -302,10 +335,15 @@ export const AdminDashboard: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
-                                {users.map(u => (
+                                {registeredUsers.map(u => (
                                     <tr key={u.id} className="hover:bg-white/5 transition-colors">
                                         <td className="px-6 py-4 font-bold">{u.name}</td>
                                         <td className="px-6 py-4">{u.email}</td>
+                                        <td className="px-6 py-4">
+                                            {u.role === 'Admin' && <span className="flex items-center gap-1 text-golden-orange"><Shield size={12}/> Admin</span>}
+                                            {u.role === 'Collaborator' && <span className="flex items-center gap-1 text-blue-400"><Briefcase size={12}/> Collab</span>}
+                                            {u.role === 'User' && <span className="text-cream/60">User</span>}
+                                        </td>
                                         <td className="px-6 py-4"><span className="px-2 py-1 bg-white/10 rounded text-xs border border-white/10">{u.tier}</span></td>
                                         <td className="px-6 py-4">
                                             <span className={`flex items-center gap-1 ${u.status === 'Active' ? 'text-green-400' : 'text-red-400'}`}>
@@ -315,11 +353,27 @@ export const AdminDashboard: React.FC = () => {
                                         </td>
                                         <td className="px-6 py-4 font-mono text-xs">{u.lastActive}</td>
                                         <td className="px-6 py-4 text-golden-orange">{u.avgSpend}</td>
-                                        <td className="px-6 py-4">
+                                        <td className="px-6 py-4 flex gap-2">
                                             <button onClick={() => setSelectedUser(u)} className="text-golden-orange hover:text-white underline">Details</button>
+                                            
+                                            {/* Quick Actions in Table */}
+                                            {u.status === 'Suspended' && (
+                                                <button 
+                                                    onClick={() => handleDeleteUser(u.id)}
+                                                    className="text-red-500 hover:text-red-300 ml-2"
+                                                    title="Delete User"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
+                                {registeredUsers.length === 0 && (
+                                    <tr>
+                                        <td colSpan={8} className="px-6 py-8 text-center text-cream/50">No registered users found.</td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>
