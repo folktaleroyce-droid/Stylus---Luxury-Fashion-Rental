@@ -186,12 +186,29 @@ export const AdminDashboard: React.FC = () => {
   // Analytics Logic
   const getGraphData = () => {
       switch(timeframe) {
-          case 'Last Quarter': return [60, 55, 70, 65, 80, 75, 85, 90, 80, 70, 60, 65];
-          case 'YTD': return [40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95];
-          default: return [40, 65, 45, 80, 55, 90, 70, 85, 60, 75, 95, 80];
+          case 'Last Quarter': 
+              return {
+                  data: [60, 55, 70, 65, 80, 75, 85, 90, 80, 70, 60, 65],
+                  labels: ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8', 'W9', 'W10', 'W11', 'W12'],
+                  tooltipLabel: 'Week'
+              };
+          case 'YTD': 
+              return {
+                  data: [40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95],
+                  labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                  tooltipLabel: 'Month'
+              };
+          case 'This Month':
+          default:
+              // Return 30 days of data for daily trends
+              return {
+                  data: [25, 32, 28, 40, 45, 35, 50, 52, 48, 55, 60, 65, 58, 62, 70, 75, 68, 65, 60, 58, 62, 70, 78, 80, 75, 72, 68, 65, 60, 55],
+                  labels: Array.from({length: 30}, (_, i) => (i + 1).toString()),
+                  tooltipLabel: 'Day'
+              };
       }
   };
-  const graphData = getGraphData();
+  const { data: graphData, labels: graphLabels, tooltipLabel } = getGraphData();
 
   // Logic for filtered users
   const filteredUsers = registeredUsers.filter(u => {
@@ -615,15 +632,24 @@ export const AdminDashboard: React.FC = () => {
                                 <option value="YTD">YTD</option>
                             </select>
                          </div>
-                         <div className="h-48 flex items-end gap-2 justify-between px-4 border-b border-white/5 pb-4 transition-all duration-500">
+                         <div className={`h-48 flex items-end justify-between px-2 border-b border-white/5 pb-4 transition-all duration-500 ${graphData.length > 15 ? 'gap-1' : 'gap-2'}`}>
                              {graphData.map((h, i) => (
                                  <div key={i} className="w-full bg-golden-orange/20 hover:bg-golden-orange transition-all duration-500 relative group rounded-t" style={{height: `${h}%`}}>
-                                     <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-white text-espresso text-xs font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10">${h}k</div>
+                                     {/* Tooltip */}
+                                     <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-white text-espresso text-xs font-bold px-3 py-2 rounded opacity-0 group-hover:opacity-100 transition-opacity z-20 shadow-xl pointer-events-none whitespace-nowrap min-w-[80px] text-center">
+                                        <p className="text-[9px] text-espresso/60 uppercase tracking-wider mb-0.5">{tooltipLabel} {graphLabels[i]}</p>
+                                        <p className="text-lg leading-none font-serif">${h}k</p>
+                                        <div className="absolute bottom-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-white rotate-45"></div>
+                                     </div>
                                  </div>
                              ))}
                          </div>
-                         <div className="flex justify-between mt-4 text-xs text-cream/40 uppercase tracking-widest">
-                             <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span>
+                         <div className="flex justify-between mt-4 text-xs text-cream/40 uppercase tracking-widest px-2">
+                             {graphLabels.map((l, idx) => {
+                                 // Smart Label Filtering
+                                 const showLabel = graphLabels.length <= 12 || idx === 0 || idx === graphLabels.length - 1 || idx % 5 === 4;
+                                 return showLabel ? <span key={idx}>{l}</span> : null;
+                             })}
                          </div>
                      </div>
 
