@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { MOCK_USER } from '../constants';
-import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock, X, Check, Heart, Eye, Search, Filter } from 'lucide-react';
+import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock, X, Check, Heart, Eye, Search, Filter, History, ChevronRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useProduct } from '../context/ProductContext';
 import { useWishlist } from '../context/WishlistContext';
+import { useOrders } from '../context/OrderContext';
 import { Category, Product } from '../types';
 import { Button } from '../components/Button';
 
@@ -72,7 +73,8 @@ export const Dashboard: React.FC = () => {
   const { logout, user } = useAuth();
   const { products, addProduct } = useProduct();
   const { wishlist, removeFromWishlist } = useWishlist();
-  const [currentView, setCurrentView] = useState<'overview' | 'list-item' | 'wishlist'>('overview');
+  const { orders } = useOrders();
+  const [currentView, setCurrentView] = useState<'overview' | 'list-item' | 'wishlist' | 'history'>('overview');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   
   // Extension State
@@ -168,6 +170,8 @@ export const Dashboard: React.FC = () => {
       setCurrentView('overview');
     } else if (feature === 'My Wishlist') {
       setCurrentView('wishlist');
+    } else if (feature === 'History') {
+      setCurrentView('history');
     } else {
       alert(`Stylus Demo: The '${feature}' feature is available in the full production release.`);
     }
@@ -366,7 +370,7 @@ export const Dashboard: React.FC = () => {
                     <p className="text-xs text-white/40 uppercase">Active Rentals</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-2xl text-white font-bold">12</p>
+                    <p className="text-2xl text-white font-bold">{12 + orders.length}</p>
                     <p className="text-xs text-white/40 uppercase">Past Looks</p>
                   </div>
                 </div>
@@ -376,9 +380,14 @@ export const Dashboard: React.FC = () => {
             <div className="mt-6 space-y-2">
               <button onClick={() => handleSidebarClick('My Orders')} className={`w-full flex items-center space-x-3 px-6 py-4 border border-transparent transition-all group ${currentView === 'overview' ? 'bg-golden-orange text-espresso font-bold' : 'bg-white/5 text-cream hover:border-golden-orange/50'}`}>
                 <Package size={20} className={`${currentView === 'overview' ? 'text-espresso' : 'text-golden-orange'} group-hover:scale-110 transition-transform`} />
-                <span className="font-serif tracking-wide">My Orders</span>
+                <span className="font-serif tracking-wide">Active Rentals</span>
               </button>
               
+              <button onClick={() => handleSidebarClick('History')} className={`w-full flex items-center space-x-3 px-6 py-4 border border-transparent transition-all group ${currentView === 'history' ? 'bg-golden-orange text-espresso font-bold' : 'bg-white/5 text-cream hover:border-golden-orange/50'}`}>
+                <History size={20} className={`${currentView === 'history' ? 'text-espresso' : 'text-golden-orange'} group-hover:scale-110 transition-transform`} />
+                <span className="font-serif tracking-wide">Order History</span>
+              </button>
+
               <button onClick={() => handleSidebarClick('My Wishlist')} className={`w-full flex items-center space-x-3 px-6 py-4 border border-transparent transition-all group ${currentView === 'wishlist' ? 'bg-golden-orange text-espresso font-bold' : 'bg-white/5 text-cream hover:border-golden-orange/50'}`}>
                 <Heart size={20} className={`${currentView === 'wishlist' ? 'text-espresso' : 'text-golden-orange'} group-hover:scale-110 transition-transform`} />
                 <span className="font-serif tracking-wide">My Wishlist</span>
@@ -513,6 +522,57 @@ export const Dashboard: React.FC = () => {
                     )}
                  </div>
               </>
+            )}
+
+            {currentView === 'history' && (
+                <div className="animate-fade-in">
+                    <h3 className="font-serif text-2xl text-cream mb-6 border-l-4 border-golden-orange pl-4">Order History</h3>
+                    {orders.length === 0 ? (
+                         <div className="bg-white/5 border border-white/10 p-12 text-center rounded-sm">
+                            <History size={48} className="text-cream/20 mx-auto mb-4" />
+                            <p className="text-cream/60 font-light mb-6">You haven't completed any rentals yet.</p>
+                            <Link to="/catalog">
+                                <Button variant="outline">Explore Collection</Button>
+                            </Link>
+                         </div>
+                    ) : (
+                        <div className="space-y-6">
+                            {orders.map(order => (
+                                <div key={order.id} className="bg-white/5 border border-white/10 p-6 rounded-sm">
+                                    <div className="flex justify-between items-center mb-4 pb-4 border-b border-white/5">
+                                        <div>
+                                            <p className="text-sm font-bold text-cream">{order.id}</p>
+                                            <p className="text-xs text-cream/50">{order.date}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-sm font-serif text-golden-orange">${order.total}</p>
+                                            <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 bg-green-500/10 text-green-400 border border-green-500/20 rounded">{order.status}</span>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-4">
+                                        {order.items.map((item, idx) => (
+                                            <div key={idx} className="flex gap-4">
+                                                <div className="w-16 h-20 bg-black/20 flex-shrink-0">
+                                                    <img src={item.product.images[0]} alt={item.product.name} className="w-full h-full object-cover" />
+                                                </div>
+                                                <div className="flex-grow">
+                                                    <p className="text-xs text-golden-orange uppercase tracking-wide">{item.product.brand}</p>
+                                                    <p className="text-sm text-cream">{item.product.name}</p>
+                                                    <p className="text-xs text-cream/50 mt-1">Size: {item.selectedSize} • {item.duration} Days</p>
+                                                </div>
+                                                <div className="self-center">
+                                                    <Link to={`/product/${item.product.id}`} className="text-xs text-cream/40 hover:text-golden-orange flex items-center gap-1 transition-colors">
+                                                        Rent Again <ChevronRight size={12} />
+                                                    </Link>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             )}
 
             {currentView === 'wishlist' && (

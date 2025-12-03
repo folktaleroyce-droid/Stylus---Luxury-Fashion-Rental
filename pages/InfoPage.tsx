@@ -3,6 +3,7 @@ import { ShieldCheck, FileText, Sparkles, Lock, ShoppingBag, Trash2, ArrowRight 
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { useCart } from '../context/CartContext';
+import { useOrders } from '../context/OrderContext';
 
 interface InfoPageProps {
   type: 'privacy' | 'terms' | 'authenticity' | 'edit' | 'bag';
@@ -10,10 +11,14 @@ interface InfoPageProps {
 
 export const InfoPage: React.FC<InfoPageProps> = ({ type }) => {
   const { cart, removeFromCart, cartTotal, clearCart } = useCart();
+  const { addOrder } = useOrders();
   const navigate = useNavigate();
 
   const handleCheckout = () => {
-    // For demo purposes, we will clear cart and redirect to dashboard as "Rentals"
+    // Add current cart to order history
+    addOrder(cart, cartTotal);
+    
+    // Clear cart and redirect
     alert("Thank you for your order. Your items are being prepared for dispatch.");
     clearCart();
     navigate('/dashboard');
