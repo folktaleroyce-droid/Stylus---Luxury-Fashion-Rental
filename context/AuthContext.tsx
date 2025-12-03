@@ -55,10 +55,10 @@ export const useAuth = () => useContext(AuthContext);
 
 // Initial Mock Data
 const MOCK_USERS_DB: RegisteredUser[] = [
-  { id: '1', name: 'Victoria Sterling', email: 'v.sterling@example.com', phone: '+1 (555) 010-9988', address: '125 Park Ave, NYC', tier: 'Diamond', role: 'User', status: 'Active', joined: 'Oct 2023', lastActive: '2 mins ago', avgSpend: '$450', rentalHistoryCount: 12, adminNotes: 'VIP client. Prefers private fittings.' },
-  { id: '2', name: 'James Bond', email: 'j.bond@example.com', phone: '+44 20 7946 0958', address: '85 Albert Embankment, London', tier: 'Platinum', role: 'Collaborator', status: 'Active', joined: 'Nov 2023', lastActive: '1 day ago', avgSpend: '$820', rentalHistoryCount: 5 },
-  { id: '3', name: 'Sarah Connor', email: 's.connor@example.com', phone: '+1 (555) 019-2834', address: '1984 Cyberdyne Ln, LA', tier: 'Gold', role: 'User', status: 'Suspended', suspensionReason: 'Violation of rental agreement section 4.', joined: 'Dec 2023', lastActive: '3 months ago', avgSpend: '$150', rentalHistoryCount: 1 },
-  { id: '4', name: 'Ellen Ripley', email: 'e.ripley@example.com', phone: '+1 (555) 011-3344', address: 'Nostromo Station', tier: 'Diamond', role: 'Admin', status: 'Active', joined: 'Jan 2024', lastActive: '5 hours ago', avgSpend: '$1,200', rentalHistoryCount: 8 },
+  { id: '1', name: 'Victoria Sterling', email: 'v.sterling@example.com', phone: '+1 (555) 010-9988', address: '125 Park Ave, NYC', tier: 'Diamond', role: 'User', status: 'Active', joined: 'Oct 15, 2023', lastActive: '2 mins ago', avgSpend: '$450', rentalHistoryCount: 12, adminNotes: 'VIP client. Prefers private fittings.' },
+  { id: '2', name: 'James Bond', email: 'j.bond@example.com', phone: '+44 20 7946 0958', address: '85 Albert Embankment, London', tier: 'Platinum', role: 'Collaborator', status: 'Active', joined: 'Nov 02, 2023', lastActive: '1 day ago', avgSpend: '$820', rentalHistoryCount: 5 },
+  { id: '3', name: 'Sarah Connor', email: 's.connor@example.com', phone: '+1 (555) 019-2834', address: '1984 Cyberdyne Ln, LA', tier: 'Gold', role: 'User', status: 'Suspended', suspensionReason: 'Violation of rental agreement section 4.', joined: 'Dec 10, 2023', lastActive: '3 months ago', avgSpend: '$150', rentalHistoryCount: 1 },
+  { id: '4', name: 'Ellen Ripley', email: 'e.ripley@example.com', phone: '+1 (555) 011-3344', address: 'Nostromo Station', tier: 'Diamond', role: 'Admin', status: 'Active', joined: 'Jan 05, 2024', lastActive: '5 hours ago', avgSpend: '$1,200', rentalHistoryCount: 8 },
 ];
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -142,7 +142,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       tier: 'Gold', // Default start tier
       role: 'User', // Default role
       status: 'Active',
-      joined: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+      joined: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       lastActive: 'Just now',
       avgSpend: '$0',
       rentalHistoryCount: 0

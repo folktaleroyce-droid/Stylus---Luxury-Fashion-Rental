@@ -542,6 +542,7 @@ export const AdminDashboard: React.FC = () => {
                                     <th className="px-6 py-4">Email</th>
                                     <th className="px-6 py-4">Role</th>
                                     <th className="px-6 py-4">Membership</th>
+                                    <th className="px-6 py-4">Member Since</th>
                                     <th className="px-6 py-4">Status</th>
                                     <th className="px-6 py-4">Last Active</th>
                                     <th className="px-6 py-4">Avg. Spend</th>
@@ -559,6 +560,7 @@ export const AdminDashboard: React.FC = () => {
                                             {u.role === 'User' && <span className="text-cream/60">User</span>}
                                         </td>
                                         <td className="px-6 py-4"><span className="px-2 py-1 bg-white/10 rounded text-xs border border-white/10">{u.tier}</span></td>
+                                        <td className="px-6 py-4 font-mono text-xs text-cream/70">{u.joined}</td>
                                         <td className="px-6 py-4">
                                             <span className={`flex items-center gap-1 ${u.status === 'Active' ? 'text-green-400' : 'text-red-400'}`}>
                                                 <div className={`w-2 h-2 rounded-full ${u.status === 'Active' ? 'bg-green-400' : 'bg-red-400'}`}></div>
@@ -585,7 +587,7 @@ export const AdminDashboard: React.FC = () => {
                                 ))}
                                 {filteredUsers.length === 0 && (
                                     <tr>
-                                        <td colSpan={8} className="px-6 py-8 text-center text-cream/50">No users match the selected filters.</td>
+                                        <td colSpan={9} className="px-6 py-8 text-center text-cream/50">No users match the selected filters.</td>
                                     </tr>
                                 )}
                             </tbody>
