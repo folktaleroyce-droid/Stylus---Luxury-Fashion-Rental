@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Users, Package, Megaphone, TrendingUp, DollarSign, Activity, AlertTriangle, Star, LogOut, X, Mail, Ban, Key, Check, Plus, Search, Trash2, Shield, UserCog, Briefcase, Filter, FileText, Save } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Users, Package, Megaphone, TrendingUp, DollarSign, Activity, AlertTriangle, Star, LogOut, X, Mail, Ban, Key, Check, Plus, Search, Trash2, Shield, UserCog, Briefcase, Filter, FileText, Save, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { Button } from '../components/Button';
 import { useAuth, RegisteredUser } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -47,6 +47,9 @@ export const AdminDashboard: React.FC = () => {
   ]);
   const [showAddSkuModal, setShowAddSkuModal] = useState(false);
   const [newSkuData, setNewSkuData] = useState({ name: '', stock: 1, supplier: '' });
+
+  // Inventory Sorting State
+  const [sortConfig, setSortConfig] = useState<{ key: keyof InventoryItem; direction: 'asc' | 'desc' } | null>(null);
 
   // 3. Analytics State
   const [timeframe, setTimeframe] = useState('This Month');
@@ -149,6 +152,37 @@ export const AdminDashboard: React.FC = () => {
       alert(`${newItem.name} added to inventory.`);
   };
 
+  const handleSort = (key: keyof InventoryItem) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedInventory = useMemo(() => {
+    let sortableItems = [...inventory];
+    if (sortConfig !== null) {
+      sortableItems.sort((a, b) => {
+        if (a[sortConfig.key] < b[sortConfig.key]) {
+          return sortConfig.direction === 'asc' ? -1 : 1;
+        }
+        if (a[sortConfig.key] > b[sortConfig.key]) {
+          return sortConfig.direction === 'asc' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [inventory, sortConfig]);
+
+  const SortIcon = ({ column }: { column: keyof InventoryItem }) => {
+    if (sortConfig?.key !== column) return <ArrowUpDown size={14} className="opacity-30 ml-2 inline-block" />;
+    return sortConfig.direction === 'asc' 
+        ? <ArrowUp size={14} className="text-golden-orange ml-2 inline-block" /> 
+        : <ArrowDown size={14} className="text-golden-orange ml-2 inline-block" />;
+  };
+
   // Analytics Logic
   const getGraphData = () => {
       switch(timeframe) {
@@ -171,7 +205,7 @@ export const AdminDashboard: React.FC = () => {
       
       {/* --- MODALS --- */}
 
-      {/* Suspension Reason Modal (High Z-Index to appear over Details) */}
+      {/* Suspension Modal State (High Z-Index to appear over Details) */}
       {showSuspensionModal && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setShowSuspensionModal(false)}>
               <div className="bg-[#1f0c05] border border-red-500/50 w-full max-w-md rounded-sm shadow-[0_0_50px_rgba(239,68,68,0.2)]" onClick={e => e.stopPropagation()}>
@@ -667,17 +701,29 @@ export const AdminDashboard: React.FC = () => {
                     <table className="w-full text-left text-sm text-cream/80">
                         <thead className="bg-white/5 uppercase text-xs font-bold text-golden-orange">
                             <tr>
-                                <th className="px-6 py-4">SKU</th>
-                                <th className="px-6 py-4">Product Name</th>
-                                <th className="px-6 py-4">Stock</th>
-                                <th className="px-6 py-4">Rentals</th>
-                                <th className="px-6 py-4">Supplier</th>
-                                <th className="px-6 py-4">Performance</th>
+                                <th className="px-6 py-4 cursor-pointer hover:text-white transition-colors select-none" onClick={() => handleSort('id')}>
+                                    <div className="flex items-center">SKU <SortIcon column="id"/></div>
+                                </th>
+                                <th className="px-6 py-4 cursor-pointer hover:text-white transition-colors select-none" onClick={() => handleSort('name')}>
+                                    <div className="flex items-center">Product Name <SortIcon column="name"/></div>
+                                </th>
+                                <th className="px-6 py-4 cursor-pointer hover:text-white transition-colors select-none" onClick={() => handleSort('stock')}>
+                                    <div className="flex items-center">Stock <SortIcon column="stock"/></div>
+                                </th>
+                                <th className="px-6 py-4 cursor-pointer hover:text-white transition-colors select-none" onClick={() => handleSort('rentals')}>
+                                    <div className="flex items-center">Rentals <SortIcon column="rentals"/></div>
+                                </th>
+                                <th className="px-6 py-4 cursor-pointer hover:text-white transition-colors select-none" onClick={() => handleSort('supplier')}>
+                                    <div className="flex items-center">Supplier <SortIcon column="supplier"/></div>
+                                </th>
+                                <th className="px-6 py-4 cursor-pointer hover:text-white transition-colors select-none" onClick={() => handleSort('supplierRating')}>
+                                    <div className="flex items-center">Performance <SortIcon column="supplierRating"/></div>
+                                </th>
                                 <th className="px-6 py-4">Status</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
-                            {inventory.map(item => (
+                            {sortedInventory.map(item => (
                                 <tr key={item.id} className="hover:bg-white/5 transition-colors">
                                     <td className="px-6 py-4 font-mono text-xs">{item.id}</td>
                                     <td className="px-6 py-4 font-bold">{item.name}</td>
