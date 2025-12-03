@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Category, Product, ProductFilter, SortOption } from '../types';
-import { Filter, Search, X, Eye, ArrowUpDown } from 'lucide-react';
+import { Filter, Search, X, Eye, ArrowUpDown, Heart } from 'lucide-react';
 import { useProduct } from '../context/ProductContext';
+import { useWishlist } from '../context/WishlistContext';
 import { Button } from '../components/Button';
 
 export const Catalog: React.FC = () => {
@@ -253,6 +254,9 @@ export const Catalog: React.FC = () => {
 };
 
 const ProductCard: React.FC<{ product: Product; onQuickView: (p: Product) => void }> = ({ product, onQuickView }) => {
+  const { isInWishlist, toggleWishlist } = useWishlist();
+  const isWishlisted = isInWishlist(product.id);
+
   return (
     <div className="group relative flex flex-col h-full">
       <div className="relative h-[450px] w-full overflow-hidden bg-cream/5 mb-4">
@@ -270,6 +274,14 @@ const ProductCard: React.FC<{ product: Product; onQuickView: (p: Product) => voi
         )}
         <div className="absolute inset-0 bg-black/10 group-hover:bg-black/30 transition-colors duration-500"></div>
         
+        {/* Wishlist Toggle Button - Always visible or visible on hover based on preference, here keeping somewhat subtle */}
+        <button 
+            onClick={(e) => { e.preventDefault(); toggleWishlist(product); }}
+            className="absolute top-4 right-4 z-20 p-2 rounded-full bg-black/20 hover:bg-black/40 text-cream transition-all duration-300 transform hover:scale-110"
+        >
+            <Heart size={20} className={isWishlisted ? "fill-golden-orange text-golden-orange" : "text-cream"} />
+        </button>
+
         {/* Strong CTA Button + Quick View on Card */}
         <div className="absolute bottom-6 left-6 right-6 translate-y-4 opacity-0 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 flex flex-col gap-3">
           <Link to={`/product/${product.id}`}>

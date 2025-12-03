@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Diamond, ArrowRight, UserPlus, LogIn, Globe, Smartphone } from 'lucide-react';
+import { Diamond, ArrowRight, Globe, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/Button';
 
 export const Login: React.FC = () => {
   const location = useLocation();
-  // Check if we came from a 'Join' link
   const initialMode = location.state?.mode !== 'signup';
   
   const [isLoginMode, setIsLoginMode] = useState(initialMode);
@@ -14,10 +13,10 @@ export const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  // Determine where to redirect after login (default to dashboard)
   const from = location.state?.from?.pathname || '/dashboard';
 
   useEffect(() => {
@@ -28,21 +27,32 @@ export const Login: React.FC = () => {
 
   const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
-    processLogin(isLoginMode ? undefined : fullName);
+    
+    // Check for Admin Credentials
+    if (email === 'Stylus' && password === 'Sty!usAdm1n#29XQ') {
+      processLogin('Stylus Admin', true);
+      return;
+    }
+
+    // Regular user login simulation
+    if (!email || !password) return;
+    processLogin(isLoginMode ? undefined : fullName, false);
   };
 
-  const processLogin = (name?: string) => {
+  const processLogin = (name?: string, isAdmin: boolean = false) => {
     setIsLoading(true);
-    // Simulate network delay for effect
     setTimeout(() => {
-      login(name);
+      login(name, isAdmin);
       setIsLoading(false);
-      navigate(from, { replace: true });
+      if (isAdmin) {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate(from, { replace: true });
+      }
     }, 1500);
   };
 
   const handleSocialLogin = (provider: 'Google' | 'Apple') => {
-      // Simulate social login flow
       const mockName = provider === 'Google' ? 'Alex Mercer' : 'Jordan Lee';
       processLogin(mockName);
   };
@@ -56,7 +66,6 @@ export const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-espresso flex items-center justify-center relative overflow-hidden animate-fade-in">
-      {/* Background Ambience */}
       <div className="absolute inset-0 z-0">
         <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-golden-orange/5 rounded-full blur-[120px]"></div>
         <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] bg-golden-light/5 rounded-full blur-[120px]"></div>
@@ -77,101 +86,90 @@ export const Login: React.FC = () => {
 
         <div className="bg-[#1f0c05]/80 backdrop-blur-md border border-white/10 p-8 shadow-2xl rounded-sm">
           
-          {/* Social Login Section */}
           <div className="space-y-3 mb-8">
             <button 
                 onClick={() => handleSocialLogin('Google')}
-                className="w-full flex items-center justify-center space-x-3 bg-white text-espresso font-bold py-3 hover:bg-cream transition-colors rounded-sm"
+                className="w-full flex items-center justify-center space-x-3 bg-white text-espresso font-bold py-3 hover:bg-cream transition-colors"
             >
                 <Globe size={18} />
-                <span className="text-sm uppercase tracking-wide">Continue with Google</span>
-            </button>
-             <button 
-                onClick={() => handleSocialLogin('Apple')}
-                className="w-full flex items-center justify-center space-x-3 bg-black text-white font-bold py-3 hover:bg-gray-900 transition-colors rounded-sm border border-white/10"
-            >
-                <Smartphone size={18} />
-                <span className="text-sm uppercase tracking-wide">Continue with Apple</span>
+                <span className="text-xs uppercase tracking-widest">Continue with Google</span>
             </button>
           </div>
 
-          <div className="relative flex items-center justify-center mb-8">
-            <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-white/10"></div>
-            </div>
-            <span className="relative bg-[#1f0c05] px-4 text-xs text-cream/40 uppercase tracking-widest">Or via Email</span>
+          <div className="relative mb-8">
+              <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-white/10"></div>
+              </div>
+              <div className="relative flex justify-center text-xs uppercase tracking-widest">
+                  <span className="bg-[#1f0c05] px-2 text-cream/40">Or continue with email</span>
+              </div>
           </div>
 
           <form onSubmit={handleAuth} className="space-y-6">
-            
             {!isLoginMode && (
-              <div className="animate-fade-in">
-                <label className="block text-xs uppercase tracking-widest text-cream/60 mb-2">Full Name</label>
-                <input 
-                  type="text" 
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required={!isLoginMode}
-                  className="w-full bg-white/5 border border-white/10 text-cream px-4 py-3 focus:outline-none focus:border-golden-orange transition-colors"
-                  placeholder="Victoria Sterling"
-                />
-              </div>
+                <div>
+                    <label className="block text-xs uppercase tracking-widest text-cream/50 mb-2">Full Name</label>
+                    <input 
+                        type="text" 
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        className="w-full bg-black/20 border border-white/10 text-cream px-4 py-3 focus:border-golden-orange outline-none transition-colors"
+                        required={!isLoginMode}
+                    />
+                </div>
             )}
-
+            
             <div>
-              <label className="block text-xs uppercase tracking-widest text-cream/60 mb-2">
-                {isLoginMode ? 'Member ID / Email' : 'Email Address'}
-              </label>
-              <input 
-                type="email" 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full bg-white/5 border border-white/10 text-cream px-4 py-3 focus:outline-none focus:border-golden-orange transition-colors"
-                placeholder="vip@stylus.com"
-              />
-            </div>
-            <div>
-              <label className="block text-xs uppercase tracking-widest text-cream/60 mb-2">Password</label>
-              <input 
-                type="password" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full bg-white/5 border border-white/10 text-cream px-4 py-3 focus:outline-none focus:border-golden-orange transition-colors"
-                placeholder="••••••••"
-              />
+                <label className="block text-xs uppercase tracking-widest text-cream/50 mb-2">Email or Username</label>
+                <input 
+                    type="text" 
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-black/20 border border-white/10 text-cream px-4 py-3 focus:border-golden-orange outline-none transition-colors"
+                    required
+                />
             </div>
 
-            <Button fullWidth disabled={isLoading} className="mt-8 flex items-center justify-center">
-              {isLoading ? 'Processing...' : (
-                <>
-                  <span>{isLoginMode ? 'Sign In' : 'Create Account'}</span>
-                  <ArrowRight size={16} className="ml-2" />
-                </>
-              )}
+            <div className="relative">
+                <div className="flex justify-between mb-2">
+                    <label className="block text-xs uppercase tracking-widest text-cream/50">Password</label>
+                    {isLoginMode && <a href="#" className="text-xs text-golden-orange hover:text-white transition-colors">Forgot?</a>}
+                </div>
+                <input 
+                    type={showPassword ? "text" : "password"} 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-black/20 border border-white/10 text-cream px-4 py-3 focus:border-golden-orange outline-none transition-colors"
+                    required
+                />
+                <button 
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-[34px] text-cream/30 hover:text-cream transition-colors"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+            </div>
+
+            <Button fullWidth disabled={isLoading} className="mt-4">
+                {isLoading ? (
+                    <span className="animate-pulse">Authenticating...</span>
+                ) : (
+                    <span className="flex items-center justify-center gap-2">
+                        {isLoginMode ? 'Sign In' : 'Create Account'} <ArrowRight size={16} />
+                    </span>
+                )}
             </Button>
           </form>
+        </div>
 
-          <div className="mt-8 text-center border-t border-white/5 pt-6">
-            <p className="text-cream/50 text-sm mb-3">
-              {isLoginMode ? 'New to Stylus?' : 'Already have an account?'}
+        <div className="text-center mt-8">
+            <p className="text-cream/60 text-sm">
+                {isLoginMode ? "Not a member yet? " : "Already have an account? "}
+                <button onClick={toggleMode} className="text-golden-orange font-bold hover:text-white transition-colors border-b border-golden-orange hover:border-white pb-0.5">
+                    {isLoginMode ? "Request Access" : "Log In"}
+                </button>
             </p>
-            <button 
-              onClick={toggleMode} 
-              className="w-full py-3 border border-white/20 text-cream hover:bg-golden-orange hover:text-espresso hover:border-golden-orange transition-all uppercase tracking-widest text-xs font-bold"
-            >
-              {isLoginMode ? (
-                <span className="flex items-center justify-center">
-                  Create Account <UserPlus size={14} className="ml-2" />
-                </span>
-              ) : (
-                <span className="flex items-center justify-center">
-                  Sign In <LogIn size={14} className="ml-2" />
-                </span>
-              )}
-            </button>
-          </div>
         </div>
       </div>
     </div>

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { MOCK_USER } from '../constants';
-import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock, X, Check } from 'lucide-react';
+import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock, X, Check, Heart, Eye, Search, Filter } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useProduct } from '../context/ProductContext';
+import { useWishlist } from '../context/WishlistContext';
 import { Category, Product } from '../types';
 import { Button } from '../components/Button';
 
@@ -70,13 +71,18 @@ export const Dashboard: React.FC = () => {
   const location = useLocation();
   const { logout, user } = useAuth();
   const { products, addProduct } = useProduct();
-  const [currentView, setCurrentView] = useState<'overview' | 'list-item'>('overview');
+  const { wishlist, removeFromWishlist } = useWishlist();
+  const [currentView, setCurrentView] = useState<'overview' | 'list-item' | 'wishlist'>('overview');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   
   // Extension State
   const [extendingRental, setExtendingRental] = useState<ActiveRental | null>(null);
   const [extensionDays, setExtensionDays] = useState<4 | 8>(4);
-  const [extendedDueDates, setExtendedDueDates] = useState<Record<string, string>>({}); // Track extensions locally
+  const [extendedDueDates, setExtendedDueDates] = useState<Record<string, string>>({}); 
+
+  // Search & Filter State
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
 
   const newRental = location.state?.newRental;
 
@@ -119,10 +125,23 @@ export const Dashboard: React.FC = () => {
   ];
 
   // Apply overrides if any rentals have been extended
-  const displayRentals = activeRentals.map(rental => ({
+  let displayRentals = activeRentals.map(rental => ({
       ...rental,
       dueDate: extendedDueDates[rental.id] || rental.dueDate
   }));
+
+  // Apply Search and Filters
+  displayRentals = displayRentals.filter(rental => {
+    const matchesSearch = rental.product.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          rental.product.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          rental.tracking.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'All' || 
+                          (statusFilter === 'Active' && rental.status === 'Active') ||
+                          (statusFilter === 'New' && rental.status === 'New Rental');
+    
+    return matchesSearch && matchesStatus;
+  });
 
   // Form State
   const [newItem, setNewItem] = useState<Partial<Product>>({
@@ -133,7 +152,7 @@ export const Dashboard: React.FC = () => {
     retailPrice: 0,
     description: '',
     availableSizes: [],
-    images: [], // Changed to array
+    images: [], 
     color: '',
     occasion: ''
   });
@@ -147,6 +166,8 @@ export const Dashboard: React.FC = () => {
       setCurrentView('list-item');
     } else if (feature === 'My Orders') {
       setCurrentView('overview');
+    } else if (feature === 'My Wishlist') {
+      setCurrentView('wishlist');
     } else {
       alert(`Stylus Demo: The '${feature}' feature is available in the full production release.`);
     }
@@ -160,7 +181,7 @@ export const Dashboard: React.FC = () => {
   const handleAction = (action: string, rental: ActiveRental) => {
     if (action === 'Extend') {
         setExtendingRental(rental);
-        setExtensionDays(4); // Reset to default
+        setExtensionDays(4); 
     } else {
         alert(`Request received: ${action} for ${rental.product.name}.\nA concierge will contact you shortly to coordinate.`);
     }
@@ -180,13 +201,11 @@ export const Dashboard: React.FC = () => {
           [extendingRental.id]: newDateString
       }));
 
-      // In a real app, we would charge the card here
       setExtendingRental(null);
       alert("Extension confirmed. Your return date has been updated.");
   };
 
   const getExtensionCost = (days: number, basePrice: number) => {
-      // 50% of base price for 4 days, 90% for 8 days
       if (days === 4) return Math.round(basePrice * 0.5);
       return Math.round(basePrice * 0.9);
   };
@@ -195,7 +214,6 @@ export const Dashboard: React.FC = () => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setImageFile(file);
-      // Create a fake local URL for demo purposes
       setNewItem({ ...newItem, images: [URL.createObjectURL(file)] });
     }
   };
@@ -227,7 +245,6 @@ export const Dashboard: React.FC = () => {
     addProduct(product);
     alert("Item listed successfully! It is now available in the collection.");
     setCurrentView('overview');
-    // Reset form
     setNewItem({ name: '', brand: '', category: Category.WOMEN, rentalPrice: 0, retailPrice: 0, description: '', availableSizes: [], images: [], color: '', occasion: '' });
     setSizeInput('');
     setImageFile(null);
@@ -345,7 +362,7 @@ export const Dashboard: React.FC = () => {
                 
                 <div className="grid grid-cols-2 gap-4 border-t border-white/10 pt-6">
                   <div className="text-center">
-                    <p className="text-2xl text-white font-bold">{displayRentals.length}</p>
+                    <p className="text-2xl text-white font-bold">{activeRentals.length}</p>
                     <p className="text-xs text-white/40 uppercase">Active Rentals</p>
                   </div>
                   <div className="text-center">
@@ -361,6 +378,12 @@ export const Dashboard: React.FC = () => {
                 <Package size={20} className={`${currentView === 'overview' ? 'text-espresso' : 'text-golden-orange'} group-hover:scale-110 transition-transform`} />
                 <span className="font-serif tracking-wide">My Orders</span>
               </button>
+              
+              <button onClick={() => handleSidebarClick('My Wishlist')} className={`w-full flex items-center space-x-3 px-6 py-4 border border-transparent transition-all group ${currentView === 'wishlist' ? 'bg-golden-orange text-espresso font-bold' : 'bg-white/5 text-cream hover:border-golden-orange/50'}`}>
+                <Heart size={20} className={`${currentView === 'wishlist' ? 'text-espresso' : 'text-golden-orange'} group-hover:scale-110 transition-transform`} />
+                <span className="font-serif tracking-wide">My Wishlist</span>
+              </button>
+
                <button onClick={() => handleSidebarClick('List Item')} className={`w-full flex items-center space-x-3 px-6 py-4 border border-transparent transition-all group ${currentView === 'list-item' ? 'bg-golden-orange text-espresso font-bold' : 'bg-white/5 text-cream hover:border-golden-orange/50'}`}>
                 <Plus size={20} className={`${currentView === 'list-item' ? 'text-espresso' : 'text-golden-orange'} group-hover:scale-110 transition-transform`} />
                 <span className="font-serif tracking-wide">List New Item</span>
@@ -383,12 +406,40 @@ export const Dashboard: React.FC = () => {
           {/* Main Content Area */}
           <div className="w-full md:w-2/3">
             
-            {currentView === 'overview' ? (
+            {currentView === 'overview' && (
               <>
-                <h3 className="font-serif text-2xl text-cream mb-6 border-l-4 border-golden-orange pl-4">Active Rentals</h3>
+                <div className="flex flex-col sm:flex-row justify-between items-end mb-6 border-b border-white/10 pb-4">
+                   <h3 className="font-serif text-2xl text-cream border-l-4 border-golden-orange pl-4 mb-4 sm:mb-0">Active Rentals</h3>
+                   
+                   {/* Search and Filter */}
+                   <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                      <div className="relative">
+                         <input 
+                            type="text" 
+                            placeholder="Search orders..." 
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="bg-black/20 border border-white/10 text-cream text-sm pl-8 pr-3 py-2 focus:outline-none focus:border-golden-orange w-full sm:w-48"
+                         />
+                         <Search size={14} className="absolute left-2.5 top-2.5 text-cream/40" />
+                      </div>
+                      <div className="relative">
+                         <select 
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="bg-black/20 border border-white/10 text-cream text-sm pl-8 pr-3 py-2 focus:outline-none focus:border-golden-orange appearance-none w-full sm:w-32"
+                         >
+                            <option value="All">All Status</option>
+                            <option value="Active">Active</option>
+                            <option value="New">New</option>
+                         </select>
+                         <Filter size={14} className="absolute left-2.5 top-2.5 text-cream/40" />
+                      </div>
+                   </div>
+                </div>
                 
                 <div className="space-y-6">
-                  {displayRentals.map((rental) => (
+                  {displayRentals.length > 0 ? displayRentals.map((rental) => (
                     <div key={rental.id} className="bg-white/5 border border-white/5 p-6 flex flex-col sm:flex-row gap-6 hover:border-golden-orange/30 transition-colors group">
                       <div className="w-full sm:w-32 h-40 bg-black/20 flex-shrink-0 relative overflow-hidden">
                         <img src={rental.product.images[0]} alt={rental.product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -434,7 +485,13 @@ export const Dashboard: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                  ))}
+                  )) : (
+                    <div className="text-center py-12 text-cream/50 bg-white/5 border border-white/5 border-dashed">
+                       <Package size={48} className="mx-auto mb-4 opacity-50" />
+                       <p>No rentals found matching your criteria.</p>
+                       <button onClick={() => { setSearchTerm(''); setStatusFilter('All'); }} className="text-golden-orange underline text-sm mt-2">Clear filters</button>
+                    </div>
+                  )}
                 </div>
 
                 <h3 className="font-serif text-2xl text-cream mb-6 mt-12 border-l-4 border-golden-orange pl-4">Recommended For You</h3>
@@ -456,7 +513,52 @@ export const Dashboard: React.FC = () => {
                     )}
                  </div>
               </>
-            ) : (
+            )}
+
+            {currentView === 'wishlist' && (
+                <div className="animate-fade-in">
+                    <h3 className="font-serif text-2xl text-cream mb-6 border-l-4 border-golden-orange pl-4">My Wishlist</h3>
+                    {wishlist.length === 0 ? (
+                         <div className="bg-white/5 border border-white/10 p-12 text-center rounded-sm">
+                            <Heart size={48} className="text-cream/20 mx-auto mb-4" />
+                            <p className="text-cream/60 font-light mb-6">Your wishlist is currently empty.</p>
+                            <Link to="/catalog">
+                                <Button variant="outline">Explore Collection</Button>
+                            </Link>
+                         </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            {wishlist.map(product => (
+                                <div key={product.id} className="group relative bg-white/5 border border-white/10 flex flex-col h-full hover:border-golden-orange/50 transition-colors">
+                                    <div className="relative h-64 w-full overflow-hidden">
+                                        <img src={product.images[0]} alt={product.name} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                        <div className="absolute inset-0 bg-black/10 group-hover:bg-black/30 transition-colors"></div>
+                                        <button 
+                                            onClick={(e) => { e.preventDefault(); removeFromWishlist(product.id); }}
+                                            className="absolute top-2 right-2 p-2 bg-black/40 text-cream hover:text-red-400 rounded-full transition-colors z-10"
+                                            title="Remove from Wishlist"
+                                        >
+                                            <X size={16} />
+                                        </button>
+                                        <Link to={`/product/${product.id}`} className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-0">
+                                            <Button variant="secondary" className="shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-transform">Rent Now</Button>
+                                        </Link>
+                                    </div>
+                                    <div className="p-4 flex flex-col flex-grow">
+                                        <p className="text-xs text-golden-orange uppercase tracking-wide mb-1">{product.brand}</p>
+                                        <h4 className="font-serif text-lg text-cream mb-2">{product.name}</h4>
+                                        <div className="mt-auto pt-4 border-t border-white/5 flex justify-between items-center">
+                                            <span className="text-cream font-medium">${product.rentalPrice} <span className="text-xs text-cream/50">/ 4 days</span></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {currentView === 'list-item' && (
               <div className="animate-fade-in">
                  <h3 className="font-serif text-2xl text-cream mb-6 border-l-4 border-golden-orange pl-4">List New Item</h3>
                  <div className="bg-white/5 border border-white/10 p-8 rounded-sm">

@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
-import { Shield, Clock, Calendar, Check, ArrowLeft, Ruler, Star, Truck, RotateCcw, AlertTriangle, X } from 'lucide-react';
+import { Shield, Clock, Calendar, Check, ArrowLeft, Ruler, Star, Truck, RotateCcw, AlertTriangle, X, Heart } from 'lucide-react';
 import { useProduct } from '../context/ProductContext';
 import { useCart } from '../context/CartContext';
+import { useWishlist } from '../context/WishlistContext';
 
 export const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { products } = useProduct();
   const { addToCart } = useCart();
+  const { isInWishlist, toggleWishlist } = useWishlist();
+  
   const product = products.find(p => p.id === id);
   
   const [selectedDuration, setSelectedDuration] = useState<4 | 8 | 12>(4);
@@ -31,6 +34,8 @@ export const ProductDetail: React.FC = () => {
       </div>
     );
   }
+
+  const isWishlisted = isInWishlist(product.id);
 
   const getPrice = (days: number) => {
     const base = product.rentalPrice;
@@ -310,22 +315,35 @@ export const ProductDetail: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <Button 
+                      fullWidth 
+                      variant="secondary"
+                      onClick={handleAddToBag}
+                      className="h-14 text-sm sm:w-1/2"
+                    >
+                      Add to Bag
+                    </Button>
+                    <Button 
+                      fullWidth 
+                      variant="primary"
+                      onClick={handleRent}
+                      className="h-14 text-lg sm:w-1/2"
+                    >
+                      Rent Now • ${currentPrice}
+                    </Button>
+                  </div>
+                  
+                  {/* Wishlist Toggle Button */}
                   <Button 
                     fullWidth 
-                    variant="secondary"
-                    onClick={handleAddToBag}
-                    className="h-14 text-sm sm:w-1/2"
+                    variant="outline"
+                    onClick={() => toggleWishlist(product)}
+                    className="flex items-center justify-center gap-2"
                   >
-                    Add to Bag
-                  </Button>
-                  <Button 
-                    fullWidth 
-                    variant="primary"
-                    onClick={handleRent}
-                    className="h-14 text-lg sm:w-1/2"
-                  >
-                     Rent Now • ${currentPrice}
+                    <Heart size={16} className={isWishlisted ? "fill-golden-orange text-golden-orange" : "text-cream"} />
+                    {isWishlisted ? 'Saved to Wishlist' : 'Add to Wishlist'}
                   </Button>
                 </div>
             </div>
