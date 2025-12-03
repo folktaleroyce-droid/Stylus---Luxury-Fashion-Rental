@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, BarChart3, Package, Megaphone, TrendingUp, DollarSign, Activity, AlertTriangle, Star, Truck, ShoppingBag, LogOut, X, Mail, Ban, Key, Check, Plus, Search, Trash2, Shield, UserCog, Briefcase } from 'lucide-react';
+import { Users, BarChart3, Package, Megaphone, TrendingUp, DollarSign, Activity, AlertTriangle, Star, Truck, ShoppingBag, LogOut, X, Mail, Ban, Key, Check, Plus, Search, Trash2, Shield, UserCog, Briefcase, Filter } from 'lucide-react';
 import { Button } from '../components/Button';
 import { useAuth, RegisteredUser } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -25,6 +25,8 @@ export const AdminDashboard: React.FC = () => {
   
   // 1. User Management State (Consumed from Context)
   const [selectedUser, setSelectedUser] = useState<RegisteredUser | null>(null);
+  const [userRoleFilter, setUserRoleFilter] = useState<string>('All');
+  const [userStatusFilter, setUserStatusFilter] = useState<string>('All');
 
   // 2. Inventory State
   const [inventory, setInventory] = useState<InventoryItem[]>([
@@ -51,22 +53,41 @@ export const AdminDashboard: React.FC = () => {
   // User Actions
   const toggleUserStatus = (userId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'Active' ? 'Suspended' : 'Active';
-    updateUserStatus(userId, newStatus);
+    let reason = '';
+
+    if (newStatus === 'Suspended') {
+        const input = window.prompt("Please enter a reason for suspension:");
+        if (input === null) return; // Cancelled
+        reason = input || 'Violation of terms'; // Default fallback
+    }
+
+    updateUserStatus(userId, newStatus, reason);
     
     // Update local modal state if open
     if (selectedUser && selectedUser.id === userId) {
-        setSelectedUser({ ...selectedUser, status: newStatus });
+        setSelectedUser({ 
+            ...selectedUser, 
+            status: newStatus,
+            suspensionReason: newStatus === 'Suspended' ? reason : undefined
+        });
     }
     alert(`User status updated to ${newStatus}.`);
   };
 
-  const handleChangeRole = (userId: string, newRole: 'User' | 'Collaborator' | 'Admin') => {
-      updateUserRole(userId, newRole);
-      // Update local modal state if open
-      if (selectedUser && selectedUser.id === userId) {
-          setSelectedUser({ ...selectedUser, role: newRole });
+  const handleChangeRole = (userId: string, currentRole: string, newRole: 'User' | 'Collaborator' | 'Admin') => {
+      if (currentRole === newRole) return;
+      
+      const confirmMessage = newRole === 'Admin' 
+          ? `WARNING: You are about to grant ADMIN privileges to this user. They will have full access to the dashboard. Proceed?` 
+          : `Are you sure you want to change this user's role from ${currentRole} to ${newRole}?`;
+
+      if (window.confirm(confirmMessage)) {
+          updateUserRole(userId, newRole);
+          // Update local modal state if open
+          if (selectedUser && selectedUser.id === userId) {
+              setSelectedUser({ ...selectedUser, role: newRole });
+          }
       }
-      alert(`User role updated to ${newRole}.`);
   };
 
   const handleDeleteUser = (userId: string) => {
@@ -115,6 +136,13 @@ export const AdminDashboard: React.FC = () => {
   };
   const graphData = getGraphData();
 
+  // Logic for filtered users
+  const filteredUsers = registeredUsers.filter(u => {
+      const matchRole = userRoleFilter === 'All' || u.role === userRoleFilter;
+      const matchStatus = userStatusFilter === 'All' || u.status === userStatusFilter;
+      return matchRole && matchStatus;
+  });
+
   return (
     <div className="min-h-screen bg-espresso pt-8 pb-20 animate-fade-in relative">
       
@@ -146,32 +174,61 @@ export const AdminDashboard: React.FC = () => {
                             <p className="text-cream mt-1">Tier: <span className="text-golden-orange">{selectedUser.tier}</span></p>
                             <p className="text-cream mt-1">Role: <span className="text-white font-bold">{selectedUser.role}</span></p>
                             <p className="text-cream mt-1">Member Since: {selectedUser.joined}</p>
-                            <p className="text-cream mt-1">Status: <span className={selectedUser.status === 'Active' ? 'text-green-400' : 'text-red-400'}>{selectedUser.status}</span></p>
+                            <div className="mt-2">
+                                <p className="text-cream flex items-center gap-2">Status: 
+                                    <span className={`px-2 py-0.5 rounded text-xs border ${selectedUser.status === 'Active' ? 'border-green-500 text-green-400 bg-green-500/10' : 'border-red-500 text-red-400 bg-red-500/10'}`}>
+                                        {selectedUser.status}
+                                    </span>
+                                </p>
+                                {selectedUser.status === 'Suspended' && selectedUser.suspensionReason && (
+                                    <div className="mt-2 p-3 bg-red-500/10 border border-red-500/30 rounded-sm">
+                                        <p className="text-[10px] text-red-400 uppercase font-bold tracking-widest mb-1">Suspension Reason</p>
+                                        <p className="text-sm text-cream/80 italic">"{selectedUser.suspensionReason}"</p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                         
                         {/* Role Management */}
-                        <div className="pt-2">
-                             <p className="text-xs uppercase text-cream/40 tracking-widest mb-2">Change Role</p>
+                        <div className="pt-4 border-t border-white/5">
+                             <p className="text-xs uppercase text-cream/40 tracking-widest mb-3 flex items-center gap-2">
+                                <UserCog size={14} className="text-golden-orange"/> Role Management
+                             </p>
                              <div className="flex gap-2">
                                 <button 
-                                    onClick={() => handleChangeRole(selectedUser.id, 'User')}
-                                    className={`px-3 py-1 text-xs border rounded transition-colors ${selectedUser.role === 'User' ? 'bg-cream text-espresso border-cream font-bold' : 'border-white/20 text-cream/60 hover:border-golden-orange'}`}
+                                    onClick={() => handleChangeRole(selectedUser.id, selectedUser.role, 'User')}
+                                    className={`flex-1 px-2 py-2 text-xs border rounded transition-colors flex items-center justify-center gap-1 ${
+                                        selectedUser.role === 'User' 
+                                        ? 'bg-cream text-espresso border-cream font-bold' 
+                                        : 'border-white/20 text-cream/60 hover:border-golden-orange'
+                                    }`}
                                 >
                                     User
                                 </button>
                                 <button 
-                                    onClick={() => handleChangeRole(selectedUser.id, 'Collaborator')}
-                                    className={`px-3 py-1 text-xs border rounded transition-colors ${selectedUser.role === 'Collaborator' ? 'bg-blue-500 text-white border-blue-500 font-bold' : 'border-white/20 text-cream/60 hover:border-blue-500'}`}
+                                    onClick={() => handleChangeRole(selectedUser.id, selectedUser.role, 'Collaborator')}
+                                    className={`flex-1 px-2 py-2 text-xs border rounded transition-colors flex items-center justify-center gap-1 ${
+                                        selectedUser.role === 'Collaborator' 
+                                        ? 'bg-blue-500 text-white border-blue-500 font-bold' 
+                                        : 'border-white/20 text-cream/60 hover:border-blue-500'
+                                    }`}
                                 >
-                                    Collaborator
+                                    Partner
                                 </button>
                                 <button 
-                                    onClick={() => handleChangeRole(selectedUser.id, 'Admin')}
-                                    className={`px-3 py-1 text-xs border rounded transition-colors ${selectedUser.role === 'Admin' ? 'bg-golden-orange text-espresso border-golden-orange font-bold' : 'border-white/20 text-cream/60 hover:border-golden-orange'}`}
+                                    onClick={() => handleChangeRole(selectedUser.id, selectedUser.role, 'Admin')}
+                                    className={`flex-1 px-2 py-2 text-xs border rounded transition-colors flex items-center justify-center gap-1 ${
+                                        selectedUser.role === 'Admin' 
+                                        ? 'bg-golden-orange text-espresso border-golden-orange font-bold' 
+                                        : 'border-white/20 text-cream/60 hover:border-golden-orange'
+                                    }`}
                                 >
-                                    Admin
+                                    <Shield size={10} /> Admin
                                 </button>
                              </div>
+                             <p className="text-[10px] text-cream/40 mt-2 italic text-center">
+                                {selectedUser.role === 'Admin' ? 'Has full access to dashboard & settings.' : selectedUser.role === 'Collaborator' ? 'Has limited access to backend tools.' : 'Standard customer access only.'}
+                             </p>
                         </div>
                     </div>
                     <div className="space-y-4">
@@ -317,8 +374,37 @@ export const AdminDashboard: React.FC = () => {
                 </div>
 
                 <div className="bg-[#1f0c05] border border-white/5 overflow-hidden rounded-sm">
-                    <div className="p-6 border-b border-white/5">
+                    <div className="p-6 border-b border-white/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <h3 className="font-serif text-xl text-cream flex items-center gap-2"><Users size={20} className="text-golden-orange"/> User Activity & Behavior</h3>
+                        
+                        {/* Filters */}
+                        <div className="flex gap-4">
+                            <div className="relative">
+                                <select 
+                                    value={userRoleFilter}
+                                    onChange={(e) => setUserRoleFilter(e.target.value)}
+                                    className="bg-black/20 border border-white/10 text-cream text-sm pl-4 pr-8 py-2 focus:outline-none focus:border-golden-orange appearance-none rounded min-w-[150px]"
+                                >
+                                    <option value="All">All Roles</option>
+                                    <option value="User">User</option>
+                                    <option value="Collaborator">Collaborator</option>
+                                    <option value="Admin">Admin</option>
+                                </select>
+                                <Filter size={14} className="absolute right-3 top-3 text-cream/40 pointer-events-none" />
+                            </div>
+                            <div className="relative">
+                                <select 
+                                    value={userStatusFilter}
+                                    onChange={(e) => setUserStatusFilter(e.target.value)}
+                                    className="bg-black/20 border border-white/10 text-cream text-sm pl-4 pr-8 py-2 focus:outline-none focus:border-golden-orange appearance-none rounded min-w-[150px]"
+                                >
+                                    <option value="All">All Statuses</option>
+                                    <option value="Active">Active</option>
+                                    <option value="Suspended">Suspended</option>
+                                </select>
+                                <Filter size={14} className="absolute right-3 top-3 text-cream/40 pointer-events-none" />
+                            </div>
+                        </div>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm text-cream/80">
@@ -335,7 +421,7 @@ export const AdminDashboard: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
-                                {registeredUsers.map(u => (
+                                {filteredUsers.map(u => (
                                     <tr key={u.id} className="hover:bg-white/5 transition-colors">
                                         <td className="px-6 py-4 font-bold">{u.name}</td>
                                         <td className="px-6 py-4">{u.email}</td>
@@ -369,9 +455,9 @@ export const AdminDashboard: React.FC = () => {
                                         </td>
                                     </tr>
                                 ))}
-                                {registeredUsers.length === 0 && (
+                                {filteredUsers.length === 0 && (
                                     <tr>
-                                        <td colSpan={8} className="px-6 py-8 text-center text-cream/50">No registered users found.</td>
+                                        <td colSpan={8} className="px-6 py-8 text-center text-cream/50">No users match the selected filters.</td>
                                     </tr>
                                 )}
                             </tbody>
