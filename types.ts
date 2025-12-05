@@ -1,4 +1,5 @@
 
+
 export enum Category {
   WOMEN = 'Women',
   MEN = 'Men',
@@ -35,6 +36,7 @@ export interface Product {
   availableSizes: string[];
   color: string;
   occasion: string;
+  condition?: string;
   reviews: Review[];
   rentalCount?: number;
   autoSellAfterRentals?: number;
