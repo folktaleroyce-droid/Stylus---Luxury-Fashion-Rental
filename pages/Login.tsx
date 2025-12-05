@@ -1,14 +1,18 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Diamond, ArrowRight, Globe, Eye, EyeOff } from 'lucide-react';
+import { Diamond, ArrowRight, Globe, Eye, EyeOff, Briefcase, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/Button';
+import { Role } from '../types';
 
 export const Login: React.FC = () => {
   const location = useLocation();
   const initialMode = location.state?.mode !== 'signup';
   
   const [isLoginMode, setIsLoginMode] = useState(initialMode);
+  const [selectedRole, setSelectedRole] = useState<Role>('User'); // For signup
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -31,17 +35,6 @@ export const Login: React.FC = () => {
     
     if (!email || !password) return;
 
-    // Check for Admin Credentials strictly
-    if (email === 'Stylus' && password === 'Sty!usAdm1n#29XQ') {
-      setIsLoading(true);
-      setTimeout(() => {
-        login(email, password);
-        setIsLoading(false);
-        navigate('/admin', { replace: true });
-      }, 1500);
-      return;
-    }
-
     // Validation for Signup
     if (!isLoginMode && password !== confirmPassword) {
         alert("Passwords do not match. Please try again.");
@@ -52,13 +45,19 @@ export const Login: React.FC = () => {
     
     setTimeout(() => {
       if (!isLoginMode) {
-        // REGISTER FLOW: Add user to the global database
-        // The registerUser function in AuthContext sets default Tier, Status, etc.
-        registerUser(fullName, email);
+        // Register flow
+        registerUser(fullName, email, selectedRole);
+        // Then login
+        login(fullName); // Simplified for demo
+      } else {
+        // Login flow
+        const success = login(email, password);
+        if (!success) {
+            alert("Invalid credentials. For default accounts use username 'Stylus'.");
+            setIsLoading(false);
+            return;
+        }
       }
-      
-      // Attempt login
-      login(isLoginMode ? email : fullName);
       
       setIsLoading(false);
       navigate(from, { replace: true });
@@ -66,14 +65,14 @@ export const Login: React.FC = () => {
   };
 
   const handleSocialLogin = (provider: 'Google' | 'Apple') => {
+      // Mock social login always as User for simplicity
       const mockName = provider === 'Google' ? 'Alex Mercer' : 'Jordan Lee';
       const mockEmail = provider === 'Google' ? 'alex.m@gmail.com' : 'jordan.l@icloud.com';
       
       setIsLoading(true);
       setTimeout(() => {
-          // If in signup mode, actually register them
           if (!isLoginMode) {
-             registerUser(mockName, mockEmail);
+             registerUser(mockName, mockEmail, 'User');
           }
           login(mockName);
           setIsLoading(false);
@@ -111,24 +110,24 @@ export const Login: React.FC = () => {
 
         <div className="bg-[#1f0c05]/80 backdrop-blur-md border border-white/10 p-8 shadow-2xl rounded-sm">
           
-          <div className="space-y-3 mb-8">
-            <button 
-                onClick={() => handleSocialLogin('Google')}
-                className="w-full flex items-center justify-center space-x-3 bg-white text-espresso font-bold py-3 hover:bg-cream transition-colors"
-            >
-                <Globe size={18} />
-                <span className="text-xs uppercase tracking-widest">Continue with Google</span>
-            </button>
-          </div>
-
-          <div className="relative mb-8">
-              <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-white/10"></div>
+          {!isLoginMode && (
+              <div className="flex mb-6 bg-black/20 p-1 rounded">
+                  <button 
+                    type="button" 
+                    onClick={() => setSelectedRole('User')}
+                    className={`flex-1 py-2 text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 rounded transition-all ${selectedRole === 'User' ? 'bg-golden-orange text-espresso shadow-lg' : 'text-cream/50 hover:text-white'}`}
+                  >
+                      <User size={14} /> User
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => setSelectedRole('Partner')}
+                    className={`flex-1 py-2 text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 rounded transition-all ${selectedRole === 'Partner' ? 'bg-golden-orange text-espresso shadow-lg' : 'text-cream/50 hover:text-white'}`}
+                  >
+                      <Briefcase size={14} /> Partner
+                  </button>
               </div>
-              <div className="relative flex justify-center text-xs uppercase tracking-widest">
-                  <span className="bg-[#1f0c05] px-2 text-cream/40">Or continue with email</span>
-              </div>
-          </div>
+          )}
 
           <form onSubmit={handleAuth} className="space-y-6">
             {!isLoginMode && (
@@ -145,12 +144,13 @@ export const Login: React.FC = () => {
             )}
             
             <div>
-                <label className="block text-xs uppercase tracking-widest text-cream/50 mb-2">Email or Username</label>
+                <label className="block text-xs uppercase tracking-widest text-cream/50 mb-2">Username / Email</label>
                 <input 
                     type="text" 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full bg-black/20 border border-white/10 text-cream px-4 py-3 focus:border-golden-orange outline-none transition-colors"
+                    placeholder={isLoginMode ? "Enter 'Stylus' for demo accounts" : "email@example.com"}
                     required
                 />
             </div>
@@ -158,7 +158,6 @@ export const Login: React.FC = () => {
             <div className="relative">
                 <div className="flex justify-between mb-2">
                     <label className="block text-xs uppercase tracking-widest text-cream/50">Password</label>
-                    {isLoginMode && <a href="#" className="text-xs text-golden-orange hover:text-white transition-colors">Forgot?</a>}
                 </div>
                 <input 
                     type={showPassword ? "text" : "password"} 
@@ -194,7 +193,7 @@ export const Login: React.FC = () => {
                     <span className="animate-pulse">Processing...</span>
                 ) : (
                     <span className="flex items-center justify-center gap-2">
-                        {isLoginMode ? 'Sign In' : 'Create Account'} <ArrowRight size={16} />
+                        {isLoginMode ? 'Sign In' : selectedRole === 'Partner' ? 'Register Partner' : 'Create Account'} <ArrowRight size={16} />
                     </span>
                 )}
             </Button>
@@ -208,6 +207,13 @@ export const Login: React.FC = () => {
                     {isLoginMode ? "Request Access" : "Log In"}
                 </button>
             </p>
+            {isLoginMode && (
+                <div className="mt-4 text-[10px] text-cream/30 bg-black/20 p-2 rounded border border-white/5">
+                    <p className="font-bold mb-1">Demo Credentials (Username: Stylus)</p>
+                    <p>User Pass: StylusUser#4829</p>
+                    <p>Partner Pass: StylusPartner@9931</p>
+                </div>
+            )}
         </div>
       </div>
     </div>

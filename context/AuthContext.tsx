@@ -1,6 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
 
-// Extended User Interface for the entire app
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Role, VerificationStatus } from '../types';
+
+// Extended User Interface
 export interface RegisteredUser {
   id: string;
   name: string;
@@ -8,39 +10,48 @@ export interface RegisteredUser {
   phone: string;
   address: string;
   tier: string;
-  role: 'User' | 'Collaborator' | 'Admin';
+  role: Role;
   status: 'Active' | 'Suspended';
+  verificationStatus: VerificationStatus;
+  verificationDocs?: {
+    bvn?: string;
+    govId?: string; // URL or placeholder
+    state?: string;
+    lga?: string;
+    cacNumber?: string;
+    businessName?: string;
+  };
+  walletBalance: number;
   suspensionReason?: string;
-  adminNotes?: string; // Added field for internal notes
+  adminNotes?: string;
   joined: string;
   lastActive: string;
   avgSpend: string;
   rentalHistoryCount: number;
 }
 
-interface UserSession {
-  name: string;
-  role?: string;
-}
-
 interface AuthContextType {
   isAuthenticated: boolean;
   isAdmin: boolean;
-  user: UserSession | null;
-  registeredUsers: RegisteredUser[]; // The list for Admin to see
+  currentUser: RegisteredUser | null;
+  registeredUsers: RegisteredUser[];
   login: (email: string, password?: string) => boolean;
   logout: () => void;
-  registerUser: (name: string, email: string) => void;
+  registerUser: (name: string, email: string, role?: Role) => void;
   updateUserStatus: (id: string, newStatus: 'Active' | 'Suspended', reason?: string) => void;
-  updateUserRole: (id: string, newRole: 'User' | 'Collaborator' | 'Admin') => void;
-  updateUserNotes: (id: string, notes: string) => void; // New function
+  updateUserRole: (id: string, newRole: Role) => void;
+  updateUserNotes: (id: string, notes: string) => void;
+  submitVerification: (id: string, docs: any) => void;
+  approveVerification: (id: string) => void;
+  rejectVerification: (id: string, reason: string) => void;
+  updateWallet: (id: string, amount: number) => void;
   deleteUser: (id: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   isAdmin: false,
-  user: null,
+  currentUser: null,
   registeredUsers: [],
   login: () => false,
   logout: () => {},
@@ -48,6 +59,10 @@ const AuthContext = createContext<AuthContextType>({
   updateUserStatus: () => {},
   updateUserRole: () => {},
   updateUserNotes: () => {},
+  submitVerification: () => {},
+  approveVerification: () => {},
+  rejectVerification: () => {},
+  updateWallet: () => {},
   deleteUser: () => {},
 });
 
@@ -55,37 +70,38 @@ export const useAuth = () => useContext(AuthContext);
 
 // Initial Mock Data
 const MOCK_USERS_DB: RegisteredUser[] = [
-  { id: '1', name: 'Victoria Sterling', email: 'v.sterling@example.com', phone: '+1 (555) 010-9988', address: '125 Park Ave, NYC', tier: 'Diamond', role: 'User', status: 'Active', joined: 'Oct 15, 2023', lastActive: '2 mins ago', avgSpend: '$450', rentalHistoryCount: 12, adminNotes: 'VIP client. Prefers private fittings.' },
-  { id: '2', name: 'James Bond', email: 'j.bond@example.com', phone: '+44 20 7946 0958', address: '85 Albert Embankment, London', tier: 'Platinum', role: 'Collaborator', status: 'Active', joined: 'Nov 02, 2023', lastActive: '1 day ago', avgSpend: '$820', rentalHistoryCount: 5 },
-  { id: '3', name: 'Sarah Connor', email: 's.connor@example.com', phone: '+1 (555) 019-2834', address: '1984 Cyberdyne Ln, LA', tier: 'Gold', role: 'User', status: 'Suspended', suspensionReason: 'Violation of rental agreement section 4.', joined: 'Dec 10, 2023', lastActive: '3 months ago', avgSpend: '$150', rentalHistoryCount: 1 },
-  { id: '4', name: 'Ellen Ripley', email: 'e.ripley@example.com', phone: '+1 (555) 011-3344', address: 'Nostromo Station', tier: 'Diamond', role: 'Admin', status: 'Active', joined: 'Jan 05, 2024', lastActive: '5 hours ago', avgSpend: '$1,200', rentalHistoryCount: 8 },
+  { id: '1', name: 'Stylus Partner', email: 'partner@stylus.com', phone: '+44 20 7946 0958', address: '85 Albert Embankment, London', tier: 'Platinum', role: 'Partner', status: 'Active', verificationStatus: 'Verified', joined: 'Nov 02, 2023', lastActive: '1 day ago', avgSpend: '$0', rentalHistoryCount: 0, walletBalance: 5200, verificationDocs: { businessName: 'Luxe Attire Ltd', cacNumber: 'RC-998877' } },
+  { id: '2', name: 'Stylus User', email: 'user@stylus.com', phone: '+1 (555) 019-2834', address: '1984 Cyberdyne Ln, LA', tier: 'Gold', role: 'User', status: 'Active', verificationStatus: 'Unverified', joined: 'Dec 10, 2023', lastActive: '3 months ago', avgSpend: '$150', rentalHistoryCount: 1, walletBalance: 200 },
+  { id: '3', name: 'Ellen Ripley', email: 'e.ripley@example.com', phone: '+1 (555) 011-3344', address: 'Nostromo Station', tier: 'Diamond', role: 'Admin', status: 'Active', verificationStatus: 'Verified', joined: 'Jan 05, 2024', lastActive: '5 hours ago', avgSpend: '$1,200', rentalHistoryCount: 8, walletBalance: 0 },
+  { id: '4', name: 'Victoria Sterling', email: 'v.sterling@example.com', phone: '+1 (555) 010-9988', address: '125 Park Ave, NYC', tier: 'Diamond', role: 'User', status: 'Active', verificationStatus: 'Verified', joined: 'Oct 15, 2023', lastActive: '2 mins ago', avgSpend: '$450', rentalHistoryCount: 12, walletBalance: 1500 },
 ];
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [user, setUser] = useState<UserSession | null>(null);
+  const [currentUser, setCurrentUser] = useState<RegisteredUser | null>(null);
   const [registeredUsers, setRegisteredUsers] = useState<RegisteredUser[]>([]);
 
   // Load data on mount
   useEffect(() => {
-    // 1. Session Logic
-    const storedAuth = localStorage.getItem('stylus_auth');
-    const storedName = localStorage.getItem('stylus_user_name');
-    const storedIsAdmin = localStorage.getItem('stylus_is_admin');
-    
-    if (storedAuth === 'true') {
-      setIsAuthenticated(true);
-      if (storedName) setUser({ name: storedName });
-      if (storedIsAdmin === 'true') setIsAdmin(true);
-    }
-
-    // 2. User Database Logic
     const storedUsers = localStorage.getItem('stylus_users_db');
     if (storedUsers) {
       setRegisteredUsers(JSON.parse(storedUsers));
     } else {
       setRegisteredUsers(MOCK_USERS_DB);
+    }
+    
+    // Check session
+    const storedAuth = localStorage.getItem('stylus_auth');
+    const storedUserId = localStorage.getItem('stylus_user_id');
+    if (storedAuth === 'true' && storedUserId) {
+      const users = storedUsers ? JSON.parse(storedUsers) : MOCK_USERS_DB;
+      const user = users.find((u: RegisteredUser) => u.id === storedUserId);
+      if (user) {
+        setIsAuthenticated(true);
+        setCurrentUser(user);
+        setIsAdmin(user.role === 'Admin');
+      }
     }
   }, []);
 
@@ -97,100 +113,130 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [registeredUsers]);
 
   const login = (emailOrName: string, password?: string) => {
-    // 1. Master Admin Check (Hardcoded Backup)
-    if (emailOrName === 'Stylus' && password === 'Sty!usAdm1n#29XQ') {
-      localStorage.setItem('stylus_auth', 'true');
-      localStorage.setItem('stylus_user_name', 'Stylus Admin');
-      localStorage.setItem('stylus_is_admin', 'true');
-      setIsAuthenticated(true);
-      setIsAdmin(true);
-      setUser({ name: 'Stylus Admin', role: 'Admin' });
-      return true;
+    // 1. Check for SPECIAL Credentials logic as requested
+    if (emailOrName === 'Stylus') {
+      if (password === 'Sty!usAdm1n#29XQ') {
+        // Master Admin - find existing admin or fallback
+        const adminUser = registeredUsers.find(u => u.role === 'Admin') || MOCK_USERS_DB[2];
+        return performLogin(adminUser);
+      } else if (password === 'StylusUser#4829') {
+        // Default User
+        const defaultUser = registeredUsers.find(u => u.email === 'user@stylus.com') || MOCK_USERS_DB[1];
+        return performLogin(defaultUser);
+      } else if (password === 'StylusPartner@9931') {
+        // Default Partner
+        const defaultPartner = registeredUsers.find(u => u.email === 'partner@stylus.com') || MOCK_USERS_DB[0];
+        return performLogin(defaultPartner);
+      } else {
+        return false;
+      }
     }
 
-    // 2. Database User Check
+    // 2. Standard DB Check
     const foundUser = registeredUsers.find(u => u.email === emailOrName || u.name === emailOrName);
-    
-    // For demo purposes, we allow login if user exists or if it's a generic login
-    const nameToUse = foundUser ? foundUser.name : emailOrName;
-
-    localStorage.setItem('stylus_auth', 'true');
-    localStorage.setItem('stylus_user_name', nameToUse);
-    setIsAuthenticated(true);
-
-    // Check if the user in DB has Admin privileges
-    if (foundUser && foundUser.role === 'Admin') {
-      localStorage.setItem('stylus_is_admin', 'true');
-      setIsAdmin(true);
-      setUser({ name: nameToUse, role: 'Admin' });
-    } else {
-      localStorage.removeItem('stylus_is_admin');
-      setIsAdmin(false);
-      setUser({ name: nameToUse, role: foundUser?.role || 'User' });
+    if (foundUser) {
+        // For demo simplicity, we accept any password if it's a standard user not using "Stylus" username
+        return performLogin(foundUser);
     }
+    return false;
+  };
 
+  const performLogin = (user: RegisteredUser) => {
+    localStorage.setItem('stylus_auth', 'true');
+    localStorage.setItem('stylus_user_id', user.id);
+    setIsAuthenticated(true);
+    setCurrentUser(user);
+    setIsAdmin(user.role === 'Admin');
     return true;
   };
 
-  const registerUser = (name: string, email: string) => {
+  const registerUser = (name: string, email: string, role: Role = 'User') => {
     const newUser: RegisteredUser = {
       id: Date.now().toString(),
       name,
       email,
       phone: '',
       address: '',
-      tier: 'Gold', // Default start tier
-      role: 'User', // Default role
+      tier: 'Gold',
+      role,
       status: 'Active',
+      verificationStatus: 'Unverified',
       joined: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       lastActive: 'Just now',
       avgSpend: '$0',
-      rentalHistoryCount: 0
+      rentalHistoryCount: 0,
+      walletBalance: role === 'Partner' ? 0 : 500, // Sign up bonus for demo
     };
     
-    // Add to state (triggering the useEffect to save to local storage)
     setRegisteredUsers(prev => [...prev, newUser]);
   };
 
   const updateUserStatus = (id: string, newStatus: 'Active' | 'Suspended', reason?: string) => {
-    setRegisteredUsers(prev => prev.map(u => {
+    const updatedUsers = registeredUsers.map(u => {
       if (u.id === id) {
-        return {
-           ...u, 
-           status: newStatus,
-           suspensionReason: newStatus === 'Suspended' ? reason : undefined
-        };
+        return { ...u, status: newStatus, suspensionReason: reason };
       }
       return u;
-    }));
+    });
+    setRegisteredUsers(updatedUsers);
+    if (currentUser?.id === id) setCurrentUser(updatedUsers.find(u => u.id === id) || null);
   };
 
-  const updateUserRole = (id: string, newRole: 'User' | 'Collaborator' | 'Admin') => {
-    setRegisteredUsers(prev => prev.map(u => u.id === id ? { ...u, role: newRole } : u));
+  const updateUserRole = (id: string, newRole: Role) => {
+    const updatedUsers = registeredUsers.map(u => u.id === id ? { ...u, role: newRole } : u);
+    setRegisteredUsers(updatedUsers);
+    if (currentUser?.id === id) setCurrentUser(updatedUsers.find(u => u.id === id) || null);
   }
 
   const updateUserNotes = (id: string, notes: string) => {
     setRegisteredUsers(prev => prev.map(u => u.id === id ? { ...u, adminNotes: notes } : u));
   };
 
+  const submitVerification = (id: string, docs: any) => {
+    const updatedUsers = registeredUsers.map(u => 
+       u.id === id ? { ...u, verificationStatus: 'Pending' as VerificationStatus, verificationDocs: { ...u.verificationDocs, ...docs } } : u
+    );
+    setRegisteredUsers(updatedUsers);
+    if (currentUser?.id === id) setCurrentUser(updatedUsers.find(u => u.id === id) || null);
+  };
+
+  const approveVerification = (id: string) => {
+    const updatedUsers = registeredUsers.map(u => u.id === id ? { ...u, verificationStatus: 'Verified' as VerificationStatus } : u);
+    setRegisteredUsers(updatedUsers);
+    // If approving a partner, verify current user if it's them? No, this is likely admin action.
+    if (currentUser?.id === id) setCurrentUser(updatedUsers.find(u => u.id === id) || null);
+  };
+
+  const rejectVerification = (id: string, reason: string) => {
+    const updatedUsers = registeredUsers.map(u => u.id === id ? { ...u, verificationStatus: 'Rejected' as VerificationStatus, adminNotes: reason } : u);
+    setRegisteredUsers(updatedUsers);
+    if (currentUser?.id === id) setCurrentUser(updatedUsers.find(u => u.id === id) || null);
+  };
+
+  const updateWallet = (id: string, amount: number) => {
+    const updatedUsers = registeredUsers.map(u => u.id === id ? { ...u, walletBalance: u.walletBalance + amount } : u);
+    setRegisteredUsers(updatedUsers);
+    if (currentUser?.id === id) setCurrentUser(updatedUsers.find(u => u.id === id) || null);
+  }
+
   const deleteUser = (id: string) => {
     setRegisteredUsers(prev => prev.filter(u => u.id !== id));
+    if (currentUser?.id === id) logout();
   };
 
   const logout = () => {
     localStorage.removeItem('stylus_auth');
-    localStorage.removeItem('stylus_user_name');
-    localStorage.removeItem('stylus_is_admin');
+    localStorage.removeItem('stylus_user_id');
     setIsAuthenticated(false);
     setIsAdmin(false);
-    setUser(null);
+    setCurrentUser(null);
   };
 
   return (
     <AuthContext.Provider value={{ 
       isAuthenticated, 
       isAdmin, 
-      user, 
+      currentUser, 
       registeredUsers, 
       login, 
       logout, 
@@ -198,6 +244,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updateUserStatus,
       updateUserRole,
       updateUserNotes,
+      submitVerification,
+      approveVerification,
+      rejectVerification,
+      updateWallet,
       deleteUser 
     }}>
       {children}

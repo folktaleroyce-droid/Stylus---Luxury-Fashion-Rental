@@ -1,180 +1,109 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { MOCK_USER } from '../constants';
-import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock, X, Check, Heart, Eye, Search, Filter, History, ChevronRight } from 'lucide-react';
+import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock, X, Check, Heart, Eye, Search, Filter, History, ChevronRight, Briefcase, DollarSign, ShieldAlert, FileText, Ban, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useProduct } from '../context/ProductContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useOrders } from '../context/OrderContext';
-import { Category, Product } from '../types';
+import { Category, Product, VerificationStatus } from '../types';
 import { Button } from '../components/Button';
 
-// Countdown Timer Component
-const RentalCountdown: React.FC<{ dueDate: string }> = ({ dueDate }) => {
-    const [timeLeft, setTimeLeft] = useState<{days: number, hours: number, minutes: number} | null>(null);
+// --- Verification Components ---
 
-    useEffect(() => {
-        const calculateTime = () => {
-            const now = new Date().getTime();
-            // Handle various date formats by ensuring a standard constructor works
-            const due = new Date(dueDate);
-            // Set to end of day (11:59:59 PM)
-            due.setHours(23, 59, 59);
-            
-            const difference = due.getTime() - now;
-
-            if (difference > 0) {
-                const days = Math.floor(difference / (1000 * 60 * 60 * 24));
-                const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
-                setTimeLeft({ days, hours, minutes });
-            } else {
-                setTimeLeft(null); // Overdue
-            }
-        };
-
-        calculateTime();
-        const timer = setInterval(calculateTime, 60000); // Update every minute
-        return () => clearInterval(timer);
-    }, [dueDate]);
-
-    if (!timeLeft) return <div className="text-red-500 font-bold uppercase tracking-widest text-xs flex items-center mt-2"><Clock size={12} className="mr-1" /> Return Overdue</div>;
-
+const UserVerificationForm: React.FC<{ onSubmit: (data: any) => void }> = ({ onSubmit }) => {
+    const [bvn, setBvn] = useState('');
+    const [state, setState] = useState('');
+    const [lga, setLga] = useState('');
+    
     return (
-        <div className="flex items-center space-x-3 bg-golden-orange/5 px-4 py-2 rounded border border-golden-orange/20 mt-3 max-w-max">
-             <Clock size={14} className="text-golden-orange" />
-             <div className="flex items-baseline space-x-1">
-                <span className="font-serif text-lg text-golden-orange font-bold leading-none">{timeLeft.days}</span>
-                <span className="text-[10px] text-cream/50 uppercase mr-1">Days</span>
-                
-                <span className="font-serif text-lg text-golden-orange font-bold leading-none">{timeLeft.hours}</span>
-                <span className="text-[10px] text-cream/50 uppercase mr-1">Hr</span>
-
-                <span className="font-serif text-lg text-golden-orange font-bold leading-none">{timeLeft.minutes}</span>
-                <span className="text-[10px] text-cream/50 uppercase">Min</span>
-            </div>
-            <span className="text-[10px] text-cream/40 uppercase tracking-widest ml-1 border-l border-white/10 pl-2">Remaining</span>
+        <div className="bg-[#1f0c05] p-8 border border-golden-orange shadow-2xl rounded-sm">
+            <h3 className="font-serif text-2xl text-cream mb-4">Identity Verification</h3>
+            <p className="text-sm text-cream/60 mb-6">To ensure the security of our luxury assets, we require government ID verification before you can rent or buy.</p>
+            <form onSubmit={(e) => { e.preventDefault(); onSubmit({ bvn, state, lga }); }}>
+                <div className="grid grid-cols-1 gap-4 mb-6">
+                    <div>
+                        <label className="text-xs uppercase text-cream/50 mb-1 block">BVN (11 Digits)</label>
+                        <input required placeholder="Enter BVN" value={bvn} onChange={e => setBvn(e.target.value)} className="w-full bg-black/20 border border-white/10 text-cream p-3 focus:border-golden-orange outline-none" />
+                    </div>
+                    <div>
+                        <label className="text-xs uppercase text-cream/50 mb-1 block">State of Residence</label>
+                        <input required placeholder="e.g. Lagos" value={state} onChange={e => setState(e.target.value)} className="w-full bg-black/20 border border-white/10 text-cream p-3 focus:border-golden-orange outline-none" />
+                    </div>
+                    <div>
+                        <label className="text-xs uppercase text-cream/50 mb-1 block">LGA</label>
+                        <input required placeholder="e.g. Eti-Osa" value={lga} onChange={e => setLga(e.target.value)} className="w-full bg-black/20 border border-white/10 text-cream p-3 focus:border-golden-orange outline-none" />
+                    </div>
+                    <div className="border-2 border-dashed border-white/10 p-6 text-center cursor-pointer hover:border-golden-orange/50 transition-colors bg-white/5">
+                        <Upload className="mx-auto text-cream/40 mb-2" />
+                        <span className="text-xs uppercase text-cream/60">Upload Valid ID (NIN/Passport)</span>
+                    </div>
+                </div>
+                <Button fullWidth>Submit Verification</Button>
+            </form>
         </div>
     );
 };
 
-interface ActiveRental {
-  id: string;
-  product: Product;
-  dueDate: string;
-  tracking: string;
-  status: string;
-  statusColor: string;
-}
+const PartnerVerificationForm: React.FC<{ onSubmit: (data: any) => void }> = ({ onSubmit }) => {
+    const [cac, setCac] = useState('');
+    const [bizName, setBizName] = useState('');
+    const [bvn, setBvn] = useState('');
+    
+    return (
+        <div className="bg-[#1f0c05] p-8 border border-golden-orange shadow-2xl rounded-sm">
+            <h3 className="font-serif text-2xl text-cream mb-4">Partner Business Verification</h3>
+            <p className="text-sm text-cream/60 mb-6">Complete your business registration to start listing items.</p>
+            <form onSubmit={(e) => { e.preventDefault(); onSubmit({ cacNumber: cac, businessName: bizName, bvn }); }}>
+                <div className="grid grid-cols-1 gap-4 mb-6">
+                    <div>
+                        <label className="text-xs uppercase text-cream/50 mb-1 block">Business Name</label>
+                        <input required placeholder="Registered Business Name" value={bizName} onChange={e => setBizName(e.target.value)} className="w-full bg-black/20 border border-white/10 text-cream p-3 focus:border-golden-orange outline-none" />
+                    </div>
+                    <div>
+                         <label className="text-xs uppercase text-cream/50 mb-1 block">CAC Number</label>
+                        <input required placeholder="RC Number" value={cac} onChange={e => setCac(e.target.value)} className="w-full bg-black/20 border border-white/10 text-cream p-3 focus:border-golden-orange outline-none" />
+                    </div>
+                    <div>
+                         <label className="text-xs uppercase text-cream/50 mb-1 block">Director BVN</label>
+                        <input required placeholder="Director BVN" value={bvn} onChange={e => setBvn(e.target.value)} className="w-full bg-black/20 border border-white/10 text-cream p-3 focus:border-golden-orange outline-none" />
+                    </div>
+                    <div className="bg-golden-orange/10 p-4 border border-golden-orange/30 text-center">
+                        <p className="text-xs uppercase text-golden-orange font-bold mb-2">Registration Fee</p>
+                        <p className="text-2xl font-serif text-cream">₦25,000</p>
+                        <p className="text-[10px] text-cream/50 mt-1">One-time payment deducted from wallet or paid via card</p>
+                    </div>
+                </div>
+                <Button fullWidth>Pay & Submit</Button>
+            </form>
+        </div>
+    );
+};
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { logout, user } = useAuth();
-  const { products, addProduct } = useProduct();
-  const { wishlist, removeFromWishlist } = useWishlist();
-  const { orders } = useOrders();
-  const [currentView, setCurrentView] = useState<'overview' | 'list-item' | 'wishlist' | 'history'>('overview');
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const { logout, currentUser, submitVerification, updateWallet } = useAuth();
+  const { products, addProduct, removeProduct, incrementRentalCount } = useProduct();
+  const { wishlist } = useWishlist();
+  const { orders, updateOrderStatus } = useOrders();
   
-  // Extension State
-  const [extendingRental, setExtendingRental] = useState<ActiveRental | null>(null);
-  const [extensionDays, setExtensionDays] = useState<4 | 8>(4);
-  const [extendedDueDates, setExtendedDueDates] = useState<Record<string, string>>({}); 
+  const [currentView, setCurrentView] = useState('overview');
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [verificationModal, setVerificationModal] = useState(false);
 
-  // Search & Filter State
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
+  // Filter products for Partner
+  const myListings = products.filter(p => p.ownerId === currentUser?.id);
+  // Filter orders for Partner: contains items owned by partner
+  const partnerOrders = orders.filter(o => o.items.some(i => i.product.ownerId === currentUser?.id));
+  
+  // User orders
+  const userOrders = orders.filter(o => o.id); // In a real app, we'd filter by userId in Order object
 
-  const newRental = location.state?.newRental;
-
-  // Use the logged-in user's name if available, otherwise fallback to Mock
-  const displayName = user?.name || MOCK_USER.name;
-
-  // Create dynamic dates for mock rentals so the countdown always looks good
-  const today = new Date();
-  const dateIn3Days = new Date(today); dateIn3Days.setDate(today.getDate() + 3);
-  const dateIn5Days = new Date(today); dateIn5Days.setDate(today.getDate() + 5);
-
-  const formatDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-
-  // Combine dynamic new rental with mock active rentals for display
-  const activeRentals: ActiveRental[] = [
-    ...(newRental ? [{
-      id: 'new-rental',
-      product: newRental.product as Product,
-      dueDate: newRental.returnDate,
-      tracking: 'Processing',
-      status: 'New Rental',
-      statusColor: 'text-golden-orange border-golden-orange bg-golden-orange/10'
-    }] : []),
-    ...products.slice(0, 1).map((p, idx) => ({
-      id: `existing-1`,
-      product: p,
-      dueDate: formatDate(dateIn3Days),
-      tracking: '#STY-8829',
-      status: 'Active',
-      statusColor: 'text-green-400 border-green-900 bg-green-900/30'
-    })),
-     ...products.slice(3, 4).map((p, idx) => ({
-      id: `existing-2`,
-      product: p,
-      dueDate: formatDate(dateIn5Days),
-      tracking: '#STY-9941',
-      status: 'Active',
-      statusColor: 'text-green-400 border-green-900 bg-green-900/30'
-    }))
-  ];
-
-  // Apply overrides if any rentals have been extended
-  let displayRentals = activeRentals.map(rental => ({
-      ...rental,
-      dueDate: extendedDueDates[rental.id] || rental.dueDate
-  }));
-
-  // Apply Search and Filters
-  displayRentals = displayRentals.filter(rental => {
-    const matchesSearch = rental.product.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          rental.product.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          rental.tracking.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'All' || 
-                          (statusFilter === 'Active' && rental.status === 'Active') ||
-                          (statusFilter === 'New' && rental.status === 'New Rental');
-    
-    return matchesSearch && matchesStatus;
-  });
-
-  // Form State
-  const [newItem, setNewItem] = useState<Partial<Product>>({
-    name: '',
-    brand: '',
-    category: Category.WOMEN,
-    rentalPrice: 0,
-    retailPrice: 0,
-    description: '',
-    availableSizes: [],
-    images: [], 
-    color: '',
-    occasion: ''
-  });
-  const [sizeInput, setSizeInput] = useState('');
-  const [imageFile, setImageFile] = useState<File | null>(null);
-
-  const handleSidebarClick = (feature: string) => {
-    if (feature === 'Sign Out') {
-      setShowLogoutConfirm(true);
-    } else if (feature === 'List Item') {
-      setCurrentView('list-item');
-    } else if (feature === 'My Orders') {
-      setCurrentView('overview');
-    } else if (feature === 'My Wishlist') {
-      setCurrentView('wishlist');
-    } else if (feature === 'History') {
-      setCurrentView('history');
-    } else {
-      alert(`Stylus Demo: The '${feature}' feature is available in the full production release.`);
-    }
+  // Handle Verification Submission
+  const handleVerificationSubmit = (data: any) => {
+      submitVerification(currentUser!.id, data);
+      setVerificationModal(false);
+      alert("Verification documents submitted successfully. Status: Pending Approval.");
   };
 
   const performLogout = () => {
@@ -182,36 +111,83 @@ export const Dashboard: React.FC = () => {
     navigate('/login');
   };
 
-  const handleAction = (action: string, rental: ActiveRental) => {
-    if (action === 'Extend') {
-        setExtendingRental(rental);
-        setExtensionDays(4); 
-    } else {
-        alert(`Request received: ${action} for ${rental.product.name}.\nA concierge will contact you shortly to coordinate.`);
-    }
+  const handleWithdraw = () => {
+      const amount = prompt("Enter amount to withdraw ($):");
+      if (amount && !isNaN(Number(amount)) && Number(amount) > 0 && Number(amount) <= (currentUser?.walletBalance || 0)) {
+          updateWallet(currentUser!.id, -Number(amount));
+          alert(`Withdrawal of $${amount} processed to linked account.`);
+      } else {
+          alert("Invalid amount or insufficient funds.");
+      }
   };
 
-  const confirmExtension = () => {
-      if (!extendingRental) return;
-
-      const currentDueDate = new Date(extendedDueDates[extendingRental.id] || extendingRental.dueDate);
-      const newDueDate = new Date(currentDueDate);
-      newDueDate.setDate(newDueDate.getDate() + extensionDays);
+  const handleAcceptOrder = (orderId: string) => {
+      // Update Status
+      updateOrderStatus(orderId, 'Accepted');
       
-      const newDateString = newDueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      // Update Rental Counts & Check Auto-Sell
+      const order = orders.find(o => o.id === orderId);
+      if(order) {
+          order.items.forEach(item => {
+              if (item.type === 'rent') {
+                  incrementRentalCount(item.product.id);
+              }
+          });
+      }
 
-      setExtendedDueDates(prev => ({
-          ...prev,
-          [extendingRental.id]: newDateString
-      }));
-
-      setExtendingRental(null);
-      alert("Extension confirmed. Your return date has been updated.");
+      alert("Order accepted. Item rental stats updated.");
   };
 
-  const getExtensionCost = (days: number, basePrice: number) => {
-      if (days === 4) return Math.round(basePrice * 0.5);
-      return Math.round(basePrice * 0.9);
+  const handleRejectOrder = (orderId: string) => {
+      // Simplistic penalty logic
+      if (confirm("Rejecting an order may attract a penalty fee. Continue?")) {
+        updateOrderStatus(orderId, 'Cancelled');
+        updateWallet(currentUser!.id, -50); // Penalty
+        alert("Order rejected. $50 penalty applied.");
+      }
+  };
+
+  // --- Partner Listing Logic ---
+  const [newItem, setNewItem] = useState<Partial<Product>>({
+    name: '', brand: '', category: Category.WOMEN, rentalPrice: 0, retailPrice: 0, buyPrice: 0, isForSale: false, description: '', availableSizes: [], images: [], color: '', occasion: '', autoSellAfterRentals: 0
+  });
+  const [sizeInput, setSizeInput] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+
+  const handleAddItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    if(currentUser?.verificationStatus !== 'Verified') {
+        alert("You must be a verified partner to list items.");
+        return;
+    }
+    const product: Product = {
+        id: Math.random().toString(36).substr(2, 9),
+        name: newItem.name!,
+        brand: newItem.brand!,
+        category: newItem.category as Category,
+        rentalPrice: Number(newItem.rentalPrice),
+        retailPrice: Number(newItem.retailPrice),
+        buyPrice: Number(newItem.buyPrice),
+        isForSale: newItem.isForSale,
+        autoSellAfterRentals: Number(newItem.autoSellAfterRentals) || undefined,
+        ownerId: currentUser.id,
+        description: newItem.description || '',
+        images: newItem.images && newItem.images.length > 0 ? newItem.images : ['https://images.unsplash.com/photo-1549439602-43ebca2327af?q=80&w=1000&auto=format&fit=crop'],
+        availableSizes: sizeInput.split(',').map(s => s.trim()).filter(s => s),
+        color: newItem.color || 'Multi',
+        occasion: newItem.occasion || 'General',
+        reviews: [],
+        rentalCount: 0
+    };
+    addProduct(product);
+    alert("Item listed successfully!");
+    setCurrentView('listings');
+  };
+
+  const handleRemoveItem = (id: string) => {
+    if(confirm("Are you sure you want to remove this item from your store? This cannot be undone.")) {
+      removeProduct(id);
+    }
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -222,544 +198,281 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  const handleAddItem = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newItem.name || !newItem.brand || !newItem.rentalPrice) {
-        alert("Please fill in all required fields.");
-        return;
-    }
-
-    const product: Product = {
-        id: Math.random().toString(36).substr(2, 9),
-        name: newItem.name!,
-        brand: newItem.brand!,
-        category: newItem.category as Category,
-        rentalPrice: Number(newItem.rentalPrice),
-        retailPrice: Number(newItem.retailPrice),
-        description: newItem.description || '',
-        images: newItem.images && newItem.images.length > 0 
-          ? newItem.images 
-          : ['https://images.unsplash.com/photo-1549439602-43ebca2327af?q=80&w=1000&auto=format&fit=crop'],
-        availableSizes: sizeInput.split(',').map(s => s.trim()).filter(s => s),
-        color: newItem.color || 'Multi',
-        occasion: newItem.occasion || 'General',
-        reviews: []
-    };
-
-    addProduct(product);
-    alert("Item listed successfully! It is now available in the collection.");
-    setCurrentView('overview');
-    setNewItem({ name: '', brand: '', category: Category.WOMEN, rentalPrice: 0, retailPrice: 0, description: '', availableSizes: [], images: [], color: '', occasion: '' });
-    setSizeInput('');
-    setImageFile(null);
-  };
+  if (!currentUser) return null;
 
   return (
     <div className="min-h-screen bg-espresso pb-20 animate-fade-in">
       
-      {/* Logout Confirmation Modal */}
+      {/* Verification Modal */}
+      {verificationModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4">
+              <div className="max-w-md w-full relative">
+                  <button onClick={() => setVerificationModal(false)} className="absolute -top-10 right-0 text-cream hover:text-golden-orange"><X/></button>
+                  {currentUser.role === 'User' ? (
+                      <UserVerificationForm onSubmit={handleVerificationSubmit} />
+                  ) : (
+                      <PartnerVerificationForm onSubmit={handleVerificationSubmit} />
+                  )}
+              </div>
+          </div>
+      )}
+
+      {/* Logout Modal */}
       {showLogoutConfirm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setShowLogoutConfirm(false)}>
-            <div className="bg-[#1f0c05] border border-golden-orange w-full max-w-md p-8 text-center relative shadow-[0_0_50px_rgba(0,0,0,0.8)]" onClick={e => e.stopPropagation()}>
-                <Diamond size={32} className="mx-auto text-golden-orange mb-4" />
+            <div className="bg-[#1f0c05] border border-golden-orange w-full max-w-md p-8 text-center relative" onClick={e => e.stopPropagation()}>
                 <h2 className="font-serif text-2xl text-cream mb-2">Sign Out</h2>
-                <p className="text-cream/60 mb-8 font-light text-sm leading-relaxed">Are you sure you wish to depart from the Stylus inner circle?</p>
-                <div className="flex gap-4 justify-center">
-                    <Button variant="outline" onClick={() => setShowLogoutConfirm(false)} className="w-32">Cancel</Button>
-                    <Button onClick={performLogout} className="w-32">Confirm</Button>
+                <div className="flex gap-4 justify-center mt-6">
+                    <Button variant="outline" onClick={() => setShowLogoutConfirm(false)}>Cancel</Button>
+                    <Button onClick={performLogout}>Confirm</Button>
                 </div>
             </div>
         </div>
       )}
 
-      {/* Extend Rental Modal */}
-      {extendingRental && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setExtendingRental(null)}>
-              <div className="bg-[#1f0c05] border border-golden-orange w-full max-w-lg relative shadow-[0_0_50px_rgba(0,0,0,0.8)] flex flex-col" onClick={e => e.stopPropagation()}>
-                  
-                  {/* Modal Header */}
-                  <div className="flex justify-between items-start p-6 border-b border-white/10 bg-white/5">
-                      <div>
-                          <p className="text-xs text-golden-orange uppercase tracking-widest mb-1">Modify Rental</p>
-                          <h2 className="font-serif text-2xl text-cream">Extend Your Style</h2>
-                      </div>
-                      <button onClick={() => setExtendingRental(null)} className="text-cream/50 hover:text-golden-orange transition-colors">
-                          <X size={24} />
-                      </button>
-                  </div>
-
-                  {/* Modal Body */}
-                  <div className="p-6">
-                      <div className="flex items-center gap-4 mb-6">
-                          <img src={extendingRental.product.images[0]} alt="Product" className="w-16 h-20 object-cover border border-white/10" />
-                          <div>
-                              <p className="text-sm font-bold text-cream">{extendingRental.product.name}</p>
-                              <p className="text-xs text-cream/50">Current Due Date: <span className="text-golden-orange">{extendedDueDates[extendingRental.id] || extendingRental.dueDate}</span></p>
-                          </div>
-                      </div>
-
-                      <h3 className="text-xs text-cream/60 uppercase tracking-widest mb-4">Select Extension Duration</h3>
-                      
-                      <div className="grid grid-cols-2 gap-4 mb-8">
-                          {[4, 8].map((days) => {
-                              const cost = getExtensionCost(days, extendingRental.product.rentalPrice);
-                              const isSelected = extensionDays === days;
-                              return (
-                                  <button
-                                      key={days}
-                                      onClick={() => setExtensionDays(days as 4 | 8)}
-                                      className={`p-4 border text-center transition-all duration-300 relative group ${
-                                          isSelected 
-                                          ? 'bg-golden-orange/10 border-golden-orange' 
-                                          : 'bg-white/5 border-white/10 hover:border-golden-orange/50'
-                                      }`}
-                                  >
-                                      {isSelected && <div className="absolute top-2 right-2 text-golden-orange"><Check size={14} /></div>}
-                                      <p className="font-serif text-lg text-cream mb-1">+{days} Days</p>
-                                      <p className={`text-sm ${isSelected ? 'text-golden-orange font-bold' : 'text-cream/50'}`}>${cost}</p>
-                                  </button>
-                              );
-                          })}
-                      </div>
-
-                      <div className="bg-white/5 p-4 rounded mb-6">
-                          <div className="flex justify-between mb-2">
-                              <span className="text-sm text-cream/70">Extension Fee</span>
-                              <span className="text-sm text-cream">${getExtensionCost(extensionDays, extendingRental.product.rentalPrice)}</span>
-                          </div>
-                          <div className="flex justify-between pt-2 border-t border-white/10">
-                              <span className="text-sm font-bold text-golden-orange uppercase tracking-wide">Total Charge</span>
-                              <span className="text-lg font-serif text-golden-orange">${getExtensionCost(extensionDays, extendingRental.product.rentalPrice)}</span>
-                          </div>
-                      </div>
-
-                      <div className="flex gap-4">
-                          <Button variant="outline" fullWidth onClick={() => setExtendingRental(null)}>Cancel</Button>
-                          <Button fullWidth onClick={confirmExtension}>Confirm & Pay</Button>
-                      </div>
-                  </div>
-              </div>
-          </div>
-      )}
-
-      {/* Header Pattern */}
+      {/* Header */}
       <div className="h-48 bg-[#1a0a04] border-b border-white/5 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#e1af4d 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 -mt-20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-20">
         <div className="flex flex-col md:flex-row gap-8">
           
-          {/* Sidebar / Profile Card */}
-          <div className="w-full md:w-1/3">
-            <div className="bg-[#1f0c05] border border-golden-orange/20 p-8 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-4 opacity-10">
-                <Diamond size={100} className="text-golden-orange" />
-              </div>
-              
-              <div className="relative z-10 text-center">
-                <div className="w-24 h-24 bg-golden-orange rounded-full mx-auto mb-4 flex items-center justify-center text-espresso text-3xl font-serif font-bold border-4 border-[#1f0c05] shadow-lg">
-                  {displayName.charAt(0)}
-                </div>
-                <h2 className="font-serif text-2xl text-cream mb-1">{displayName}</h2>
-                <p className="text-golden-orange text-sm uppercase tracking-widest mb-6">{MOCK_USER.subscriptionTier} Member</p>
-                
-                <div className="grid grid-cols-2 gap-4 border-t border-white/10 pt-6">
-                  <div className="text-center">
-                    <p className="text-2xl text-white font-bold">{activeRentals.length}</p>
-                    <p className="text-xs text-white/40 uppercase">Active Rentals</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl text-white font-bold">{12 + orders.length}</p>
-                    <p className="text-xs text-white/40 uppercase">Past Looks</p>
-                  </div>
-                </div>
-              </div>
+          {/* Sidebar */}
+          <div className="w-full md:w-1/4">
+            <div className="bg-[#1f0c05] border border-golden-orange/20 p-6 shadow-2xl relative text-center">
+               <div className="w-20 h-20 bg-golden-orange rounded-full mx-auto mb-4 flex items-center justify-center text-espresso text-2xl font-serif font-bold border-4 border-[#1f0c05]">
+                  {currentUser.name.charAt(0)}
+               </div>
+               <h2 className="font-serif text-xl text-cream">{currentUser.name}</h2>
+               <div className="flex justify-center items-center gap-2 mt-2">
+                   <span className={`text-[10px] px-2 py-0.5 uppercase tracking-widest border rounded ${currentUser.role === 'Partner' ? 'border-blue-400 text-blue-400' : 'border-golden-orange text-golden-orange'}`}>
+                       {currentUser.role}
+                   </span>
+                   <span className={`text-[10px] px-2 py-0.5 uppercase tracking-widest border rounded ${currentUser.verificationStatus === 'Verified' ? 'border-green-400 text-green-400' : 'border-red-400 text-red-400'}`}>
+                       {currentUser.verificationStatus}
+                   </span>
+               </div>
+               
+               {/* Wallet Preview */}
+               <div className="mt-6 pt-4 border-t border-white/10">
+                   <p className="text-xs uppercase text-cream/40">Wallet Balance</p>
+                   <p className="text-2xl font-serif text-golden-orange">${currentUser.walletBalance}</p>
+                   {currentUser.role === 'Partner' && (
+                       <button onClick={handleWithdraw} className="text-xs text-cream underline mt-1 hover:text-golden-orange">Withdraw Funds</button>
+                   )}
+               </div>
+
+               {currentUser.verificationStatus !== 'Verified' && currentUser.verificationStatus !== 'Pending' && (
+                   <button onClick={() => setVerificationModal(true)} className="w-full mt-4 bg-red-500/10 text-red-400 border border-red-500/50 py-2 text-xs uppercase font-bold hover:bg-red-500 hover:text-white transition-colors">
+                       {currentUser.role === 'Partner' ? 'Complete Business Verification' : 'Verify Identity'}
+                   </button>
+               )}
             </div>
 
-            <div className="mt-6 space-y-2">
-              <button onClick={() => handleSidebarClick('My Orders')} className={`w-full flex items-center space-x-3 px-6 py-4 border border-transparent transition-all group ${currentView === 'overview' ? 'bg-golden-orange text-espresso font-bold' : 'bg-white/5 text-cream hover:border-golden-orange/50'}`}>
-                <Package size={20} className={`${currentView === 'overview' ? 'text-espresso' : 'text-golden-orange'} group-hover:scale-110 transition-transform`} />
-                <span className="font-serif tracking-wide">Active Rentals</span>
-              </button>
-              
-              <button onClick={() => handleSidebarClick('History')} className={`w-full flex items-center space-x-3 px-6 py-4 border border-transparent transition-all group ${currentView === 'history' ? 'bg-golden-orange text-espresso font-bold' : 'bg-white/5 text-cream hover:border-golden-orange/50'}`}>
-                <History size={20} className={`${currentView === 'history' ? 'text-espresso' : 'text-golden-orange'} group-hover:scale-110 transition-transform`} />
-                <span className="font-serif tracking-wide">Order History</span>
-              </button>
-
-              <button onClick={() => handleSidebarClick('My Wishlist')} className={`w-full flex items-center space-x-3 px-6 py-4 border border-transparent transition-all group ${currentView === 'wishlist' ? 'bg-golden-orange text-espresso font-bold' : 'bg-white/5 text-cream hover:border-golden-orange/50'}`}>
-                <Heart size={20} className={`${currentView === 'wishlist' ? 'text-espresso' : 'text-golden-orange'} group-hover:scale-110 transition-transform`} />
-                <span className="font-serif tracking-wide">My Wishlist</span>
-              </button>
-
-               <button onClick={() => handleSidebarClick('List Item')} className={`w-full flex items-center space-x-3 px-6 py-4 border border-transparent transition-all group ${currentView === 'list-item' ? 'bg-golden-orange text-espresso font-bold' : 'bg-white/5 text-cream hover:border-golden-orange/50'}`}>
-                <Plus size={20} className={`${currentView === 'list-item' ? 'text-espresso' : 'text-golden-orange'} group-hover:scale-110 transition-transform`} />
-                <span className="font-serif tracking-wide">List New Item</span>
-              </button>
-              <button onClick={() => handleSidebarClick('Payment Methods')} className="w-full flex items-center space-x-3 px-6 py-4 bg-white/5 border border-transparent hover:border-golden-orange/50 text-cream transition-all group">
-                <CreditCard size={20} className="text-golden-orange group-hover:scale-110 transition-transform" />
-                <span className="font-serif tracking-wide">Payment Methods</span>
-              </button>
-              <button onClick={() => handleSidebarClick('Settings')} className="w-full flex items-center space-x-3 px-6 py-4 bg-white/5 border border-transparent hover:border-golden-orange/50 text-cream transition-all group">
-                <Settings size={20} className="text-golden-orange group-hover:scale-110 transition-transform" />
-                <span className="font-serif tracking-wide">Settings</span>
-              </button>
-              <button onClick={() => handleSidebarClick('Sign Out')} className="w-full flex items-center space-x-3 px-6 py-4 bg-white/5 border border-transparent hover:border-red-500/50 text-cream hover:text-red-400 transition-all group">
-                <LogOut size={20} className="group-hover:scale-110 transition-transform" />
-                <span className="font-serif tracking-wide">Sign Out</span>
-              </button>
-            </div>
+            <nav className="mt-4 space-y-2">
+              {currentUser.role === 'Partner' ? (
+                  <>
+                    <button onClick={() => setCurrentView('overview')} className={`w-full text-left px-4 py-3 border-l-2 transition-all ${currentView === 'overview' ? 'border-golden-orange bg-white/5 text-golden-orange' : 'border-transparent text-cream hover:bg-white/5'}`}>Dashboard</button>
+                    <button onClick={() => setCurrentView('listings')} className={`w-full text-left px-4 py-3 border-l-2 transition-all ${currentView === 'listings' ? 'border-golden-orange bg-white/5 text-golden-orange' : 'border-transparent text-cream hover:bg-white/5'}`}>My Listings</button>
+                    <button onClick={() => setCurrentView('add-item')} className={`w-full text-left px-4 py-3 border-l-2 transition-all ${currentView === 'add-item' ? 'border-golden-orange bg-white/5 text-golden-orange' : 'border-transparent text-cream hover:bg-white/5'}`}>Add New Item</button>
+                    <button onClick={() => setCurrentView('orders')} className={`w-full text-left px-4 py-3 border-l-2 transition-all ${currentView === 'orders' ? 'border-golden-orange bg-white/5 text-golden-orange' : 'border-transparent text-cream hover:bg-white/5'}`}>Orders ({partnerOrders.length})</button>
+                  </>
+              ) : (
+                  <>
+                    <button onClick={() => setCurrentView('overview')} className={`w-full text-left px-4 py-3 border-l-2 transition-all ${currentView === 'overview' ? 'border-golden-orange bg-white/5 text-golden-orange' : 'border-transparent text-cream hover:bg-white/5'}`}>Active Rentals</button>
+                    <button onClick={() => setCurrentView('wishlist')} className={`w-full text-left px-4 py-3 border-l-2 transition-all ${currentView === 'wishlist' ? 'border-golden-orange bg-white/5 text-golden-orange' : 'border-transparent text-cream hover:bg-white/5'}`}>Wishlist</button>
+                  </>
+              )}
+               <button onClick={() => setShowLogoutConfirm(true)} className="w-full text-left px-4 py-3 text-red-400 hover:bg-white/5 transition-colors">Sign Out</button>
+            </nav>
           </div>
 
-          {/* Main Content Area */}
-          <div className="w-full md:w-2/3">
-            
-            {currentView === 'overview' && (
-              <>
-                <div className="flex flex-col sm:flex-row justify-between items-end mb-6 border-b border-white/10 pb-4">
-                   <h3 className="font-serif text-2xl text-cream border-l-4 border-golden-orange pl-4 mb-4 sm:mb-0">Active Rentals</h3>
-                   
-                   {/* Search and Filter */}
-                   <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-                      <div className="relative">
-                         <input 
-                            type="text" 
-                            placeholder="Search orders..." 
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="bg-black/20 border border-white/10 text-cream text-sm pl-8 pr-3 py-2 focus:outline-none focus:border-golden-orange w-full sm:w-48"
-                         />
-                         <Search size={14} className="absolute left-2.5 top-2.5 text-cream/40" />
-                      </div>
-                      <div className="relative">
-                         <select 
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            className="bg-black/20 border border-white/10 text-cream text-sm pl-8 pr-3 py-2 focus:outline-none focus:border-golden-orange appearance-none w-full sm:w-32"
-                         >
-                            <option value="All">All Status</option>
-                            <option value="Active">Active</option>
-                            <option value="New">New</option>
-                         </select>
-                         <Filter size={14} className="absolute left-2.5 top-2.5 text-cream/40" />
-                      </div>
-                   </div>
-                </div>
-                
-                <div className="space-y-6">
-                  {displayRentals.length > 0 ? displayRentals.map((rental) => (
-                    <div key={rental.id} className="bg-white/5 border border-white/5 p-6 flex flex-col sm:flex-row gap-6 hover:border-golden-orange/30 transition-colors group">
-                      <div className="w-full sm:w-32 h-40 bg-black/20 flex-shrink-0 relative overflow-hidden">
-                        <img src={rental.product.images[0]} alt={rental.product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                      </div>
-                      <div className="flex-grow">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <p className="text-xs text-golden-orange uppercase tracking-wide">{rental.product.brand}</p>
-                            <h4 className="font-serif text-xl text-cream">{rental.product.name}</h4>
-                          </div>
-                          <span className={`text-xs px-2 py-1 uppercase tracking-wide border ${rental.statusColor}`}>
-                            {rental.status}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center text-sm text-cream/60 mt-4 space-x-6">
-                          <div className="flex items-center">
-                            <Calendar size={16} className="mr-2 text-golden-orange" />
-                            <span>Due: {rental.dueDate}</span>
-                          </div>
-                          <div className="flex items-center">
-                            <Package size={16} className="mr-2 text-golden-orange" />
-                            <span>Tracking: {rental.tracking}</span>
-                          </div>
-                        </div>
-
-                        {/* Countdown Timer */}
-                        <RentalCountdown dueDate={rental.dueDate} />
-
-                        <div className="mt-6 flex space-x-4">
-                          <button 
-                            onClick={() => handleAction('Return', rental)}
-                            className="text-xs uppercase font-bold text-cream hover:text-golden-orange transition-colors border-b border-transparent hover:border-golden-orange pb-1"
-                          >
-                            Return Item
-                          </button>
-                          <button 
-                            onClick={() => handleAction('Extend', rental)}
-                            className="text-xs uppercase font-bold text-cream hover:text-golden-orange transition-colors border-b border-transparent hover:border-golden-orange pb-1"
-                          >
-                            Extend Rental
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )) : (
-                    <div className="text-center py-12 text-cream/50 bg-white/5 border border-white/5 border-dashed">
-                       <Package size={48} className="mx-auto mb-4 opacity-50" />
-                       <p>No rentals found matching your criteria.</p>
-                       <button onClick={() => { setSearchTerm(''); setStatusFilter('All'); }} className="text-golden-orange underline text-sm mt-2">Clear filters</button>
-                    </div>
-                  )}
-                </div>
-
-                <h3 className="font-serif text-2xl text-cream mb-6 mt-12 border-l-4 border-golden-orange pl-4">Recommended For You</h3>
-                 <div className="bg-[#1f0c05] p-8 border border-white/10 text-center relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-golden-orange/5 rounded-full blur-2xl -mr-16 -mt-16"></div>
-                    <p className="text-cream/70 mb-6 italic">Based on your rental history, our AI stylist suggests:</p>
-                    
-                    {products.length > 2 && (
-                        <div className="flex flex-col items-center">
-                          <div className="w-48 h-64 overflow-hidden mb-4 border border-golden-orange/20 shadow-lg">
-                            <img src={products[2].images[0]} alt="Suggestion" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                          </div>
-                          <p className="text-golden-orange text-xs uppercase tracking-widest mb-1">{products[2].brand}</p>
-                          <p className="font-serif text-xl text-cream mb-4">{products[2].name}</p>
-                          <button onClick={() => navigate(`/product/${products[2].id}`)} className="text-sm border border-cream/30 px-6 py-2 hover:bg-golden-orange hover:text-espresso hover:border-golden-orange transition-all uppercase tracking-widest">
-                            View Details
-                          </button>
-                        </div>
-                    )}
+          {/* Main Content */}
+          <div className="w-full md:w-3/4">
+             {/* --- PARTNER VIEWS --- */}
+             {currentUser.role === 'Partner' && currentView === 'overview' && (
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                     <div className="bg-white/5 p-6 border border-white/10">
+                         <h3 className="text-cream/50 uppercase text-xs">Total Earnings</h3>
+                         <p className="text-3xl text-golden-orange font-serif">${currentUser.walletBalance}</p>
+                     </div>
+                     <div className="bg-white/5 p-6 border border-white/10">
+                         <h3 className="text-cream/50 uppercase text-xs">Active Listings</h3>
+                         <p className="text-3xl text-cream font-serif">{myListings.length}</p>
+                     </div>
+                     <div className="bg-white/5 p-6 border border-white/10">
+                         <h3 className="text-cream/50 uppercase text-xs">Pending Orders</h3>
+                         <p className="text-3xl text-cream font-serif">{partnerOrders.filter(o => o.status === 'Pending Approval').length}</p>
+                     </div>
+                     <div className="bg-white/5 p-6 border border-white/10">
+                         <h3 className="text-cream/50 uppercase text-xs">Verification</h3>
+                         <p className={`text-xl font-serif ${currentUser.verificationStatus === 'Verified' ? 'text-green-400' : 'text-red-400'}`}>{currentUser.verificationStatus}</p>
+                     </div>
                  </div>
-              </>
-            )}
+             )}
 
-            {currentView === 'history' && (
-                <div className="animate-fade-in">
-                    <h3 className="font-serif text-2xl text-cream mb-6 border-l-4 border-golden-orange pl-4">Order History</h3>
-                    {orders.length === 0 ? (
-                         <div className="bg-white/5 border border-white/10 p-12 text-center rounded-sm">
-                            <History size={48} className="text-cream/20 mx-auto mb-4" />
-                            <p className="text-cream/60 font-light mb-6">You haven't completed any rentals yet.</p>
-                            <Link to="/catalog">
-                                <Button variant="outline">Explore Collection</Button>
-                            </Link>
+             {currentUser.role === 'Partner' && currentView === 'add-item' && (
+                 <div className="bg-white/5 border border-white/10 p-8">
+                     <h3 className="font-serif text-2xl text-cream mb-6">List New Attire</h3>
+                     {currentUser.verificationStatus !== 'Verified' ? (
+                         <div className="bg-red-500/10 border border-red-500/50 p-4 text-red-400 flex items-center gap-3">
+                             <Ban /> <span>You must complete business verification to list items.</span>
+                             <button onClick={() => setVerificationModal(true)} className="underline font-bold">Verify Now</button>
                          </div>
-                    ) : (
-                        <div className="space-y-6">
-                            {orders.map(order => (
-                                <div key={order.id} className="bg-white/5 border border-white/10 p-6 rounded-sm">
-                                    <div className="flex justify-between items-center mb-4 pb-4 border-b border-white/5">
-                                        <div>
-                                            <p className="text-sm font-bold text-cream">{order.id}</p>
-                                            <p className="text-xs text-cream/50">{order.date}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-sm font-serif text-golden-orange">${order.total}</p>
-                                            <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 bg-green-500/10 text-green-400 border border-green-500/20 rounded">{order.status}</span>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-4">
-                                        {order.items.map((item, idx) => (
-                                            <div key={idx} className="flex gap-4">
-                                                <div className="w-16 h-20 bg-black/20 flex-shrink-0">
-                                                    <img src={item.product.images[0]} alt={item.product.name} className="w-full h-full object-cover" />
-                                                </div>
-                                                <div className="flex-grow">
-                                                    <p className="text-xs text-golden-orange uppercase tracking-wide">{item.product.brand}</p>
-                                                    <p className="text-sm text-cream">{item.product.name}</p>
-                                                    <p className="text-xs text-cream/50 mt-1">Size: {item.selectedSize} • {item.duration} Days</p>
-                                                </div>
-                                                <div className="self-center">
-                                                    <Link to={`/product/${item.product.id}`} className="text-xs text-cream/40 hover:text-golden-orange flex items-center gap-1 transition-colors">
-                                                        Rent Again <ChevronRight size={12} />
-                                                    </Link>
-                                                </div>
-                                            </div>
-                                        ))}
+                     ) : (
+                         <form onSubmit={handleAddItem} className="space-y-6">
+                            <div className="grid grid-cols-2 gap-6">
+                                <div>
+                                    <label className="text-xs text-cream/50 mb-1 block">Item Name</label>
+                                    <input required placeholder="e.g. Vintage Chanel Suit" value={newItem.name} onChange={e => setNewItem({...newItem, name: e.target.value})} className="w-full bg-black/20 border border-white/10 p-3 text-cream focus:border-golden-orange outline-none" />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-cream/50 mb-1 block">Brand</label>
+                                    <input required placeholder="e.g. Chanel" value={newItem.brand} onChange={e => setNewItem({...newItem, brand: e.target.value})} className="w-full bg-black/20 border border-white/10 p-3 text-cream focus:border-golden-orange outline-none" />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-6">
+                                <div>
+                                    <label className="text-xs text-cream/50 mb-1 block">Rent Price ($)</label>
+                                    <input required type="number" placeholder="0.00" value={newItem.rentalPrice} onChange={e => setNewItem({...newItem, rentalPrice: Number(e.target.value)})} className="w-full bg-black/20 border border-white/10 p-3 text-cream focus:border-golden-orange outline-none" />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-cream/50 mb-1 block">Buy Price ($)</label>
+                                    <input type="number" placeholder="0.00 (Optional)" value={newItem.buyPrice} onChange={e => setNewItem({...newItem, buyPrice: Number(e.target.value)})} className="w-full bg-black/20 border border-white/10 p-3 text-cream focus:border-golden-orange outline-none" />
+                                </div>
+                                <div className="flex flex-col justify-end pb-3">
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={newItem.isForSale} onChange={e => setNewItem({...newItem, isForSale: e.target.checked})} className="w-5 h-5 accent-golden-orange" />
+                                        <label className="text-cream text-sm">Available for Sale</label>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
+                            </div>
+                            
+                            <div>
+                                <label className="text-xs text-cream/50 mb-1 block">Sizes (comma separated)</label>
+                                <input required placeholder="S, M, L" value={sizeInput} onChange={e => setSizeInput(e.target.value)} className="w-full bg-black/20 border border-white/10 p-3 text-cream focus:border-golden-orange outline-none" />
+                            </div>
 
-            {currentView === 'wishlist' && (
-                <div className="animate-fade-in">
-                    <h3 className="font-serif text-2xl text-cream mb-6 border-l-4 border-golden-orange pl-4">My Wishlist</h3>
-                    {wishlist.length === 0 ? (
-                         <div className="bg-white/5 border border-white/10 p-12 text-center rounded-sm">
-                            <Heart size={48} className="text-cream/20 mx-auto mb-4" />
-                            <p className="text-cream/60 font-light mb-6">Your wishlist is currently empty.</p>
-                            <Link to="/catalog">
-                                <Button variant="outline">Explore Collection</Button>
-                            </Link>
-                         </div>
-                    ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                            {wishlist.map(product => (
-                                <div key={product.id} className="group relative bg-white/5 border border-white/10 flex flex-col h-full hover:border-golden-orange/50 transition-colors">
-                                    <div className="relative h-64 w-full overflow-hidden">
-                                        <img src={product.images[0]} alt={product.name} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                        <div className="absolute inset-0 bg-black/10 group-hover:bg-black/30 transition-colors"></div>
-                                        <button 
-                                            onClick={(e) => { e.preventDefault(); removeFromWishlist(product.id); }}
-                                            className="absolute top-2 right-2 p-2 bg-black/40 text-cream hover:text-red-400 rounded-full transition-colors z-10"
-                                            title="Remove from Wishlist"
-                                        >
-                                            <X size={16} />
-                                        </button>
-                                        <Link to={`/product/${product.id}`} className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-0">
-                                            <Button variant="secondary" className="shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-transform">Rent Now</Button>
-                                        </Link>
-                                    </div>
-                                    <div className="p-4 flex flex-col flex-grow">
-                                        <p className="text-xs text-golden-orange uppercase tracking-wide mb-1">{product.brand}</p>
-                                        <h4 className="font-serif text-lg text-cream mb-2">{product.name}</h4>
-                                        <div className="mt-auto pt-4 border-t border-white/5 flex justify-between items-center">
-                                            <span className="text-cream font-medium">${product.rentalPrice} <span className="text-xs text-cream/50">/ 4 days</span></span>
-                                        </div>
-                                    </div>
+                            <div className="grid grid-cols-2 gap-6">
+                                <div>
+                                    <label className="text-xs text-cream/50 mb-1 block">Description</label>
+                                    <textarea required rows={4} value={newItem.description} onChange={e => setNewItem({...newItem, description: e.target.value})} className="w-full bg-black/20 border border-white/10 p-3 text-cream focus:border-golden-orange outline-none" />
                                 </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {currentView === 'list-item' && (
-              <div className="animate-fade-in">
-                 <h3 className="font-serif text-2xl text-cream mb-6 border-l-4 border-golden-orange pl-4">List New Item</h3>
-                 <div className="bg-white/5 border border-white/10 p-8 rounded-sm">
-                    <form onSubmit={handleAddItem} className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-xs uppercase tracking-widest text-cream/60 mb-2">Item Name</label>
-                                <input 
-                                    type="text" 
-                                    required
-                                    value={newItem.name}
-                                    onChange={(e) => setNewItem({...newItem, name: e.target.value})}
-                                    className="w-full bg-black/20 border border-white/10 text-cream px-4 py-3 focus:outline-none focus:border-golden-orange transition-colors"
-                                    placeholder="e.g. Vintage Silk Gown"
-                                />
+                                <div>
+                                    <label className="text-xs text-cream/50 mb-1 block">Auto-sell Threshold (Rentals)</label>
+                                    <p className="text-[10px] text-cream/40 mb-2">Automatically convert to 'For Sale' after this many rentals.</p>
+                                    <input type="number" placeholder="e.g. 10" value={newItem.autoSellAfterRentals || ''} onChange={e => setNewItem({...newItem, autoSellAfterRentals: Number(e.target.value)})} className="w-full bg-black/20 border border-white/10 p-3 text-cream focus:border-golden-orange outline-none" />
+                                </div>
                             </div>
-                            <div>
-                                <label className="block text-xs uppercase tracking-widest text-cream/60 mb-2">Brand / Designer</label>
-                                <input 
-                                    type="text" 
-                                    required
-                                    value={newItem.brand}
-                                    onChange={(e) => setNewItem({...newItem, brand: e.target.value})}
-                                    className="w-full bg-black/20 border border-white/10 text-cream px-4 py-3 focus:outline-none focus:border-golden-orange transition-colors"
-                                    placeholder="e.g. Dior"
-                                />
-                            </div>
-                        </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div>
-                                <label className="block text-xs uppercase tracking-widest text-cream/60 mb-2">Category</label>
-                                <select 
-                                    value={newItem.category}
-                                    onChange={(e) => setNewItem({...newItem, category: e.target.value as Category})}
-                                    className="w-full bg-black/20 border border-white/10 text-cream px-4 py-3 focus:outline-none focus:border-golden-orange transition-colors"
-                                >
-                                    {Object.values(Category).map(cat => (
-                                        <option key={cat} value={cat}>{cat}</option>
-                                    ))}
-                                </select>
+                            <div className="border-2 border-dashed border-white/10 p-6 text-center cursor-pointer">
+                                <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" id="img-upload" />
+                                <label htmlFor="img-upload" className="cursor-pointer text-cream/60">
+                                    {newItem.images && newItem.images.length > 0 ? "Image Selected" : "Click to Upload Image"}
+                                </label>
                             </div>
-                            <div>
-                                <label className="block text-xs uppercase tracking-widest text-cream/60 mb-2">Color</label>
-                                <input 
-                                    type="text" 
-                                    value={newItem.color}
-                                    onChange={(e) => setNewItem({...newItem, color: e.target.value})}
-                                    className="w-full bg-black/20 border border-white/10 text-cream px-4 py-3 focus:outline-none focus:border-golden-orange transition-colors"
-                                    placeholder="e.g. Black"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs uppercase tracking-widest text-cream/60 mb-2">Occasion</label>
-                                <input 
-                                    type="text" 
-                                    value={newItem.occasion}
-                                    onChange={(e) => setNewItem({...newItem, occasion: e.target.value})}
-                                    className="w-full bg-black/20 border border-white/10 text-cream px-4 py-3 focus:outline-none focus:border-golden-orange transition-colors"
-                                    placeholder="e.g. Gala"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-xs uppercase tracking-widest text-cream/60 mb-2">Rental Price ($)</label>
-                                <input 
-                                    type="number" 
-                                    required
-                                    value={newItem.rentalPrice}
-                                    onChange={(e) => setNewItem({...newItem, rentalPrice: Number(e.target.value)})}
-                                    className="w-full bg-black/20 border border-white/10 text-cream px-4 py-3 focus:outline-none focus:border-golden-orange transition-colors"
-                                />
-                            </div>
-                             <div>
-                                <label className="block text-xs uppercase tracking-widest text-cream/60 mb-2">Retail Price ($)</label>
-                                <input 
-                                    type="number" 
-                                    required
-                                    value={newItem.retailPrice}
-                                    onChange={(e) => setNewItem({...newItem, retailPrice: Number(e.target.value)})}
-                                    className="w-full bg-black/20 border border-white/10 text-cream px-4 py-3 focus:outline-none focus:border-golden-orange transition-colors"
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-xs uppercase tracking-widest text-cream/60 mb-2">Available Sizes (Comma Separated)</label>
-                             <input 
-                                    type="text" 
-                                    value={sizeInput}
-                                    onChange={(e) => setSizeInput(e.target.value)}
-                                    className="w-full bg-black/20 border border-white/10 text-cream px-4 py-3 focus:outline-none focus:border-golden-orange transition-colors"
-                                    placeholder="e.g. S, M, L"
-                                />
-                        </div>
-
-                         <div>
-                            <label className="block text-xs uppercase tracking-widest text-cream/60 mb-2">Description</label>
-                            <textarea 
-                                rows={4}
-                                value={newItem.description}
-                                onChange={(e) => setNewItem({...newItem, description: e.target.value})}
-                                className="w-full bg-black/20 border border-white/10 text-cream px-4 py-3 focus:outline-none focus:border-golden-orange transition-colors"
-                                placeholder="Describe the item's condition, material, and fit..."
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-xs uppercase tracking-widest text-cream/60 mb-2">Upload Image</label>
-                            <div className="relative border-2 border-dashed border-white/10 bg-black/20 p-8 text-center hover:border-golden-orange transition-colors cursor-pointer group">
-                                <input 
-                                    type="file" 
-                                    accept="image/*"
-                                    onChange={handleImageUpload}
-                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                />
-                                {newItem.images && newItem.images.length > 0 ? (
-                                    <div className="flex flex-col items-center">
-                                        <img src={newItem.images[0]} alt="Preview" className="h-32 object-contain mb-2" />
-                                        <span className="text-xs text-green-400">Image Loaded</span>
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col items-center text-cream/50 group-hover:text-golden-orange">
-                                        <Upload className="mb-2" />
-                                        <span className="text-xs uppercase tracking-wide">Click to upload photo</span>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="pt-4">
-                            <Button fullWidth type="submit">List Item</Button>
-                        </div>
-
-                    </form>
+                            <Button fullWidth type="submit">Publish Listing</Button>
+                         </form>
+                     )}
                  </div>
-              </div>
-            )}
+             )}
 
+             {currentUser.role === 'Partner' && currentView === 'listings' && (
+                 <div className="space-y-4">
+                     <h3 className="font-serif text-2xl text-cream mb-6">My Inventory</h3>
+                     {myListings.length === 0 ? <p className="text-cream/50">No items listed.</p> : myListings.map(item => (
+                         <div key={item.id} className="bg-white/5 p-4 flex gap-4 border border-white/10">
+                             <img src={item.images[0]} className="w-24 h-32 object-cover" />
+                             <div className="flex-grow">
+                                 <h4 className="text-cream font-bold text-lg">{item.name}</h4>
+                                 <div className="flex flex-wrap gap-4 text-sm text-cream/70 mt-1">
+                                     <span>Rent: ${item.rentalPrice}</span>
+                                     {item.isForSale && <span>Buy: ${item.buyPrice}</span>}
+                                 </div>
+                                 <div className="flex items-center gap-4 mt-2">
+                                    <span className="text-xs text-cream/50 bg-black/20 px-2 py-1 rounded">Rentals: {item.rentalCount || 0}</span>
+                                    {item.autoSellAfterRentals && <span className="text-xs text-golden-orange bg-golden-orange/10 px-2 py-1 rounded border border-golden-orange/30">Auto-sell at: {item.autoSellAfterRentals}</span>}
+                                 </div>
+                                 <div className="flex gap-2 mt-4">
+                                     <button className="text-xs border border-white/20 px-3 py-1 text-cream hover:border-golden-orange">Edit</button>
+                                     <button onClick={() => handleRemoveItem(item.id)} className="text-xs border border-red-500/20 px-3 py-1 text-red-400 hover:bg-red-500/10 flex items-center gap-1"><Trash2 size={12}/> Remove</button>
+                                 </div>
+                             </div>
+                         </div>
+                     ))}
+                 </div>
+             )}
+
+            {currentUser.role === 'Partner' && currentView === 'orders' && (
+                 <div className="space-y-4">
+                     <h3 className="font-serif text-2xl text-cream mb-6">Incoming Orders</h3>
+                     {partnerOrders.length === 0 ? <p className="text-cream/50">No orders yet.</p> : partnerOrders.map(order => (
+                         <div key={order.id} className="bg-white/5 p-6 border border-white/10">
+                             <div className="flex justify-between items-start mb-4">
+                                 <div>
+                                     <p className="text-xs text-cream/40 uppercase">Order ID: {order.id}</p>
+                                     <p className="text-cream font-bold">{order.date}</p>
+                                 </div>
+                                 <span className={`text-xs px-2 py-1 border rounded ${order.status === 'Pending Approval' ? 'border-yellow-500 text-yellow-500' : 'border-white/20 text-cream'}`}>{order.status}</span>
+                             </div>
+                             {order.items.map((item, idx) => (
+                                 <div key={idx} className="flex gap-4 mb-4 bg-black/20 p-2">
+                                     <img src={item.product.images[0]} className="w-12 h-16 object-cover" />
+                                     <div>
+                                         <p className="text-cream text-sm">{item.product.name}</p>
+                                         <p className="text-xs text-golden-orange">{item.type === 'buy' ? 'Purchase' : `Rental (${item.duration} days)`}</p>
+                                         <p className="text-xs text-cream/50">Price: ${item.price}</p>
+                                     </div>
+                                 </div>
+                             ))}
+                             {order.status === 'Pending Approval' && (
+                                 <div className="flex gap-3 mt-4 border-t border-white/5 pt-4">
+                                     <button onClick={() => handleAcceptOrder(order.id)} className="bg-green-500/20 text-green-400 px-4 py-2 text-sm border border-green-500/50 hover:bg-green-500 hover:text-white transition-colors">Accept Order</button>
+                                     <button onClick={() => handleRejectOrder(order.id)} className="bg-red-500/20 text-red-400 px-4 py-2 text-sm border border-red-500/50 hover:bg-red-500 hover:text-white transition-colors">Reject (Penalty Applies)</button>
+                                 </div>
+                             )}
+                         </div>
+                     ))}
+                 </div>
+             )}
+
+             {/* --- USER VIEWS --- */}
+             {currentUser.role === 'User' && currentView === 'overview' && (
+                 <div>
+                     <h3 className="font-serif text-2xl text-cream mb-6">Active Rentals</h3>
+                     {userOrders.length === 0 ? <p className="text-cream/50 italic">No active rentals found.</p> : (
+                         <div className="grid gap-4">
+                             {userOrders.map(o => (
+                                 <div key={o.id} className="bg-white/5 p-4 border border-white/10">
+                                     <div className="flex justify-between">
+                                         <span className="text-golden-orange font-bold">Order {o.id}</span>
+                                         <span className="text-xs text-cream/60">{o.status}</span>
+                                     </div>
+                                     <div className="mt-2">
+                                         {o.items.map(i => <p key={i.id} className="text-sm text-cream">{i.product.name}</p>)}
+                                     </div>
+                                 </div>
+                             ))}
+                         </div>
+                     )}
+                 </div>
+             )}
+
+              {currentUser.role === 'User' && currentView === 'wishlist' && (
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                     {wishlist.length === 0 ? <p className="text-cream/50">Wishlist is empty.</p> : wishlist.map(p => (
+                         <div key={p.id} className="bg-white/5 p-4 border border-white/10">
+                             <img src={p.images[0]} className="w-full h-40 object-cover mb-4" />
+                             <p className="text-cream font-bold truncate">{p.name}</p>
+                             <p className="text-golden-orange text-sm">${p.rentalPrice} / rent</p>
+                             <Link to={`/product/${p.id}`}>
+                                <Button fullWidth variant="secondary" className="mt-4 text-xs">View Details</Button>
+                             </Link>
+                         </div>
+                     ))}
+                 </div>
+             )}
           </div>
         </div>
       </div>

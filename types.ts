@@ -1,3 +1,4 @@
+
 export enum Category {
   WOMEN = 'Women',
   MEN = 'Men',
@@ -7,6 +8,9 @@ export enum Category {
 }
 
 export type SortOption = 'newest' | 'price_asc' | 'price_desc';
+export type Role = 'User' | 'Partner' | 'Admin';
+export type VerificationStatus = 'Unverified' | 'Pending' | 'Verified' | 'Rejected';
+export type OrderStatus = 'Processing' | 'Pending Approval' | 'Accepted' | 'Shipped' | 'Completed' | 'Returned' | 'Cancelled';
 
 export interface Review {
   id: string;
@@ -23,12 +27,17 @@ export interface Product {
   category: Category;
   rentalPrice: number;
   retailPrice: number;
-  images: string[]; // Changed from single imageUrl to array
+  buyPrice?: number;
+  isForSale?: boolean;
+  ownerId?: string;
+  images: string[];
   description: string;
   availableSizes: string[];
   color: string;
   occasion: string;
   reviews: Review[];
+  rentalCount?: number;
+  autoSellAfterRentals?: number;
 }
 
 export interface ProductFilter {

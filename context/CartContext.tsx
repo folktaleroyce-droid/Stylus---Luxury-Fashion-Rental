@@ -1,13 +1,15 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Product } from '../types';
 
 export interface CartItem {
-  id: string; // Unique ID for the cart entry (product ID + size + timestamp)
+  id: string; 
   product: Product;
   selectedSize: string;
-  duration: 4 | 8 | 12;
-  startDate: string;
-  endDate: string;
+  type: 'rent' | 'buy'; // Added type
+  duration?: 4 | 8 | 12; // Optional if buying
+  startDate?: string;
+  endDate?: string;
   price: number;
 }
 
@@ -34,7 +36,6 @@ export const useCart = () => useContext(CartContext);
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
 
-  // Load cart from local storage on init
   useEffect(() => {
     const storedCart = localStorage.getItem('stylus_cart');
     if (storedCart) {
@@ -46,7 +47,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // Save cart to local storage on change
   useEffect(() => {
     localStorage.setItem('stylus_cart', JSON.stringify(cart));
   }, [cart]);

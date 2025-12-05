@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState } from 'react';
 import { Product, Category } from '../types';
 import { MOCK_PRODUCTS } from '../constants';
@@ -5,11 +6,15 @@ import { MOCK_PRODUCTS } from '../constants';
 interface ProductContextType {
   products: Product[];
   addProduct: (product: Product) => void;
+  removeProduct: (productId: string) => void;
+  incrementRentalCount: (productId: string) => void;
 }
 
 const ProductContext = createContext<ProductContextType>({
   products: [],
   addProduct: () => {},
+  removeProduct: () => {},
+  incrementRentalCount: () => {},
 });
 
 export const useProduct = () => useContext(ProductContext);
@@ -22,8 +27,33 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setProducts((prev) => [newProduct, ...prev]);
   };
 
+  const removeProduct = (productId: string) => {
+    setProducts((prev) => prev.filter(p => p.id !== productId));
+  };
+
+  const incrementRentalCount = (productId: string) => {
+    setProducts((prev) => prev.map(product => {
+      if (product.id === productId) {
+        const newCount = (product.rentalCount || 0) + 1;
+        let isForSale = product.isForSale;
+
+        // Auto-conversion logic: if threshold is set and met, enable sale
+        if (product.autoSellAfterRentals && newCount >= product.autoSellAfterRentals) {
+          isForSale = true;
+        }
+
+        return {
+          ...product,
+          rentalCount: newCount,
+          isForSale
+        };
+      }
+      return product;
+    }));
+  };
+
   return (
-    <ProductContext.Provider value={{ products, addProduct }}>
+    <ProductContext.Provider value={{ products, addProduct, removeProduct, incrementRentalCount }}>
       {children}
     </ProductContext.Provider>
   );
