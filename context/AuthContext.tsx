@@ -15,11 +15,12 @@ export interface RegisteredUser {
   verificationStatus: VerificationStatus;
   verificationDocs?: {
     bvn?: string;
-    govId?: string; // URL or placeholder
+    govIdUrl?: string; // Changed to clear naming
     state?: string;
     lga?: string;
     cacNumber?: string;
     businessName?: string;
+    cacCertUrl?: string; // Added for Partners
   };
   walletBalance: number;
   suspensionReason?: string;
@@ -70,10 +71,81 @@ export const useAuth = () => useContext(AuthContext);
 
 // Initial Mock Data
 const MOCK_USERS_DB: RegisteredUser[] = [
-  { id: '1', name: 'Stylus Partner', email: 'partner@stylus.com', phone: '+44 20 7946 0958', address: '85 Albert Embankment, London', tier: 'Platinum', role: 'Partner', status: 'Active', verificationStatus: 'Verified', joined: 'Nov 02, 2023', lastActive: '1 day ago', avgSpend: '$0', rentalHistoryCount: 0, walletBalance: 5200, verificationDocs: { businessName: 'Luxe Attire Ltd', cacNumber: 'RC-998877' } },
-  { id: '2', name: 'Stylus User', email: 'user@stylus.com', phone: '+1 (555) 019-2834', address: '1984 Cyberdyne Ln, LA', tier: 'Gold', role: 'User', status: 'Active', verificationStatus: 'Unverified', joined: 'Dec 10, 2023', lastActive: '3 months ago', avgSpend: '$150', rentalHistoryCount: 1, walletBalance: 200 },
-  { id: '3', name: 'Ellen Ripley', email: 'e.ripley@example.com', phone: '+1 (555) 011-3344', address: 'Nostromo Station', tier: 'Diamond', role: 'Admin', status: 'Active', verificationStatus: 'Verified', joined: 'Jan 05, 2024', lastActive: '5 hours ago', avgSpend: '$1,200', rentalHistoryCount: 8, walletBalance: 0 },
-  { id: '4', name: 'Victoria Sterling', email: 'v.sterling@example.com', phone: '+1 (555) 010-9988', address: '125 Park Ave, NYC', tier: 'Diamond', role: 'User', status: 'Active', verificationStatus: 'Verified', joined: 'Oct 15, 2023', lastActive: '2 mins ago', avgSpend: '$450', rentalHistoryCount: 12, walletBalance: 1500 },
+  { 
+    id: '1', 
+    name: 'Stylus Partner', 
+    email: 'partner@stylus.com', 
+    phone: '+44 20 7946 0958', 
+    address: '85 Albert Embankment, London', 
+    tier: 'Platinum', 
+    role: 'Partner', 
+    status: 'Active', 
+    verificationStatus: 'Verified', 
+    joined: 'Nov 02, 2023', 
+    lastActive: '1 day ago', 
+    avgSpend: '$0', 
+    rentalHistoryCount: 0, 
+    walletBalance: 5200, 
+    verificationDocs: { 
+        businessName: 'Luxe Attire Ltd', 
+        cacNumber: 'RC-998877',
+        cacCertUrl: 'https://images.unsplash.com/photo-1555601568-c9e61309063d?q=80&w=1000&auto=format&fit=crop' // Mock Cert
+    } 
+  },
+  { 
+    id: '2', 
+    name: 'Stylus User', 
+    email: 'user@stylus.com', 
+    phone: '+1 (555) 019-2834', 
+    address: '1984 Cyberdyne Ln, LA', 
+    tier: 'Gold', 
+    role: 'User', 
+    status: 'Active', 
+    verificationStatus: 'Unverified', 
+    joined: 'Dec 10, 2023', 
+    lastActive: '3 months ago', 
+    avgSpend: '$150', 
+    rentalHistoryCount: 1, 
+    walletBalance: 200 
+  },
+  { 
+    id: '3', 
+    name: 'Ellen Ripley', 
+    email: 'e.ripley@example.com', 
+    phone: '+1 (555) 011-3344', 
+    address: 'Nostromo Station', 
+    tier: 'Diamond', 
+    role: 'Admin', 
+    status: 'Active', 
+    verificationStatus: 'Verified', 
+    joined: 'Jan 05, 2024', 
+    lastActive: '5 hours ago', 
+    avgSpend: '$1,200', 
+    rentalHistoryCount: 8, 
+    walletBalance: 0 
+  },
+  { 
+    id: '4', 
+    name: 'Victoria Sterling', 
+    email: 'v.sterling@example.com', 
+    phone: '+1 (555) 010-9988', 
+    address: '125 Park Ave, NYC', 
+    tier: 'Diamond', 
+    role: 'User', 
+    status: 'Active', 
+    verificationStatus: 'Verified', 
+    joined: 'Oct 15, 2023', 
+    lastActive: '2 mins ago', 
+    avgSpend: '$450', 
+    rentalHistoryCount: 12, 
+    walletBalance: 1500,
+    verificationDocs: {
+        bvn: '22299911188',
+        state: 'New York',
+        lga: 'Manhattan',
+        govIdUrl: 'https://images.unsplash.com/photo-1633265486064-084b2195299b?q=80&w=1000&auto=format&fit=crop'
+    }
+  },
 ];
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -203,7 +275,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const approveVerification = (id: string) => {
     const updatedUsers = registeredUsers.map(u => u.id === id ? { ...u, verificationStatus: 'Verified' as VerificationStatus } : u);
     setRegisteredUsers(updatedUsers);
-    // If approving a partner, verify current user if it's them? No, this is likely admin action.
     if (currentUser?.id === id) setCurrentUser(updatedUsers.find(u => u.id === id) || null);
   };
 

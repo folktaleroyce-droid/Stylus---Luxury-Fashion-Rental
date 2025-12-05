@@ -1,12 +1,13 @@
 
 import React, { useState } from 'react';
-import { Users, Package, Megaphone, TrendingUp, DollarSign, Activity, AlertTriangle, Star, LogOut, X, Mail, Ban, Key, Check, Plus, Search, Trash2, Shield, UserCog, Briefcase, Filter, FileText, Save, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Users, Package, Megaphone, TrendingUp, DollarSign, Activity, AlertTriangle, Star, LogOut, X, Mail, Ban, Key, Check, Plus, Search, Trash2, Shield, UserCog, Briefcase, Filter, FileText, Save, ArrowUpDown, ArrowUp, ArrowDown, Eye } from 'lucide-react';
 import { Button } from '../components/Button';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 export const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'users' | 'analytics' | 'inventory' | 'marketing' | 'verifications'>('users');
+  const [selectedDoc, setSelectedDoc] = useState<{ url: string, title: string } | null>(null);
   const { logout, registeredUsers, updateUserStatus, updateUserRole, updateUserNotes, deleteUser, approveVerification, rejectVerification } = useAuth();
   const navigate = useNavigate();
 
@@ -17,6 +18,21 @@ export const AdminDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-espresso pt-8 pb-20 animate-fade-in relative">
+        {/* Document Viewer Modal */}
+        {selectedDoc && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4" onClick={() => setSelectedDoc(null)}>
+                <div className="max-w-4xl w-full bg-[#1f0c05] border border-golden-orange p-4 relative" onClick={e => e.stopPropagation()}>
+                    <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
+                        <h3 className="text-cream font-serif text-xl">{selectedDoc.title}</h3>
+                        <button onClick={() => setSelectedDoc(null)} className="text-cream/50 hover:text-white"><X/></button>
+                    </div>
+                    <div className="h-[600px] w-full bg-black/50 flex items-center justify-center">
+                        <img src={selectedDoc.url} alt="Document" className="max-h-full max-w-full object-contain" />
+                    </div>
+                </div>
+            </div>
+        )}
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-end mb-8 border-b border-white/10 pb-6">
@@ -59,14 +75,31 @@ export const AdminDashboard: React.FC = () => {
                                                     <p><span className="text-cream/40 uppercase text-xs mr-2">Business Name:</span> {u.verificationDocs?.businessName}</p>
                                                     <p><span className="text-cream/40 uppercase text-xs mr-2">CAC Number:</span> {u.verificationDocs?.cacNumber}</p>
                                                     <p><span className="text-cream/40 uppercase text-xs mr-2">Director BVN:</span> {u.verificationDocs?.bvn}</p>
-                                                    <p className="text-green-400 font-bold flex items-center gap-1"><Check size={14}/> Registration Fee Paid (₦25,000)</p>
+                                                    <div className="col-span-2 mt-2 flex items-center gap-4">
+                                                        <p className="text-green-400 font-bold flex items-center gap-1"><Check size={14}/> Registration Fee Paid (₦25,000)</p>
+                                                        {u.verificationDocs?.cacCertUrl && (
+                                                            <button 
+                                                                onClick={() => setSelectedDoc({ url: u.verificationDocs!.cacCertUrl!, title: `CAC Certificate: ${u.verificationDocs?.businessName}` })}
+                                                                className="text-golden-orange underline text-xs font-bold flex items-center gap-1 hover:text-white"
+                                                            >
+                                                                <Eye size={12}/> View CAC Certificate
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </>
                                             ) : (
                                                 <>
                                                     <p><span className="text-cream/40 uppercase text-xs mr-2">BVN:</span> {u.verificationDocs?.bvn}</p>
                                                     <p><span className="text-cream/40 uppercase text-xs mr-2">State:</span> {u.verificationDocs?.state}</p>
                                                     <p><span className="text-cream/40 uppercase text-xs mr-2">LGA:</span> {u.verificationDocs?.lga}</p>
-                                                    <p className="text-golden-orange underline cursor-pointer">View Uploaded ID</p>
+                                                    {u.verificationDocs?.govIdUrl && (
+                                                        <button 
+                                                            onClick={() => setSelectedDoc({ url: u.verificationDocs!.govIdUrl!, title: `ID Document: ${u.name}` })}
+                                                            className="col-span-2 text-golden-orange underline text-xs font-bold flex items-center gap-1 hover:text-white mt-1"
+                                                        >
+                                                            <Eye size={12}/> View Identity Document
+                                                        </button>
+                                                    )}
                                                 </>
                                             )}
                                         </div>

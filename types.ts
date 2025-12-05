@@ -40,6 +40,7 @@ export interface Product {
   reviews: Review[];
   rentalCount?: number;
   autoSellAfterRentals?: number;
+  rentalDuration?: number;
 }
 
 export interface ProductFilter {
