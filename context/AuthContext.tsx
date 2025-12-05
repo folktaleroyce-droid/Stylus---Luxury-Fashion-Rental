@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Role, VerificationStatus } from '../types';
 
@@ -42,7 +41,7 @@ interface AuthContextType {
   updateUserStatus: (id: string, newStatus: 'Active' | 'Suspended', reason?: string) => void;
   updateUserRole: (id: string, newRole: Role) => void;
   updateUserNotes: (id: string, notes: string) => void;
-  submitVerification: (id: string, docs: any) => void;
+  submitVerification: (id: string, docs: Partial<RegisteredUser['verificationDocs']>) => void;
   approveVerification: (id: string) => void;
   rejectVerification: (id: string, reason: string) => void;
   updateWallet: (id: string, amount: number) => void;
@@ -264,7 +263,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setRegisteredUsers(prev => prev.map(u => u.id === id ? { ...u, adminNotes: notes } : u));
   };
 
-  const submitVerification = (id: string, docs: any) => {
+  const submitVerification = (id: string, docs: Partial<RegisteredUser['verificationDocs']>) => {
     const updatedUsers = registeredUsers.map(u => 
        u.id === id ? { ...u, verificationStatus: 'Pending' as VerificationStatus, verificationDocs: { ...u.verificationDocs, ...docs } } : u
     );

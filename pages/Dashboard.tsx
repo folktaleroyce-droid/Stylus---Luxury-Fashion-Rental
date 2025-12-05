@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock, X, Check, Heart, Eye, Search, Filter, History, ChevronRight, Briefcase, DollarSign, ShieldAlert, FileText, Ban, Trash2 } from 'lucide-react';
@@ -8,107 +7,8 @@ import { useWishlist } from '../context/WishlistContext';
 import { useOrders } from '../context/OrderContext';
 import { Category, Product, VerificationStatus } from '../types';
 import { Button } from '../components/Button';
-
-// --- Verification Components ---
-
-const UserVerificationForm: React.FC<{ onSubmit: (data: any) => void }> = ({ onSubmit }) => {
-    const [bvn, setBvn] = useState('');
-    const [state, setState] = useState('');
-    const [lga, setLga] = useState('');
-    const [idFile, setIdFile] = useState<File | null>(null);
-    
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) setIdFile(e.target.files[0]);
-    };
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        // Create a fake URL for the uploaded file for demo purposes
-        const govIdUrl = idFile ? URL.createObjectURL(idFile) : 'https://images.unsplash.com/photo-1633265486064-084b2195299b?q=80&w=1000&auto=format&fit=crop';
-        onSubmit({ bvn, state, lga, govIdUrl });
-    };
-    
-    return (
-        <div className="bg-[#1f0c05] p-8 border border-golden-orange shadow-2xl rounded-sm">
-            <h3 className="font-serif text-2xl text-cream mb-4">Identity Verification</h3>
-            <p className="text-sm text-cream/60 mb-6">To ensure the security of our luxury assets, we require government ID verification before you can rent or buy.</p>
-            <form onSubmit={handleSubmit}>
-                <div className="grid grid-cols-1 gap-4 mb-6">
-                    <div>
-                        <label className="text-xs uppercase text-cream/50 mb-1 block">BVN (11 Digits)</label>
-                        <input required placeholder="Enter BVN" value={bvn} onChange={e => setBvn(e.target.value)} className="w-full bg-black/20 border border-white/10 text-cream p-3 focus:border-golden-orange outline-none" />
-                    </div>
-                    <div>
-                        <label className="text-xs uppercase text-cream/50 mb-1 block">State of Residence</label>
-                        <input required placeholder="e.g. Lagos" value={state} onChange={e => setState(e.target.value)} className="w-full bg-black/20 border border-white/10 text-cream p-3 focus:border-golden-orange outline-none" />
-                    </div>
-                    <div>
-                        <label className="text-xs uppercase text-cream/50 mb-1 block">LGA</label>
-                        <input required placeholder="e.g. Eti-Osa" value={lga} onChange={e => setLga(e.target.value)} className="w-full bg-black/20 border border-white/10 text-cream p-3 focus:border-golden-orange outline-none" />
-                    </div>
-                    <div className="border-2 border-dashed border-white/10 p-6 text-center cursor-pointer hover:border-golden-orange/50 transition-colors bg-white/5 relative">
-                        <input type="file" required onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/*" />
-                        <Upload className="mx-auto text-cream/40 mb-2" />
-                        <span className="text-xs uppercase text-cream/60">{idFile ? idFile.name : "Upload Valid ID (NIN/Passport)"}</span>
-                    </div>
-                </div>
-                <Button fullWidth>Submit Verification</Button>
-            </form>
-        </div>
-    );
-};
-
-const PartnerVerificationForm: React.FC<{ onSubmit: (data: any) => void }> = ({ onSubmit }) => {
-    const [cac, setCac] = useState('');
-    const [bizName, setBizName] = useState('');
-    const [bvn, setBvn] = useState('');
-    const [certFile, setCertFile] = useState<File | null>(null);
-
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) setCertFile(e.target.files[0]);
-    };
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        // Fake URL for demo
-        const cacCertUrl = certFile ? URL.createObjectURL(certFile) : 'https://images.unsplash.com/photo-1555601568-c9e61309063d?q=80&w=1000&auto=format&fit=crop';
-        onSubmit({ cacNumber: cac, businessName: bizName, bvn, cacCertUrl });
-    };
-    
-    return (
-        <div className="bg-[#1f0c05] p-8 border border-golden-orange shadow-2xl rounded-sm">
-            <h3 className="font-serif text-2xl text-cream mb-4">Partner Business Verification</h3>
-            <p className="text-sm text-cream/60 mb-6">Complete your business registration to start listing items. Admins will verify your documents.</p>
-            <form onSubmit={handleSubmit}>
-                <div className="grid grid-cols-1 gap-4 mb-6">
-                    <div>
-                        <label className="text-xs uppercase text-cream/50 mb-1 block">Business Name</label>
-                        <input required placeholder="Registered Business Name" value={bizName} onChange={e => setBizName(e.target.value)} className="w-full bg-black/20 border border-white/10 text-cream p-3 focus:border-golden-orange outline-none" />
-                    </div>
-                    <div>
-                         <label className="text-xs uppercase text-cream/50 mb-1 block">CAC Number</label>
-                        <input required placeholder="RC Number" value={cac} onChange={e => setCac(e.target.value)} className="w-full bg-black/20 border border-white/10 text-cream p-3 focus:border-golden-orange outline-none" />
-                    </div>
-                    <div>
-                         <label className="text-xs uppercase text-cream/50 mb-1 block">Director BVN</label>
-                        <input required placeholder="Director BVN" value={bvn} onChange={e => setBvn(e.target.value)} className="w-full bg-black/20 border border-white/10 text-cream p-3 focus:border-golden-orange outline-none" />
-                    </div>
-                    <div className="border-2 border-dashed border-white/10 p-6 text-center cursor-pointer hover:border-golden-orange/50 transition-colors bg-white/5 relative">
-                        <input type="file" required onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/*,application/pdf" />
-                        <FileText className="mx-auto text-cream/40 mb-2" />
-                        <span className="text-xs uppercase text-cream/60">{certFile ? certFile.name : "Upload CAC Certificate"}</span>
-                    </div>
-                    <div className="bg-golden-orange/10 p-4 border border-golden-orange/30 text-center">
-                        <p className="text-xs uppercase text-golden-orange font-bold mb-2">Registration Fee</p>
-                        <p className="text-2xl font-serif text-cream">₦25,000</p>
-                        <p className="text-[10px] text-cream/50 mt-1">One-time payment deducted from wallet or paid via card</p>
-                    </div>
-                </div>
-                <Button fullWidth>Pay & Submit</Button>
-            </form>
-        </div>
-    );
-};
+import { UserVerificationForm } from '../components/UserVerificationForm';
+import { PartnerVerificationForm } from '../components/PartnerVerificationForm';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
