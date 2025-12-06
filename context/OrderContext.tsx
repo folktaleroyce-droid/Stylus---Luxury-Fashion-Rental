@@ -3,24 +3,34 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem } from './CartContext';
 import { OrderStatus } from '../types';
 
+// Extended Item interface for Orders to track status per item
+export interface OrderItem extends CartItem {
+  status: OrderStatus;
+}
+
 export interface Order {
   id: string;
+  userId: string; // Track who placed the order
+  userName: string;
   date: string;
-  items: CartItem[];
+  items: OrderItem[];
   total: number;
-  status: OrderStatus;
+  // Order level status (derived or general)
+  status: OrderStatus; 
 }
 
 interface OrderContextType {
   orders: Order[];
-  addOrder: (items: CartItem[], total: number) => void;
-  updateOrderStatus: (orderId: string, status: OrderStatus) => void;
+  addOrder: (items: CartItem[], total: number, userId: string, userName: string) => void;
+  updateOrderStatus: (orderId: string, status: OrderStatus) => void; // Legacy/Global
+  updateOrderItemStatus: (orderId: string, itemId: string, status: OrderStatus) => void; // New granular control
 }
 
 const OrderContext = createContext<OrderContextType>({
   orders: [],
   addOrder: () => {},
   updateOrderStatus: () => {},
+  updateOrderItemStatus: () => {},
 });
 
 export const useOrders = () => useContext(OrderContext);
@@ -43,13 +53,21 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('stylus_order_history', JSON.stringify(orders));
   }, [orders]);
 
-  const addOrder = (items: CartItem[], total: number) => {
+  const addOrder = (items: CartItem[], total: number, userId: string, userName: string) => {
+    // Map cart items to order items with initial status
+    const orderItems: OrderItem[] = items.map(item => ({
+        ...item,
+        status: 'Pending Approval'
+    }));
+
     const newOrder: Order = {
       id: `ORD-${Date.now().toString().slice(-6)}`,
+      userId,
+      userName,
       date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      items,
+      items: orderItems,
       total,
-      status: 'Pending Approval' // Default for partner acceptance flow
+      status: 'Processing' 
     };
     setOrders(prev => [newOrder, ...prev]);
   };
@@ -58,8 +76,28 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
   };
 
+  const updateOrderItemStatus = (orderId: string, itemId: string, status: OrderStatus) => {
+      setOrders(prev => prev.map(order => {
+          if (order.id !== orderId) return order;
+
+          // Update the specific item
+          const updatedItems = order.items.map(item => 
+              item.id === itemId ? { ...item, status } : item
+          );
+
+          // Optional: Check if all items are handled to update main order status
+          const allComplete = updatedItems.every(i => ['Accepted', 'Shipped', 'Completed', 'Returned', 'Cancelled', 'Rejected'].includes(i.status));
+          
+          return {
+              ...order,
+              items: updatedItems,
+              status: allComplete ? 'Completed' : order.status
+          };
+      }));
+  };
+
   return (
-    <OrderContext.Provider value={{ orders, addOrder, updateOrderStatus }}>
+    <OrderContext.Provider value={{ orders, addOrder, updateOrderStatus, updateOrderItemStatus }}>
       {children}
     </OrderContext.Provider>
   );

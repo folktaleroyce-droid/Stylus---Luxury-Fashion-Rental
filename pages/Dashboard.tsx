@@ -16,7 +16,7 @@ export const Dashboard: React.FC = () => {
   const { logout, currentUser, submitVerification, updateWallet } = useAuth();
   const { products, addProduct, removeProduct, incrementRentalCount } = useProduct();
   const { wishlist } = useWishlist();
-  const { orders, updateOrderStatus } = useOrders();
+  const { orders, updateOrderItemStatus } = useOrders();
   
   const [currentView, setCurrentView] = useState('overview');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -29,16 +29,18 @@ export const Dashboard: React.FC = () => {
 
   // Filter products for Partner
   const myListings = products.filter(p => p.ownerId === currentUser?.id);
-  // Filter orders for Partner: contains items owned by partner
+  
+  // Filter orders for Partner: Orders that contain items owned by this partner
   const partnerOrders = orders.filter(o => o.items.some(i => i.product.ownerId === currentUser?.id));
   
   // User orders logic
-  const userOrders = orders.filter(o => o.id); // In a real app, verify userId matches currentUser.id
+  const userOrders = orders.filter(o => o.userId === currentUser?.id);
 
-  // Split Active vs History
+  // Split Active vs History based on items (if any item is active, show order in active)
   const activeStatuses: OrderStatus[] = ['Processing', 'Pending Approval', 'Accepted', 'Shipped'];
-  const activeOrders = userOrders.filter(o => activeStatuses.includes(o.status));
-  const pastOrders = userOrders.filter(o => !activeStatuses.includes(o.status));
+  
+  const activeOrders = userOrders.filter(o => o.items.some(i => activeStatuses.includes(i.status)));
+  const pastOrders = userOrders.filter(o => !activeOrders.includes(o));
 
   // Handle Verification Submission
   const handleVerificationSubmit = (data: any) => {
@@ -81,29 +83,19 @@ export const Dashboard: React.FC = () => {
       }, 2000);
   };
 
-  const handleAcceptOrder = (orderId: string) => {
-      // Update Status
-      updateOrderStatus(orderId, 'Accepted');
-      
-      // Update Rental Counts & Check Auto-Sell
-      const order = orders.find(o => o.id === orderId);
-      if(order) {
-          order.items.forEach(item => {
-              if (item.type === 'rent') {
-                  incrementRentalCount(item.product.id);
-              }
-          });
-      }
-
-      alert("Order accepted. Item rental stats updated.");
+  // Partner Action: Accept specific Item
+  const handleAcceptItem = (orderId: string, itemId: string, productId: string) => {
+      updateOrderItemStatus(orderId, itemId, 'Accepted');
+      // Update rental stats
+      incrementRentalCount(productId);
+      alert("Item accepted. Renter notified.");
   };
 
-  const handleRejectOrder = (orderId: string) => {
-      // Simplistic penalty logic
-      if (confirm("Rejecting an order may attract a penalty fee. Continue?")) {
-        updateOrderStatus(orderId, 'Cancelled');
-        updateWallet(currentUser!.id, -50); // Penalty
-        alert("Order rejected. $50 penalty applied.");
+  const handleRejectItem = (orderId: string, itemId: string) => {
+      if (confirm("Rejecting an order request? This will refund the user.")) {
+        updateOrderItemStatus(orderId, itemId, 'Rejected');
+        // In a real app, trigger refund logic here
+        alert("Item rejected.");
       }
   };
 
@@ -293,7 +285,7 @@ export const Dashboard: React.FC = () => {
                     <button onClick={() => setCurrentView('overview')} className={`w-full text-left px-4 py-3 border-l-2 transition-all ${currentView === 'overview' ? 'border-golden-orange bg-white/5 text-golden-orange' : 'border-transparent text-cream hover:bg-white/5'}`}>Dashboard</button>
                     <button onClick={() => setCurrentView('listings')} className={`w-full text-left px-4 py-3 border-l-2 transition-all ${currentView === 'listings' ? 'border-golden-orange bg-white/5 text-golden-orange' : 'border-transparent text-cream hover:bg-white/5'}`}>My Listings</button>
                     <button onClick={() => setCurrentView('add-item')} className={`w-full text-left px-4 py-3 border-l-2 transition-all ${currentView === 'add-item' ? 'border-golden-orange bg-white/5 text-golden-orange' : 'border-transparent text-cream hover:bg-white/5'}`}>Add New Item</button>
-                    <button onClick={() => setCurrentView('orders')} className={`w-full text-left px-4 py-3 border-l-2 transition-all ${currentView === 'orders' ? 'border-golden-orange bg-white/5 text-golden-orange' : 'border-transparent text-cream hover:bg-white/5'}`}>Orders ({partnerOrders.length})</button>
+                    <button onClick={() => setCurrentView('orders')} className={`w-full text-left px-4 py-3 border-l-2 transition-all ${currentView === 'orders' ? 'border-golden-orange bg-white/5 text-golden-orange' : 'border-transparent text-cream hover:bg-white/5'}`}>Incoming Requests</button>
                   </>
               ) : (
                   <>
@@ -318,10 +310,6 @@ export const Dashboard: React.FC = () => {
                      <div className="bg-white/5 p-6 border border-white/10">
                          <h3 className="text-cream/50 uppercase text-xs">Active Listings</h3>
                          <p className="text-3xl text-cream font-serif">{myListings.length}</p>
-                     </div>
-                     <div className="bg-white/5 p-6 border border-white/10">
-                         <h3 className="text-cream/50 uppercase text-xs">Pending Orders</h3>
-                         <p className="text-3xl text-cream font-serif">{partnerOrders.filter(o => o.status === 'Pending Approval').length}</p>
                      </div>
                      <div className="bg-white/5 p-6 border border-white/10">
                          <h3 className="text-cream/50 uppercase text-xs">Verification</h3>
@@ -425,34 +413,53 @@ export const Dashboard: React.FC = () => {
 
             {currentUser.role === 'Partner' && currentView === 'orders' && (
                  <div className="space-y-4">
-                     <h3 className="font-serif text-2xl text-cream mb-6">Incoming Orders</h3>
-                     {partnerOrders.length === 0 ? <p className="text-cream/50">No orders yet.</p> : partnerOrders.map(order => (
-                         <div key={order.id} className="bg-white/5 p-6 border border-white/10">
-                             <div className="flex justify-between items-start mb-4">
-                                 <div>
-                                     <p className="text-xs text-cream/40 uppercase">Order ID: {order.id}</p>
-                                     <p className="text-cream font-bold">{order.date}</p>
-                                 </div>
-                                 <span className={`text-xs px-2 py-1 border rounded ${order.status === 'Pending Approval' ? 'border-yellow-500 text-yellow-500' : 'border-white/20 text-cream'}`}>{order.status}</span>
-                             </div>
-                             {order.items.map((item, idx) => (
-                                 <div key={idx} className="flex gap-4 mb-4 bg-black/20 p-2">
-                                     <img src={item.product.images[0]} className="w-12 h-16 object-cover" />
+                     <h3 className="font-serif text-2xl text-cream mb-6">Incoming Requests</h3>
+                     {partnerOrders.length === 0 ? <p className="text-cream/50">No requests yet.</p> : partnerOrders.map(order => {
+                         // Filter to only show items owned by this partner
+                         const myItems = order.items.filter(i => i.product.ownerId === currentUser.id);
+                         if (myItems.length === 0) return null;
+
+                         return (
+                             <div key={order.id} className="bg-white/5 p-6 border border-white/10 mb-6">
+                                 <div className="flex justify-between items-start mb-4 border-b border-white/5 pb-2">
                                      <div>
-                                         <p className="text-cream text-sm">{item.product.name}</p>
-                                         <p className="text-xs text-golden-orange">{item.type === 'buy' ? 'Purchase' : `Rental (${item.duration} days)`}</p>
-                                         <p className="text-xs text-cream/50">Price: ${item.price}</p>
+                                         <p className="text-xs text-cream/40 uppercase">Order ID: {order.id}</p>
+                                         <p className="text-cream font-bold">Renter: {order.userName}</p>
                                      </div>
+                                     <span className="text-xs text-cream/50">{order.date}</span>
                                  </div>
-                             ))}
-                             {order.status === 'Pending Approval' && (
-                                 <div className="flex gap-3 mt-4 border-t border-white/5 pt-4">
-                                     <button onClick={() => handleAcceptOrder(order.id)} className="bg-green-500/20 text-green-400 px-4 py-2 text-sm border border-green-500/50 hover:bg-green-500 hover:text-white transition-colors">Accept Order</button>
-                                     <button onClick={() => handleRejectOrder(order.id)} className="bg-red-500/20 text-red-400 px-4 py-2 text-sm border border-red-500/50 hover:bg-red-500 hover:text-white transition-colors">Reject (Penalty Applies)</button>
-                                 </div>
-                             )}
-                         </div>
-                     ))}
+                                 
+                                 {myItems.map((item, idx) => (
+                                     <div key={idx} className="flex flex-col md:flex-row gap-4 mb-4 bg-black/20 p-4 border border-white/5 rounded-sm">
+                                         <img src={item.product.images[0]} className="w-16 h-20 object-cover" />
+                                         <div className="flex-grow">
+                                             <p className="text-cream font-bold">{item.product.name}</p>
+                                             <div className="flex gap-4 text-xs text-cream/60 mt-1">
+                                                 <span>Size: {item.selectedSize}</span>
+                                                 <span>Type: <span className="text-golden-orange uppercase">{item.type}</span></span>
+                                                 {item.duration && <span>Duration: {item.duration} Days</span>}
+                                             </div>
+                                             <p className="text-lg font-serif text-golden-orange mt-2">${item.price}</p>
+                                         </div>
+                                         <div className="flex flex-col items-end justify-center min-w-[150px]">
+                                             <div className="mb-2">
+                                                 <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${item.status === 'Pending Approval' ? 'bg-yellow-500/10 text-yellow-500' : item.status === 'Accepted' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                                                     {item.status}
+                                                 </span>
+                                             </div>
+                                             
+                                             {item.status === 'Pending Approval' && (
+                                                 <div className="flex gap-2">
+                                                     <button onClick={() => handleAcceptItem(order.id, item.id, item.product.id)} className="bg-green-600 hover:bg-green-500 text-white px-3 py-1 text-xs rounded transition-colors">Accept</button>
+                                                     <button onClick={() => handleRejectItem(order.id, item.id)} className="bg-red-600 hover:bg-red-500 text-white px-3 py-1 text-xs rounded transition-colors">Decline</button>
+                                                 </div>
+                                             )}
+                                         </div>
+                                     </div>
+                                 ))}
+                             </div>
+                         );
+                     })}
                  </div>
              )}
 
@@ -473,9 +480,9 @@ export const Dashboard: React.FC = () => {
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                          <div className="bg-[#1f0c05] border border-white/10 p-6 relative overflow-hidden">
                              <div className="absolute top-0 right-0 p-4 opacity-10"><ShoppingBag size={64}/></div>
-                             <h4 className="text-cream font-bold text-lg mb-1">Active Rentals</h4>
+                             <h4 className="text-cream font-bold text-lg mb-1">Active Requests</h4>
                              <p className="text-3xl font-serif text-golden-orange">{activeOrders.length}</p>
-                             <p className="text-xs text-cream/50 mt-2">Items currently in your possession or processing.</p>
+                             <p className="text-xs text-cream/50 mt-2">Items currently in processing or rented.</p>
                          </div>
                          <div className="bg-[#1f0c05] border border-white/10 p-6 relative overflow-hidden">
                              <div className="absolute top-0 right-0 p-4 opacity-10"><History size={64}/></div>
@@ -493,17 +500,19 @@ export const Dashboard: React.FC = () => {
                                      <div className="flex-1">
                                         <div className="flex justify-between mb-2">
                                             <span className="text-golden-orange font-bold">Order {o.id}</span>
-                                            <span className={`text-xs px-2 py-0.5 rounded border uppercase font-bold tracking-wide ${o.status === 'Shipped' ? 'border-green-400 text-green-400' : 'border-yellow-400 text-yellow-400'}`}>
-                                                {o.status}
-                                            </span>
+                                            <span className="text-xs text-cream/40">{o.date}</span>
                                         </div>
-                                        <p className="text-xs text-cream/40 mb-3">{o.date}</p>
+                                        
                                         <div className="space-y-3">
                                             {o.items.map(i => (
-                                                <div key={i.id} className="flex gap-3 bg-black/20 p-2 rounded">
-                                                    <img src={i.product.images[0]} className="w-12 h-16 object-cover" />
-                                                    <div>
-                                                        <p className="text-sm text-cream font-bold">{i.product.name}</p>
+                                                <div key={i.id} className="flex gap-3 bg-black/20 p-2 rounded relative overflow-hidden">
+                                                    <div className={`absolute left-0 top-0 bottom-0 w-1 ${i.status === 'Accepted' || i.status === 'Shipped' ? 'bg-green-500' : i.status === 'Rejected' ? 'bg-red-500' : 'bg-yellow-500'}`}></div>
+                                                    <img src={i.product.images[0]} className="w-12 h-16 object-cover ml-2" />
+                                                    <div className="flex-grow">
+                                                        <div className="flex justify-between">
+                                                            <p className="text-sm text-cream font-bold">{i.product.name}</p>
+                                                            <span className={`text-[10px] uppercase font-bold ${i.status === 'Accepted' || i.status === 'Shipped' ? 'text-green-400' : i.status === 'Rejected' ? 'text-red-400' : 'text-yellow-400'}`}>{i.status}</span>
+                                                        </div>
                                                         <p className="text-xs text-golden-orange">{i.type === 'buy' ? 'Purchase' : `Rent (${i.duration} Days)`}</p>
                                                         {i.type === 'rent' && i.endDate && (
                                                             <p className="text-[10px] text-cream/50 flex items-center gap-1 mt-1"><Clock size={10}/> Return by: {i.endDate}</p>
@@ -512,16 +521,6 @@ export const Dashboard: React.FC = () => {
                                                 </div>
                                             ))}
                                         </div>
-                                     </div>
-                                     <div className="w-full sm:w-48 border-t sm:border-t-0 sm:border-l border-white/10 pt-4 sm:pt-0 sm:pl-4 flex flex-col justify-center">
-                                         {o.status === 'Shipped' && (
-                                             <div className="mb-4">
-                                                 <p className="text-[10px] uppercase text-cream/40 mb-1">Tracking</p>
-                                                 <p className="text-xs text-cream flex items-center gap-1"><Truck size={12}/> UPS: 1Z999...</p>
-                                             </div>
-                                         )}
-                                         <p className="text-[10px] uppercase text-cream/40">Total Value</p>
-                                         <p className="text-xl font-serif text-cream">${o.total}</p>
                                      </div>
                                  </div>
                              ))}
@@ -541,7 +540,6 @@ export const Dashboard: React.FC = () => {
                                          <div>
                                              <div className="flex items-center gap-3">
                                                 <span className="text-lg font-bold text-cream">Order {o.id}</span>
-                                                <span className={`text-[10px] uppercase px-2 py-0.5 rounded border ${o.status === 'Completed' ? 'border-green-500 text-green-500' : 'border-red-500 text-red-500'}`}>{o.status}</span>
                                              </div>
                                              <span className="text-xs text-cream/40">{o.date}</span>
                                          </div>
@@ -563,6 +561,7 @@ export const Dashboard: React.FC = () => {
                                                      <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${item.type === 'buy' ? 'bg-blue-500/10 text-blue-400' : 'bg-golden-orange/10 text-golden-orange'}`}>
                                                          {item.type === 'buy' ? 'Purchased' : 'Rented'}
                                                      </span>
+                                                     <p className="text-[10px] mt-1 text-cream/50">{item.status}</p>
                                                  </div>
                                                  <div className="w-20 text-right text-sm text-cream/70">${item.price}</div>
                                              </div>

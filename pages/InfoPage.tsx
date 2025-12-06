@@ -35,10 +35,10 @@ export const InfoPage: React.FC<InfoPageProps> = ({ type }) => {
         updateWallet(currentUser.id, -cartTotal);
         
         // Add current cart to order history
-        addOrder(cart, cartTotal);
+        addOrder(cart, cartTotal, currentUser.id, currentUser.name);
         
         // Clear cart and redirect
-        alert("Payment successful. Your order has been placed!");
+        alert("Payment successful. Your request has been sent to the partner for approval!");
         clearCart();
         navigate('/dashboard');
     }
@@ -50,7 +50,7 @@ export const InfoPage: React.FC<InfoPageProps> = ({ type }) => {
       icon: <Lock className="w-12 h-12 text-golden-orange mb-6" />,
       text: (
         <>
-          <p className="mb-6">At Stylus, we believe privacy is the ultimate luxury. We are committed to protecting your personal information with the same rigor we apply to authenticating our collection.</p>
+          <p className="mb-6">At Stylus, we believe privacy is the ultimate luxury. We are committed to protecting your personal information with the same rigor we apply to authentication.</p>
           <h3 className="text-xl font-serif text-cream mb-4">1. Information Collection</h3>
           <p className="mb-6">We collect only the necessary data to facilitate your premium rental experience, including identity verification documents and secure payment tokens.</p>
           <h3 className="text-xl font-serif text-cream mb-4">2. Data Security</h3>

@@ -1,13 +1,15 @@
+
 import React, { useState, useEffect } from 'react';
-import { Users, Package, Megaphone, TrendingUp, DollarSign, Activity, AlertTriangle, Star, LogOut, X, Mail, Ban, Key, Check, Plus, Search, Trash2, Shield, UserCog, Briefcase, Filter, FileText, Save, ArrowUpDown, ArrowUp, ArrowDown, Eye, BarChart3, LineChart, PieChart, Power } from 'lucide-react';
+import { Users, Package, Megaphone, TrendingUp, DollarSign, Activity, AlertTriangle, Star, LogOut, X, Mail, Ban, Key, Check, Plus, Search, Trash2, Shield, UserCog, Briefcase, Filter, FileText, Save, ArrowUpDown, ArrowUp, ArrowDown, Eye, BarChart3, LineChart, PieChart, Power, Globe } from 'lucide-react';
 import { Button } from '../components/Button';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useProduct } from '../context/ProductContext';
+import { useOrders } from '../context/OrderContext';
 import { Category, Product } from '../types';
 
 export const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'users' | 'rentals' | 'inventory' | 'marketing' | 'verifications'>('rentals');
+  const [activeTab, setActiveTab] = useState<'users' | 'rentals' | 'inventory' | 'marketing' | 'verifications' | 'global_activity'>('rentals');
   const [selectedDoc, setSelectedDoc] = useState<{ url: string, title: string } | null>(null);
   const [showAddStockModal, setShowAddStockModal] = useState(false);
   const [userFilter, setUserFilter] = useState<'All' | 'User' | 'Partner'>('All');
@@ -24,6 +26,7 @@ export const AdminDashboard: React.FC = () => {
   } = useAuth();
   
   const { products, removeProduct, addProduct } = useProduct();
+  const { orders, updateOrderItemStatus } = useOrders();
   const navigate = useNavigate();
 
   // Filter for pending verifications (Robust filtering)
@@ -89,6 +92,12 @@ export const AdminDashboard: React.FC = () => {
   const handleDeleteProduct = (id: string) => {
       if(confirm("Are you sure you want to delete this product from the global inventory?")) {
           removeProduct(id);
+      }
+  };
+  
+  const handleForceStatus = (orderId: string, itemId: string, status: any) => {
+      if(confirm(`Are you sure you want to FORCE update this transaction to '${status}'? This overrides partner control.`)) {
+          updateOrderItemStatus(orderId, itemId, status);
       }
   };
 
@@ -236,6 +245,7 @@ export const AdminDashboard: React.FC = () => {
                 </div>
                 <div className="flex gap-2 flex-wrap mt-4 md:mt-0">
                     <button onClick={() => setActiveTab('users')} className={`px-4 py-2 rounded text-sm transition-colors ${activeTab === 'users' ? 'bg-golden-orange text-espresso font-bold' : 'text-cream hover:bg-white/5'}`}>User Management</button>
+                    <button onClick={() => setActiveTab('global_activity')} className={`px-4 py-2 rounded text-sm transition-colors ${activeTab === 'global_activity' ? 'bg-golden-orange text-espresso font-bold' : 'text-cream hover:bg-white/5'}`}>Global Activity</button>
                     <button onClick={() => setActiveTab('rentals')} className={`px-4 py-2 rounded text-sm transition-colors ${activeTab === 'rentals' ? 'bg-golden-orange text-espresso font-bold' : 'text-cream hover:bg-white/5'}`}>Rental Analytics</button>
                     <button onClick={() => setActiveTab('inventory')} className={`px-4 py-2 rounded text-sm transition-colors ${activeTab === 'inventory' ? 'bg-golden-orange text-espresso font-bold' : 'text-cream hover:bg-white/5'}`}>Inventory</button>
                      <button onClick={() => setActiveTab('marketing')} className={`px-4 py-2 rounded text-sm transition-colors ${activeTab === 'marketing' ? 'bg-golden-orange text-espresso font-bold' : 'text-cream hover:bg-white/5'}`}>Marketing</button>
@@ -369,6 +379,71 @@ export const AdminDashboard: React.FC = () => {
                             </tbody>
                         </table>
                      </div>
+                </div>
+            )}
+            
+            {/* 6. GLOBAL ACTIVITY TAB */}
+            {activeTab === 'global_activity' && (
+                <div className="animate-fade-in">
+                    <h2 className="font-serif text-2xl text-cream mb-6">Global Transaction Activity</h2>
+                    <div className="bg-[#1f0c05] border border-white/10 rounded-sm overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm text-cream/70">
+                                <thead className="bg-white/5 uppercase text-xs tracking-wider text-golden-orange">
+                                    <tr>
+                                        <th className="p-4">Order ID</th>
+                                        <th className="p-4">Date</th>
+                                        <th className="p-4">Renter/Buyer</th>
+                                        <th className="p-4">Item</th>
+                                        <th className="p-4">Partner/Owner</th>
+                                        <th className="p-4">Status</th>
+                                        <th className="p-4">Admin Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                    {orders.flatMap(order => order.items.map((item, idx) => ({ ...item, orderId: order.id, orderDate: order.date, renterName: order.userName }))).map((txn, i) => (
+                                        <tr key={i} className="hover:bg-white/5 transition-colors">
+                                            <td className="p-4 font-bold text-cream">{txn.orderId}</td>
+                                            <td className="p-4 text-xs text-cream/50">{txn.orderDate}</td>
+                                            <td className="p-4">{txn.renterName}</td>
+                                            <td className="p-4">
+                                                <div className="flex items-center gap-2">
+                                                    <img src={txn.product.images[0]} className="w-8 h-10 object-cover rounded bg-white/10" alt="" />
+                                                    <div>
+                                                        <p className="text-cream text-xs font-bold">{txn.product.name}</p>
+                                                        <p className="text-[10px] text-golden-orange uppercase">{txn.type === 'buy' ? 'Purchase' : 'Rental'}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="p-4">
+                                                {txn.product.ownerId === 'stylus-official' ? <span className="text-golden-orange font-bold text-xs uppercase">Stylus Official</span> : 
+                                                registeredUsers.find(u => u.id === txn.product.ownerId)?.name || 'Unknown Partner'}
+                                            </td>
+                                            <td className="p-4">
+                                                <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded border ${
+                                                    txn.status === 'Accepted' || txn.status === 'Shipped' || txn.status === 'Completed' ? 'border-green-500/30 text-green-400' :
+                                                    txn.status === 'Rejected' || txn.status === 'Cancelled' ? 'border-red-500/30 text-red-400' :
+                                                    'border-yellow-500/30 text-yellow-500'
+                                                }`}>
+                                                    {txn.status}
+                                                </span>
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="flex gap-2">
+                                                    {txn.status === 'Pending Approval' && (
+                                                        <>
+                                                            <button onClick={() => handleForceStatus(txn.orderId, txn.id, 'Accepted')} className="text-[10px] bg-green-500/20 text-green-400 px-2 py-1 rounded hover:bg-green-500 hover:text-white transition-colors">Force Accept</button>
+                                                            <button onClick={() => handleForceStatus(txn.orderId, txn.id, 'Cancelled')} className="text-[10px] bg-red-500/20 text-red-400 px-2 py-1 rounded hover:bg-red-500 hover:text-white transition-colors">Force Cancel</button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             )}
 
