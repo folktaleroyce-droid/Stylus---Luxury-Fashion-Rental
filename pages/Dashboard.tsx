@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock, X, Check, Heart, Eye, Search, Filter, History, ChevronRight, Briefcase, DollarSign, ShieldAlert, FileText, Ban, Trash2, ShoppingBag, Truck, Wallet } from 'lucide-react';
+import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock, X, Check, Heart, Eye, Search, Filter, History, ChevronRight, Briefcase, DollarSign, ShieldAlert, FileText, Ban, Trash2, ShoppingBag, Truck, Wallet, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useProduct } from '../context/ProductContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -158,7 +158,7 @@ export const Dashboard: React.FC = () => {
       {/* Verification Modal */}
       {verificationModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4">
-              <div className="max-w-md w-full relative">
+              <div className="max-w-md w-full relative animate-fade-in">
                   <button onClick={() => setVerificationModal(false)} className="absolute -top-10 right-0 text-cream hover:text-golden-orange"><X/></button>
                   {currentUser.role === 'User' ? (
                       <UserVerificationForm onSubmit={handleVerificationSubmit} />
@@ -171,7 +171,7 @@ export const Dashboard: React.FC = () => {
 
       {/* Fund Wallet Payment Modal */}
       {fundModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
               <div className="bg-[#1f0c05] border border-golden-orange w-full max-w-md p-8 relative shadow-2xl rounded-sm">
                   <button onClick={() => setFundModal(false)} className="absolute top-4 right-4 text-cream/50 hover:text-golden-orange"><X size={24}/></button>
                   <h2 className="font-serif text-2xl text-cream mb-2">Fund Your Wallet</h2>
@@ -238,12 +238,12 @@ export const Dashboard: React.FC = () => {
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#e1af4d 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-20 relative z-10">
         <div className="flex flex-col md:flex-row gap-8">
           
           {/* Sidebar */}
           <div className="w-full md:w-1/4">
-            <div className="bg-[#1f0c05] border border-golden-orange/20 p-6 shadow-2xl relative text-center">
+            <div className="bg-[#1f0c05] border border-golden-orange/20 p-6 shadow-2xl relative text-center rounded-sm">
                <div className="w-20 h-20 bg-golden-orange rounded-full mx-auto mb-4 flex items-center justify-center text-espresso text-2xl font-serif font-bold border-4 border-[#1f0c05]">
                   {currentUser.name.charAt(0)}
                </div>
@@ -302,7 +302,7 @@ export const Dashboard: React.FC = () => {
           <div className="w-full md:w-3/4">
              {/* --- PARTNER VIEWS --- */}
              {currentUser.role === 'Partner' && currentView === 'overview' && (
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
                      <div className="bg-white/5 p-6 border border-white/10">
                          <h3 className="text-cream/50 uppercase text-xs">Total Earnings</h3>
                          <p className="text-3xl text-golden-orange font-serif">${currentUser.walletBalance}</p>
@@ -319,7 +319,7 @@ export const Dashboard: React.FC = () => {
              )}
 
              {currentUser.role === 'Partner' && currentView === 'add-item' && (
-                 <div className="bg-white/5 border border-white/10 p-8">
+                 <div className="bg-white/5 border border-white/10 p-8 rounded-sm">
                      <h3 className="font-serif text-2xl text-cream mb-6">List New Attire</h3>
                      {currentUser.verificationStatus !== 'Verified' ? (
                          <div className="bg-red-500/10 border border-red-500/50 p-4 text-red-400 flex items-center gap-3">
@@ -389,8 +389,8 @@ export const Dashboard: React.FC = () => {
                  <div className="space-y-4">
                      <h3 className="font-serif text-2xl text-cream mb-6">My Inventory</h3>
                      {myListings.length === 0 ? <p className="text-cream/50">No items listed.</p> : myListings.map(item => (
-                         <div key={item.id} className="bg-white/5 p-4 flex gap-4 border border-white/10">
-                             <img src={item.images[0]} className="w-24 h-32 object-cover" />
+                         <div key={item.id} className="bg-white/5 p-4 flex gap-4 border border-white/10 rounded-sm">
+                             <img src={item.images[0]} className="w-24 h-32 object-cover rounded-sm" />
                              <div className="flex-grow">
                                  <h4 className="text-cream font-bold text-lg">{item.name}</h4>
                                  <div className="flex flex-wrap gap-4 text-sm text-cream/70 mt-1">
@@ -402,8 +402,8 @@ export const Dashboard: React.FC = () => {
                                     {item.autoSellAfterRentals && <span className="text-xs text-golden-orange bg-golden-orange/10 px-2 py-1 rounded border border-golden-orange/30">Auto-sell at: {item.autoSellAfterRentals}</span>}
                                  </div>
                                  <div className="flex gap-2 mt-4">
-                                     <button className="text-xs border border-white/20 px-3 py-1 text-cream hover:border-golden-orange">Edit</button>
-                                     <button onClick={() => handleRemoveItem(item.id)} className="text-xs border border-red-500/20 px-3 py-1 text-red-400 hover:bg-red-500/10 flex items-center gap-1"><Trash2 size={12}/> Remove</button>
+                                     <button className="text-xs border border-white/20 px-3 py-1 text-cream hover:border-golden-orange rounded-sm">Edit</button>
+                                     <button onClick={() => handleRemoveItem(item.id)} className="text-xs border border-red-500/20 px-3 py-1 text-red-400 hover:bg-red-500/10 flex items-center gap-1 rounded-sm"><Trash2 size={12}/> Remove</button>
                                  </div>
                              </div>
                          </div>
@@ -420,7 +420,7 @@ export const Dashboard: React.FC = () => {
                          if (myItems.length === 0) return null;
 
                          return (
-                             <div key={order.id} className="bg-white/5 p-6 border border-white/10 mb-6">
+                             <div key={order.id} className="bg-white/5 p-6 border border-white/10 mb-6 rounded-sm">
                                  <div className="flex justify-between items-start mb-4 border-b border-white/5 pb-2">
                                      <div>
                                          <p className="text-xs text-cream/40 uppercase">Order ID: {order.id}</p>
@@ -431,7 +431,7 @@ export const Dashboard: React.FC = () => {
                                  
                                  {myItems.map((item, idx) => (
                                      <div key={idx} className="flex flex-col md:flex-row gap-4 mb-4 bg-black/20 p-4 border border-white/5 rounded-sm">
-                                         <img src={item.product.images[0]} className="w-16 h-20 object-cover" />
+                                         <img src={item.product.images[0]} className="w-16 h-20 object-cover rounded-sm" />
                                          <div className="flex-grow">
                                              <p className="text-cream font-bold">{item.product.name}</p>
                                              <div className="flex gap-4 text-xs text-cream/60 mt-1">
@@ -465,27 +465,36 @@ export const Dashboard: React.FC = () => {
 
              {/* --- USER VIEWS --- */}
              {currentUser.role === 'User' && currentView === 'overview' && (
-                 <div>
-                     <h3 className="font-serif text-2xl text-cream mb-6">Current Overview</h3>
+                 <div className="pt-2">
+                     <div className="flex justify-between items-end mb-6">
+                        <h3 className="font-serif text-2xl text-cream">Current Overview</h3>
+                        <span className="text-xs text-cream/50 uppercase tracking-widest">{new Date().toLocaleDateString()}</span>
+                     </div>
+                     
                      {currentUser.verificationStatus === 'Verified' && (
-                         <div className="bg-green-500/10 border border-green-500/30 p-4 mb-6 flex items-center gap-3 rounded-sm">
-                             <div className="bg-green-500 text-espresso p-1 rounded-full"><Check size={14}/></div>
-                             <div>
-                                 <h4 className="text-green-400 font-bold text-sm uppercase tracking-wide">Account Verified</h4>
-                                 <p className="text-cream/60 text-xs">You have full access to rent and buy from the Stylus Vault.</p>
+                         <div className="bg-green-500/10 border border-green-500/30 p-6 mb-8 flex items-start md:items-center gap-4 rounded-sm shadow-lg relative overflow-hidden animate-fade-in">
+                             <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                                <ShieldCheck size={64} />
+                             </div>
+                             <div className="bg-green-500 text-espresso p-2 rounded-full shrink-0 relative z-10">
+                                <Check size={20}/>
+                             </div>
+                             <div className="relative z-10">
+                                 <h4 className="text-green-400 font-bold text-base uppercase tracking-wide mb-1">Account Verified</h4>
+                                 <p className="text-cream/70 text-sm">Your identity has been confirmed. You now have unrestricted access to the Stylus Vault.</p>
                              </div>
                          </div>
                      )}
                      
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                         <div className="bg-[#1f0c05] border border-white/10 p-6 relative overflow-hidden">
-                             <div className="absolute top-0 right-0 p-4 opacity-10"><ShoppingBag size={64}/></div>
+                         <div className="bg-[#1f0c05] border border-white/10 p-6 relative overflow-hidden rounded-sm shadow-md group hover:border-golden-orange/30 transition-colors">
+                             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform"><ShoppingBag size={64}/></div>
                              <h4 className="text-cream font-bold text-lg mb-1">Active Requests</h4>
                              <p className="text-3xl font-serif text-golden-orange">{activeOrders.length}</p>
                              <p className="text-xs text-cream/50 mt-2">Items currently in processing or rented.</p>
                          </div>
-                         <div className="bg-[#1f0c05] border border-white/10 p-6 relative overflow-hidden">
-                             <div className="absolute top-0 right-0 p-4 opacity-10"><History size={64}/></div>
+                         <div className="bg-[#1f0c05] border border-white/10 p-6 relative overflow-hidden rounded-sm shadow-md group hover:border-golden-orange/30 transition-colors">
+                             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform"><History size={64}/></div>
                              <h4 className="text-cream font-bold text-lg mb-1">Total History</h4>
                              <p className="text-3xl font-serif text-cream">{pastOrders.length}</p>
                              <p className="text-xs text-cream/50 mt-2">Completed orders (Returned or Purchased).</p>
@@ -496,7 +505,7 @@ export const Dashboard: React.FC = () => {
                      {activeOrders.length === 0 ? <p className="text-cream/50 italic py-4">No active rentals or purchases pending.</p> : (
                          <div className="grid gap-4">
                              {activeOrders.map(o => (
-                                 <div key={o.id} className="bg-white/5 p-4 border border-white/10 flex flex-col sm:flex-row gap-4">
+                                 <div key={o.id} className="bg-white/5 p-4 border border-white/10 flex flex-col sm:flex-row gap-4 rounded-sm">
                                      <div className="flex-1">
                                         <div className="flex justify-between mb-2">
                                             <span className="text-golden-orange font-bold">Order {o.id}</span>
@@ -507,7 +516,7 @@ export const Dashboard: React.FC = () => {
                                             {o.items.map(i => (
                                                 <div key={i.id} className="flex gap-3 bg-black/20 p-2 rounded relative overflow-hidden">
                                                     <div className={`absolute left-0 top-0 bottom-0 w-1 ${i.status === 'Accepted' || i.status === 'Shipped' ? 'bg-green-500' : i.status === 'Rejected' ? 'bg-red-500' : 'bg-yellow-500'}`}></div>
-                                                    <img src={i.product.images[0]} className="w-12 h-16 object-cover ml-2" />
+                                                    <img src={i.product.images[0]} className="w-12 h-16 object-cover ml-2 rounded-sm" />
                                                     <div className="flex-grow">
                                                         <div className="flex justify-between">
                                                             <p className="text-sm text-cream font-bold">{i.product.name}</p>
@@ -532,7 +541,7 @@ export const Dashboard: React.FC = () => {
              {currentUser.role === 'User' && currentView === 'history' && (
                  <div>
                      <h3 className="font-serif text-2xl text-cream mb-6">Order History</h3>
-                     {pastOrders.length === 0 ? <div className="bg-white/5 p-8 text-center"><p className="text-cream/50">No historical data found.</p></div> : (
+                     {pastOrders.length === 0 ? <div className="bg-white/5 p-8 text-center rounded-sm"><p className="text-cream/50">No historical data found.</p></div> : (
                          <div className="space-y-4">
                              {pastOrders.map(o => (
                                  <div key={o.id} className="bg-white/5 border border-white/5 rounded-sm p-6 hover:border-golden-orange/30 transition-colors">
@@ -577,8 +586,8 @@ export const Dashboard: React.FC = () => {
               {currentUser.role === 'User' && currentView === 'wishlist' && (
                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                      {wishlist.length === 0 ? <p className="text-cream/50">Wishlist is empty.</p> : wishlist.map(p => (
-                         <div key={p.id} className="bg-white/5 p-4 border border-white/10">
-                             <img src={p.images[0]} className="w-full h-40 object-cover mb-4" />
+                         <div key={p.id} className="bg-white/5 p-4 border border-white/10 rounded-sm">
+                             <img src={p.images[0]} className="w-full h-40 object-cover mb-4 rounded-sm" />
                              <p className="text-cream font-bold truncate">{p.name}</p>
                              <p className="text-golden-orange text-sm">${p.rentalPrice} / rent</p>
                              <Link to={`/product/${p.id}`}>
