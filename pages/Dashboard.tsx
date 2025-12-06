@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock, X, Check, Heart, Eye, Search, Filter, History, ChevronRight, Briefcase, DollarSign, ShieldAlert, FileText, Ban, Trash2, ShoppingBag, Truck } from 'lucide-react';
+import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock, X, Check, Heart, Eye, Search, Filter, History, ChevronRight, Briefcase, DollarSign, ShieldAlert, FileText, Ban, Trash2, ShoppingBag, Truck, Wallet } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useProduct } from '../context/ProductContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -21,6 +21,11 @@ export const Dashboard: React.FC = () => {
   const [currentView, setCurrentView] = useState('overview');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [verificationModal, setVerificationModal] = useState(false);
+  
+  // Wallet Funding State
+  const [fundModal, setFundModal] = useState(false);
+  const [fundAmount, setFundAmount] = useState('');
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   // Filter products for Partner
   const myListings = products.filter(p => p.ownerId === currentUser?.id);
@@ -55,6 +60,25 @@ export const Dashboard: React.FC = () => {
       } else {
           alert("Invalid amount or insufficient funds.");
       }
+  };
+
+  const handleFundWallet = (e: React.FormEvent) => {
+      e.preventDefault();
+      const amount = Number(fundAmount);
+      if (isNaN(amount) || amount <= 0) {
+          alert("Please enter a valid amount.");
+          return;
+      }
+      
+      setIsProcessingPayment(true);
+      // Simulate API call to payment gateway
+      setTimeout(() => {
+          updateWallet(currentUser!.id, amount);
+          setIsProcessingPayment(false);
+          setFundModal(false);
+          setFundAmount('');
+          alert(`Successfully added $${amount} to your Stylus Wallet.`);
+      }, 2000);
   };
 
   const handleAcceptOrder = (orderId: string) => {
@@ -153,6 +177,57 @@ export const Dashboard: React.FC = () => {
           </div>
       )}
 
+      {/* Fund Wallet Payment Modal */}
+      {fundModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+              <div className="bg-[#1f0c05] border border-golden-orange w-full max-w-md p-8 relative shadow-2xl rounded-sm">
+                  <button onClick={() => setFundModal(false)} className="absolute top-4 right-4 text-cream/50 hover:text-golden-orange"><X size={24}/></button>
+                  <h2 className="font-serif text-2xl text-cream mb-2">Fund Your Wallet</h2>
+                  <p className="text-xs text-cream/50 mb-6 uppercase tracking-widest">Secure Payment Gateway</p>
+                  
+                  <form onSubmit={handleFundWallet} className="space-y-4">
+                      <div>
+                          <label className="text-xs text-cream/50 mb-1 block uppercase">Amount to Add ($)</label>
+                          <div className="relative">
+                              <DollarSign size={16} className="absolute left-3 top-3 text-golden-orange"/>
+                              <input 
+                                type="number" 
+                                required 
+                                min="10" 
+                                value={fundAmount} 
+                                onChange={e => setFundAmount(e.target.value)} 
+                                className="w-full bg-black/20 border border-white/10 pl-10 p-3 text-cream focus:border-golden-orange outline-none font-serif text-lg" 
+                                placeholder="0.00"
+                              />
+                          </div>
+                      </div>
+
+                      <div className="border-t border-white/10 pt-4 mt-4">
+                          <label className="text-xs text-cream/50 mb-3 block uppercase flex items-center gap-2"><CreditCard size={14}/> Card Details</label>
+                          <div className="space-y-3">
+                              <input required type="text" placeholder="Card Number (0000 0000 0000 0000)" className="w-full bg-black/20 border border-white/10 p-3 text-cream text-sm focus:border-golden-orange outline-none rounded-sm" />
+                              <div className="grid grid-cols-2 gap-3">
+                                  <input required type="text" placeholder="MM / YY" className="w-full bg-black/20 border border-white/10 p-3 text-cream text-sm focus:border-golden-orange outline-none rounded-sm" />
+                                  <input required type="text" placeholder="CVV" className="w-full bg-black/20 border border-white/10 p-3 text-cream text-sm focus:border-golden-orange outline-none rounded-sm" />
+                              </div>
+                              <input required type="text" placeholder="Cardholder Name" className="w-full bg-black/20 border border-white/10 p-3 text-cream text-sm focus:border-golden-orange outline-none rounded-sm" />
+                          </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 mt-2 mb-4">
+                         <div className="w-full h-px bg-white/10"></div>
+                         <span className="text-[10px] text-cream/30 uppercase whitespace-nowrap">Secured by Stripe</span>
+                         <div className="w-full h-px bg-white/10"></div>
+                      </div>
+
+                      <Button fullWidth disabled={isProcessingPayment}>
+                          {isProcessingPayment ? 'Processing Transaction...' : `Pay $${fundAmount || '0.00'}`}
+                      </Button>
+                  </form>
+              </div>
+          </div>
+      )}
+
       {/* Logout Modal */}
       {showLogoutConfirm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setShowLogoutConfirm(false)}>
@@ -192,10 +267,16 @@ export const Dashboard: React.FC = () => {
                
                {/* Wallet Preview */}
                <div className="mt-6 pt-4 border-t border-white/10">
-                   <p className="text-xs uppercase text-cream/40">Wallet Balance</p>
-                   <p className="text-2xl font-serif text-golden-orange">${currentUser.walletBalance}</p>
-                   {currentUser.role === 'Partner' && (
-                       <button onClick={handleWithdraw} className="text-xs text-cream underline mt-1 hover:text-golden-orange">Withdraw Funds</button>
+                   <div className="flex justify-between items-center mb-1">
+                       <p className="text-xs uppercase text-cream/40">Wallet Balance</p>
+                       <Wallet size={14} className="text-golden-orange"/>
+                   </div>
+                   <p className="text-2xl font-serif text-golden-orange mb-3">${currentUser.walletBalance.toFixed(2)}</p>
+                   
+                   {currentUser.role === 'Partner' ? (
+                       <button onClick={handleWithdraw} className="w-full bg-white/5 border border-white/10 text-cream py-2 text-xs uppercase font-bold hover:bg-white/10 transition-colors">Withdraw Funds</button>
+                   ) : (
+                       <button onClick={() => setFundModal(true)} className="w-full bg-golden-orange text-espresso py-2 text-xs uppercase font-bold hover:bg-white hover:text-espresso transition-colors shadow-lg">Fund Wallet</button>
                    )}
                </div>
 

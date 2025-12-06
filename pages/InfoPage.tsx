@@ -1,9 +1,11 @@
+
 import React from 'react';
-import { ShieldCheck, FileText, Sparkles, Lock, ShoppingBag, Trash2, ArrowRight } from 'lucide-react';
+import { ShieldCheck, FileText, Sparkles, Lock, ShoppingBag, Trash2, ArrowRight, Wallet, AlertTriangle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { useCart } from '../context/CartContext';
 import { useOrders } from '../context/OrderContext';
+import { useAuth } from '../context/AuthContext';
 
 interface InfoPageProps {
   type: 'privacy' | 'terms' | 'authenticity' | 'edit' | 'bag';
@@ -12,16 +14,34 @@ interface InfoPageProps {
 export const InfoPage: React.FC<InfoPageProps> = ({ type }) => {
   const { cart, removeFromCart, cartTotal, clearCart } = useCart();
   const { addOrder } = useOrders();
+  const { currentUser, updateWallet, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   const handleCheckout = () => {
-    // Add current cart to order history
-    addOrder(cart, cartTotal);
-    
-    // Clear cart and redirect
-    alert("Thank you for your order. Your items are being prepared for dispatch.");
-    clearCart();
-    navigate('/dashboard');
+    if (!isAuthenticated || !currentUser) {
+        navigate('/login', { state: { from: { pathname: '/bag' } } });
+        return;
+    }
+
+    if (currentUser.walletBalance < cartTotal) {
+        if(confirm(`Insufficient funds in your wallet ($${currentUser.walletBalance.toFixed(2)}). Total needed: $${cartTotal.toFixed(2)}.\n\nWould you like to go to your dashboard to fund your wallet?`)) {
+            navigate('/dashboard');
+        }
+        return;
+    }
+
+    if(confirm(`Confirm payment of $${cartTotal.toFixed(2)} from your wallet?`)) {
+        // Deduct from wallet
+        updateWallet(currentUser.id, -cartTotal);
+        
+        // Add current cart to order history
+        addOrder(cart, cartTotal);
+        
+        // Clear cart and redirect
+        alert("Payment successful. Your order has been placed!");
+        clearCart();
+        navigate('/dashboard');
+    }
   };
 
   const content = {
@@ -123,7 +143,7 @@ export const InfoPage: React.FC<InfoPageProps> = ({ type }) => {
                              </div>
                              <div>
                                 <span className="block text-xs uppercase text-cream/40">Dates</span>
-                                {item.startDate} - {item.endDate} ({item.duration} days)
+                                {item.startDate ? `${item.startDate} - ${item.endDate} (${item.duration} days)` : 'Standard Shipping'}
                              </div>
                           </div>
 
@@ -141,10 +161,23 @@ export const InfoPage: React.FC<InfoPageProps> = ({ type }) => {
                 </div>
                 
                 <div className="border-t-2 border-golden-orange pt-6 mb-8">
-                   <div className="flex justify-between items-center mb-6">
-                      <span className="font-serif text-xl text-cream">Total</span>
+                   <div className="flex justify-between items-center mb-2">
+                      <span className="font-serif text-xl text-cream">Subtotal</span>
                       <span className="font-serif text-3xl text-golden-orange">${cartTotal}</span>
                    </div>
+                   
+                   {isAuthenticated && currentUser && (
+                       <div className={`flex justify-between items-center mb-6 p-4 rounded-sm border ${currentUser.walletBalance >= cartTotal ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+                           <div className="flex items-center gap-2">
+                               <Wallet size={16} className={currentUser.walletBalance >= cartTotal ? 'text-green-400' : 'text-red-400'}/>
+                               <span className="text-sm text-cream">Wallet Balance: <span className="font-bold">${currentUser.walletBalance.toFixed(2)}</span></span>
+                           </div>
+                           {currentUser.walletBalance < cartTotal && (
+                               <Link to="/dashboard" className="text-xs underline text-golden-orange hover:text-white">Fund Wallet</Link>
+                           )}
+                       </div>
+                   )}
+
                    <div className="flex flex-col gap-4">
                      <Button fullWidth onClick={handleCheckout} className="flex justify-center items-center">
                         Secure Checkout <ArrowRight size={16} className="ml-2" />
