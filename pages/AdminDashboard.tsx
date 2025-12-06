@@ -11,6 +11,7 @@ export const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'users' | 'rentals' | 'inventory' | 'marketing' | 'verifications'>('rentals');
   const [selectedDoc, setSelectedDoc] = useState<{ url: string, title: string } | null>(null);
   const [showAddStockModal, setShowAddStockModal] = useState(false);
+  const [userFilter, setUserFilter] = useState<'All' | 'User' | 'Partner'>('All');
   
   // Destructure all necessary actions from AuthContext
   const { 
@@ -34,6 +35,12 @@ export const AdminDashboard: React.FC = () => {
 
   // Filter for pending verifications
   const pendingVerifications = registeredUsers.filter(u => u.verificationStatus === 'Pending');
+
+  // Filter for User Management
+  const filteredUsers = registeredUsers.filter(u => {
+      if (userFilter === 'All') return true;
+      return u.role === userFilter;
+  });
 
   const handleLogout = () => { logout(); navigate('/login'); };
 
@@ -60,7 +67,7 @@ export const AdminDashboard: React.FC = () => {
 
   const handleExportUsers = () => {
       const headers = ["ID", "Name", "Email", "Role", "Status", "Joined", "Verification"];
-      const rows = registeredUsers.map(u => [
+      const rows = filteredUsers.map(u => [
           u.id, 
           u.name, 
           u.email, 
@@ -244,9 +251,14 @@ export const AdminDashboard: React.FC = () => {
             {/* 1. USER MANAGEMENT TAB */}
             {activeTab === 'users' && (
                 <div className="animate-fade-in">
-                     <div className="flex justify-between items-center mb-6">
+                     <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                         <h2 className="font-serif text-2xl text-cream">User Management</h2>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 items-center flex-wrap">
+                             <div className="bg-black/20 p-1 rounded border border-white/10 flex">
+                                 <button onClick={() => setUserFilter('All')} className={`px-3 py-1 text-xs uppercase rounded ${userFilter === 'All' ? 'bg-golden-orange text-espresso font-bold' : 'text-cream/50'}`}>All</button>
+                                 <button onClick={() => setUserFilter('User')} className={`px-3 py-1 text-xs uppercase rounded ${userFilter === 'User' ? 'bg-golden-orange text-espresso font-bold' : 'text-cream/50'}`}>Users</button>
+                                 <button onClick={() => setUserFilter('Partner')} className={`px-3 py-1 text-xs uppercase rounded ${userFilter === 'Partner' ? 'bg-golden-orange text-espresso font-bold' : 'text-cream/50'}`}>Partners</button>
+                             </div>
                              <div className="relative">
                                  <Search className="absolute left-3 top-2.5 text-cream/30" size={16}/>
                                  <input type="text" placeholder="Search Users..." className="bg-black/20 border border-white/10 pl-10 pr-4 py-2 text-sm text-cream focus:border-golden-orange outline-none rounded-sm" />
@@ -290,7 +302,7 @@ export const AdminDashboard: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
-                                {registeredUsers.map(u => (
+                                {filteredUsers.map(u => (
                                     <tr key={u.id} className="hover:bg-white/5 transition-colors">
                                         <td className="p-4 font-bold text-white">
                                             <div className="flex items-center gap-2">
@@ -298,7 +310,11 @@ export const AdminDashboard: React.FC = () => {
                                                 <div>{u.name}<br/><span className="text-xs text-cream/40 font-normal">{u.email}</span></div>
                                             </div>
                                         </td>
-                                        <td className="p-4">{u.role}</td>
+                                        <td className="p-4">
+                                            <span className={`text-[10px] px-2 py-0.5 rounded border uppercase tracking-wide font-bold ${u.role === 'Partner' ? 'border-blue-400 text-blue-400' : 'border-golden-orange text-golden-orange'}`}>
+                                                {u.role}
+                                            </span>
+                                        </td>
                                         <td className="p-4">
                                             <span className={`px-2 py-1 rounded text-[10px] uppercase font-bold ${u.status === 'Active' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
                                                 {u.status}
@@ -649,6 +665,11 @@ export const AdminDashboard: React.FC = () => {
                                                     <p><span className="text-cream/40 uppercase text-xs block mb-1">CAC Number:</span> {u.verificationDocs?.cacNumber}</p>
                                                     <p><span className="text-cream/40 uppercase text-xs block mb-1">Director BVN:</span> {u.verificationDocs?.bvn}</p>
                                                     
+                                                    <div className="col-span-1 md:col-span-2 mt-2 text-xs text-blue-300 bg-blue-900/20 p-2 rounded border border-blue-500/30">
+                                                        <span className="font-bold uppercase">Requested Access:</span> Seller Platform
+                                                        <p className="opacity-70 mt-1">Approving this request will enable: Inventory Management, Order Processing, Earnings Withdrawal.</p>
+                                                    </div>
+
                                                     <div className="col-span-1 md:col-span-2 mt-4 flex items-center justify-between border-t border-white/5 pt-4">
                                                         <p className="text-green-400 font-bold flex items-center gap-2 text-xs uppercase tracking-wide"><Check size={14}/> Fee Paid (₦25,000)</p>
                                                         {u.verificationDocs?.cacCertUrl && (
@@ -669,6 +690,11 @@ export const AdminDashboard: React.FC = () => {
                                                     <p><span className="text-cream/40 uppercase text-xs block mb-1">BVN:</span> {u.verificationDocs?.bvn}</p>
                                                     <p><span className="text-cream/40 uppercase text-xs block mb-1">ID Type:</span> {u.verificationDocs?.idType || 'N/A'}</p>
                                                     
+                                                    <div className="col-span-1 md:col-span-2 mt-2 text-xs text-golden-orange bg-golden-orange/10 p-2 rounded border border-golden-orange/30">
+                                                        <span className="font-bold uppercase">Requested Access:</span> Verified Renter
+                                                        <p className="opacity-70 mt-1">Approving this request will enable: High-value Rentals, Purchases, Insurance Coverage.</p>
+                                                    </div>
+
                                                     <div className="col-span-1 md:col-span-2 mt-4 flex justify-end border-t border-white/5 pt-4">
                                                         {u.verificationDocs?.govIdUrl && (
                                                             <button 

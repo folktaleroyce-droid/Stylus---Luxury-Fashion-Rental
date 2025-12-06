@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock, X, Check, Heart, Eye, Search, Filter, History, ChevronRight, Briefcase, DollarSign, ShieldAlert, FileText, Ban, Trash2 } from 'lucide-react';
@@ -371,6 +372,16 @@ export const Dashboard: React.FC = () => {
              {currentUser.role === 'User' && currentView === 'overview' && (
                  <div>
                      <h3 className="font-serif text-2xl text-cream mb-6">Active Rentals</h3>
+                     {currentUser.verificationStatus === 'Verified' && (
+                         <div className="bg-green-500/10 border border-green-500/30 p-4 mb-6 flex items-center gap-3 rounded-sm">
+                             <div className="bg-green-500 text-espresso p-1 rounded-full"><Check size={14}/></div>
+                             <div>
+                                 <h4 className="text-green-400 font-bold text-sm uppercase tracking-wide">Account Verified</h4>
+                                 <p className="text-cream/60 text-xs">You have full access to rent and buy from the Stylus Vault.</p>
+                             </div>
+                         </div>
+                     )}
+                     
                      {userOrders.length === 0 ? <p className="text-cream/50 italic">No active rentals found.</p> : (
                          <div className="grid gap-4">
                              {userOrders.map(o => (
