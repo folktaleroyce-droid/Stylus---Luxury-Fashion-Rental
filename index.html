@@ -52,6 +52,24 @@
       body {
         background-color: #260f06;
         color: #f9edd2;
+        /* Disable text selection to prevent blinking cursor on clicks */
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        cursor: default;
+      }
+      
+      /* Re-enable selection for inputs, textareas, and specific selectable areas */
+      input, textarea, select, [contenteditable="true"], .allow-select {
+        user-select: text;
+        -webkit-user-select: text;
+        cursor: text;
+      }
+      
+      /* Ensure links and buttons still have the pointer cursor */
+      a, button, [role="button"] {
+        cursor: pointer;
       }
     </style>
   <script type="importmap">
