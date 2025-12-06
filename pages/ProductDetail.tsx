@@ -1,8 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../components/Button';
-import { Shield, Clock, Calendar, Check, ArrowLeft, Ruler, Star, Truck, AlertTriangle, X, Heart, ShoppingBag, Lock, DollarSign, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { Shield, Clock, Calendar as CalendarIcon, Check, ArrowLeft, Ruler, Star, Truck, AlertTriangle, X, Heart, ShoppingBag, Lock, DollarSign, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { useProduct } from '../context/ProductContext';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -22,7 +22,11 @@ export const ProductDetail: React.FC = () => {
   const [selectedDuration, setSelectedDuration] = useState<4 | 8 | 12>(4);
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [startDate, setStartDate] = useState<string>('');
+  
+  // Calendar State
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [viewDate, setViewDate] = useState(new Date()); // For navigating months
+  
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [openPolicy, setOpenPolicy] = useState<string | null>('shipping');
 
@@ -30,6 +34,86 @@ export const ProductDetail: React.FC = () => {
 
   const isWishlisted = isInWishlist(product.id);
   const currentRentalPrice = selectedDuration === 4 ? product.rentalPrice : selectedDuration === 8 ? Math.round(product.rentalPrice * 1.75) : Math.round(product.rentalPrice * 2.4);
+
+  // --- Calendar Helpers ---
+  const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
+  const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
+  
+  const handlePrevMonth = () => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1));
+  const handleNextMonth = () => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1));
+
+  const isDateDisabled = (date: Date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date < today;
+  };
+
+  const isDateSelected = (date: Date) => {
+    if (!startDate) return false;
+    return date.getTime() === startDate.getTime();
+  };
+
+  const isDateInRentalRange = (date: Date) => {
+    if (!startDate) return false;
+    const endDate = new Date(startDate);
+    endDate.setDate(startDate.getDate() + selectedDuration - 1); // Inclusive
+    return date > startDate && date <= endDate;
+  };
+
+  const getEndDate = () => {
+      if (!startDate) return null;
+      const end = new Date(startDate);
+      end.setDate(startDate.getDate() + selectedDuration);
+      return end;
+  };
+
+  const handleDateClick = (day: number) => {
+    const newDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
+    if (!isDateDisabled(newDate)) {
+        setStartDate(newDate);
+    }
+  };
+
+  const renderCalendar = () => {
+    const year = viewDate.getFullYear();
+    const month = viewDate.getMonth();
+    const daysInMonth = getDaysInMonth(year, month);
+    const firstDay = getFirstDayOfMonth(year, month);
+    const days = [];
+
+    // Empty cells for days before the 1st
+    for (let i = 0; i < firstDay; i++) {
+        days.push(<div key={`empty-${i}`} className="h-10 w-10"></div>);
+    }
+
+    // Actual days
+    for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month, day);
+        const disabled = isDateDisabled(date);
+        const selected = isDateSelected(date);
+        const inRange = isDateInRentalRange(date);
+        
+        days.push(
+            <button
+                key={day}
+                onClick={(e) => { e.preventDefault(); handleDateClick(day); }}
+                disabled={disabled}
+                className={`
+                    h-10 w-10 text-xs font-medium rounded-full flex items-center justify-center transition-all relative
+                    ${disabled ? 'text-cream/20 cursor-not-allowed' : 'text-cream hover:bg-white/10'}
+                    ${selected ? 'bg-golden-orange text-espresso font-bold shadow-[0_0_10px_rgba(225,175,77,0.5)] z-10' : ''}
+                    ${inRange ? 'bg-golden-orange/20 text-golden-orange rounded-none' : ''}
+                    ${inRange && day === daysInMonth ? 'rounded-r-full' : ''} 
+                    ${inRange && day === 1 ? 'rounded-l-full' : ''}
+                `}
+            >
+                {day}
+            </button>
+        );
+    }
+
+    return days;
+  };
 
   const checkAccess = () => {
       if (!isAuthenticated) {
@@ -55,8 +139,8 @@ export const ProductDetail: React.FC = () => {
         type,
         price: type === 'rent' ? currentRentalPrice : (product.buyPrice || 0),
         duration: type === 'rent' ? selectedDuration : undefined,
-        startDate: type === 'rent' ? startDate : undefined,
-        endDate: type === 'rent' ? new Date(startDate).toLocaleDateString() : undefined
+        startDate: type === 'rent' && startDate ? startDate.toLocaleDateString() : undefined,
+        endDate: type === 'rent' && startDate ? getEndDate()?.toLocaleDateString() : undefined
     });
     alert(`${type === 'rent' ? 'Rental' : 'Purchase'} added to bag.`);
   };
@@ -114,7 +198,7 @@ export const ProductDetail: React.FC = () => {
                              <div className="absolute top-0 right-0 w-16 h-16 bg-golden-orange/10 rounded-bl-full"></div>
                              <p className="text-xs text-cream/50 uppercase tracking-widest mb-1">Rent from</p>
                              <div className="flex items-baseline gap-1">
-                                <p className="text-3xl font-serif text-cream">${currentRentalPrice}</p>
+                                <p className="text-3xl font-serif text-cream">${product.rentalPrice}</p>
                                 <p className="text-sm text-cream/50">/ 4 Days</p>
                              </div>
                          </div>
@@ -140,28 +224,62 @@ export const ProductDetail: React.FC = () => {
                              </div>
                          </div>
                          
-                         {/* Rental Specifics */}
-                         <div className="mb-6 p-5 bg-black/20 border border-white/5 rounded-sm">
-                             <div className="flex items-center gap-2 mb-4">
-                                <Calendar size={16} className="text-golden-orange"/>
-                                <span className="text-xs uppercase text-cream/80 tracking-widest font-bold">Rental Period</span>
+                         {/* CALENDAR & DURATION */}
+                         <div className="mb-6 p-6 bg-black/20 border border-white/5 rounded-sm">
+                             <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2">
+                                    <CalendarIcon size={16} className="text-golden-orange"/>
+                                    <span className="text-xs uppercase text-cream/80 tracking-widest font-bold">Availability</span>
+                                </div>
+                                
+                                {/* Duration Selector */}
+                                <div className="flex bg-white/5 rounded p-1">
+                                    {[4, 8, 12].map(d => (
+                                        <button 
+                                            key={d}
+                                            onClick={() => setSelectedDuration(d as any)}
+                                            className={`px-3 py-1 text-[10px] uppercase font-bold rounded transition-colors ${selectedDuration === d ? 'bg-golden-orange text-espresso' : 'text-cream/50 hover:text-white'}`}
+                                        >
+                                            {d} Days
+                                        </button>
+                                    ))}
+                                </div>
                              </div>
-                             <div className="grid grid-cols-2 gap-4">
-                                 <div>
-                                     <label className="text-[10px] text-cream/40 uppercase block mb-1">Start Date</label>
-                                     <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-white/5 border border-white/10 text-cream p-3 w-full text-sm rounded-sm focus:border-golden-orange outline-none" />
+
+                             {/* Calendar UI */}
+                             <div className="mb-4">
+                                 <div className="flex justify-between items-center mb-4">
+                                     <button onClick={handlePrevMonth} className="text-cream/50 hover:text-golden-orange"><ChevronLeft size={16}/></button>
+                                     <span className="text-sm font-serif text-cream font-bold">
+                                         {viewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                                     </span>
+                                     <button onClick={handleNextMonth} className="text-cream/50 hover:text-golden-orange"><ChevronRight size={16}/></button>
                                  </div>
+                                 <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                                     {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
+                                         <span key={d} className="text-[10px] uppercase text-cream/30">{d}</span>
+                                     ))}
+                                 </div>
+                                 <div className="grid grid-cols-7 gap-1 place-items-center">
+                                     {renderCalendar()}
+                                 </div>
+                             </div>
+
+                             {/* Selection Summary */}
+                             <div className="border-t border-white/10 pt-4 flex justify-between items-center">
                                  <div>
-                                     <label className="text-[10px] text-cream/40 uppercase block mb-1">Duration</label>
-                                     <select 
-                                        value={selectedDuration} 
-                                        onChange={(e) => setSelectedDuration(Number(e.target.value) as any)}
-                                        className="bg-white/5 border border-white/10 text-cream p-3 w-full text-sm rounded-sm focus:border-golden-orange outline-none"
-                                     >
-                                         <option value={4}>4 Days (Standard)</option>
-                                         <option value={8}>8 Days (Extended)</option>
-                                         <option value={12}>12 Days (Long Term)</option>
-                                     </select>
+                                     <p className="text-[10px] text-cream/40 uppercase mb-1">Check-in</p>
+                                     <p className="text-sm text-cream font-bold">{startDate ? startDate.toLocaleDateString() : 'Select Date'}</p>
+                                 </div>
+                                 <div className="h-8 w-px bg-white/10"></div>
+                                 <div>
+                                     <p className="text-[10px] text-cream/40 uppercase mb-1">Check-out</p>
+                                     <p className="text-sm text-cream font-bold">{startDate ? getEndDate()?.toLocaleDateString() : '-'}</p>
+                                 </div>
+                                 <div className="h-8 w-px bg-white/10"></div>
+                                 <div className="text-right">
+                                     <p className="text-[10px] text-cream/40 uppercase mb-1">Total</p>
+                                     <p className="text-lg font-serif text-golden-orange font-bold">${currentRentalPrice}</p>
                                  </div>
                              </div>
                          </div>
