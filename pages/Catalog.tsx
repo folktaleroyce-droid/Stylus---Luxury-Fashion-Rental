@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Category, Product, ProductFilter, SortOption } from '../types';
-import { Filter, Search, X, Eye, ArrowUpDown, Heart, ShoppingBag } from 'lucide-react';
+import { Filter, Search, X, Eye, ArrowUpDown, Heart, ShoppingBag, SlidersHorizontal, ChevronDown } from 'lucide-react';
 import { useProduct } from '../context/ProductContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useCart } from '../context/CartContext';
@@ -11,24 +12,21 @@ export const Catalog: React.FC = () => {
   const { products } = useProduct();
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   
-  // Consolidated Filter State using the Interface
+  // Consolidated Filter State
   const [filters, setFilters] = useState<ProductFilter>({
     category: 'All',
     searchQuery: '',
     color: 'All',
     size: 'All',
     occasion: 'All',
-    maxPrice: 1000,
+    maxPrice: 5000,
     sortBy: 'newest'
   });
 
-  // Extract unique values for dynamic filter options
   const colors = ['All', ...Array.from(new Set(products.map(p => p.color).filter(Boolean)))];
   const occasions = ['All', ...Array.from(new Set(products.map(p => p.occasion).filter(Boolean)))];
-  // Flatten all available sizes arrays and get unique values
   const sizes = ['All', ...Array.from(new Set(products.flatMap(p => p.availableSizes).filter(Boolean))).sort()];
 
-  // Filter Function
   const filteredProducts = products.filter(p => {
     const matchCategory = filters.category === 'All' || p.category === filters.category;
     const matchSearch = p.name.toLowerCase().includes(filters.searchQuery.toLowerCase()) || 
@@ -45,7 +43,6 @@ export const Catalog: React.FC = () => {
     } else if (filters.sortBy === 'price_desc') {
       return b.rentalPrice - a.rentalPrice;
     }
-    // Default to newest (index based/original order which is effectively newest first in this context)
     return 0;
   });
 
@@ -56,7 +53,7 @@ export const Catalog: React.FC = () => {
       color: 'All',
       size: 'All',
       occasion: 'All',
-      maxPrice: 1000,
+      maxPrice: 5000,
       sortBy: 'newest'
     });
   };
@@ -66,7 +63,7 @@ export const Catalog: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-espresso pb-20">
+    <div className="min-h-screen bg-espresso pb-20 animate-fade-in">
       
       {/* Quick View Modal */}
       {quickViewProduct && (
@@ -86,166 +83,174 @@ export const Catalog: React.FC = () => {
                     <h2 className="font-serif text-3xl md:text-4xl text-cream mb-4">{quickViewProduct.name}</h2>
                     <p className="text-cream/70 mb-6 leading-relaxed line-clamp-4 font-light">{quickViewProduct.description}</p>
                     
-                    <div className="flex items-center justify-between mb-8 border-t border-white/10 pt-6">
-                        <div>
-                             <p className="font-serif text-3xl text-cream animate-pulse">${quickViewProduct.rentalPrice}</p>
-                             <p className="text-xs text-cream/40 uppercase tracking-wide">Rental / 4 Days</p>
+                    <div className="flex flex-col gap-6 mb-8 border-t border-white/10 pt-6">
+                        <div className="flex justify-between items-end">
+                            <div>
+                                <p className="font-serif text-3xl text-cream animate-pulse">${quickViewProduct.rentalPrice}</p>
+                                <p className="text-xs text-cream/40 uppercase tracking-wide">Rental / 4 Days</p>
+                            </div>
+                            {quickViewProduct.isForSale && (
+                                <div className="text-right">
+                                    <p className="font-serif text-3xl text-golden-orange">${quickViewProduct.buyPrice}</p>
+                                    <p className="text-xs text-cream/40 uppercase tracking-wide">Buy Price</p>
+                                </div>
+                            )}
                         </div>
-                        <div>
-                             <p className="font-serif text-xl text-cream/50 line-through">${quickViewProduct.retailPrice}</p>
-                             <p className="text-xs text-cream/30 uppercase tracking-wide text-right">Retail</p>
+                        
+                        <div className="flex flex-col sm:flex-row gap-4">
+                            <Link to={`/product/${quickViewProduct.id}`} className="flex-1">
+                                <Button fullWidth>Rent Now</Button>
+                            </Link>
+                            {quickViewProduct.isForSale && (
+                                <Link to={`/product/${quickViewProduct.id}`} className="flex-1">
+                                    <Button fullWidth variant="secondary">Buy Now</Button>
+                                </Link>
+                            )}
                         </div>
-                    </div>
-
-                    <div className="flex gap-3">
-                        <Button fullWidth onClick={() => setQuickViewProduct(null)} variant="outline">Close</Button>
-                        <Link to={`/product/${quickViewProduct.id}`} className="w-full">
-                            <Button fullWidth>Rent Now</Button>
-                        </Link>
                     </div>
                 </div>
             </div>
         </div>
       )}
 
-      {/* Header */}
-      <div className="bg-[#1a0a04] py-12 px-4 mb-8 border-b border-white/5">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="font-serif text-4xl md:text-5xl text-cream mb-4">The Collection</h1>
-          <p className="text-cream/50 max-w-2xl font-light mb-8">
-            Discover our curated selection of high-fashion garments and accessories.
-          </p>
-
-          {/* Search Bar */}
-          <div className="relative max-w-xl">
-            <input 
-              type="text"
-              value={filters.searchQuery}
-              onChange={(e) => updateFilter('searchQuery', e.target.value)}
-              placeholder="Search designers, styles, or keywords..."
-              className="w-full bg-white/5 border border-white/10 text-cream pl-12 pr-4 py-3 rounded-sm focus:outline-none focus:border-golden-orange transition-colors"
-            />
-            <Search className="absolute left-4 top-3.5 text-cream/40" size={20} />
-          </div>
+      {/* Hero & Prominent Search */}
+      <div className="bg-[#1a0a04] pt-12 pb-12 px-4 border-b border-white/5 shadow-xl relative overflow-hidden">
+        <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#e1af4d 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>
+        <div className="max-w-7xl mx-auto text-center relative z-10">
+            <p className="text-golden-orange text-xs uppercase tracking-[0.3em] mb-2 font-bold">The Vault</p>
+            <h1 className="font-serif text-4xl md:text-6xl text-cream mb-8">Curated Collection</h1>
+            
+            <div className="max-w-3xl mx-auto relative">
+                <input 
+                  type="text"
+                  value={filters.searchQuery}
+                  onChange={(e) => updateFilter('searchQuery', e.target.value)}
+                  placeholder="Search designers, styles, or specific items..."
+                  className="w-full bg-[#1f0c05] border border-golden-orange/50 text-cream pl-14 pr-4 py-5 rounded-sm focus:outline-none focus:border-golden-orange focus:shadow-[0_0_25px_rgba(225,175,77,0.15)] transition-all placeholder:text-cream/30 text-lg"
+                />
+                <Search className="absolute left-5 top-5 text-golden-orange" size={24} />
+            </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
         
         {/* Filter Panel */}
-        <div className="bg-[#1f0c05] border border-white/5 p-6 mb-10 rounded-sm shadow-xl">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 items-end">
-            
-            {/* Category Filter */}
-            <div className="w-full">
-               <label className="text-xs text-golden-orange uppercase tracking-widest mb-2 block font-bold">Category</label>
-               <select 
-                value={filters.category}
-                onChange={(e) => updateFilter('category', e.target.value as Category | 'All')}
-                className="w-full bg-black/20 border border-white/10 text-cream px-3 py-2 text-sm focus:outline-none focus:border-golden-orange"
-               >
-                 <option value="All">All Categories</option>
-                 {Object.values(Category).map(cat => <option key={cat} value={cat}>{cat}</option>)}
-               </select>
+        <div className="bg-[#1f0c05] border border-white/10 p-6 mb-10 rounded-sm shadow-xl relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1 h-full bg-golden-orange"></div>
+            <div className="flex justify-between items-center mb-6 border-b border-white/5 pb-4">
+                <div className="flex items-center gap-2">
+                    <SlidersHorizontal size={20} className="text-golden-orange"/>
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-cream">Filter & Sort</h3>
+                </div>
+                <button onClick={clearFilters} className="text-[10px] text-cream/40 hover:text-golden-orange uppercase tracking-widest flex items-center gap-1 transition-colors">
+                    <X size={12} /> Clear All
+                </button>
             </div>
-
-            {/* Size Filter */}
-            <div className="w-full">
-               <label className="text-xs text-golden-orange uppercase tracking-widest mb-2 block font-bold">Size</label>
-               <select 
-                value={filters.size}
-                onChange={(e) => updateFilter('size', e.target.value)}
-                className="w-full bg-black/20 border border-white/10 text-cream px-3 py-2 text-sm focus:outline-none focus:border-golden-orange"
-               >
-                 {sizes.map(s => <option key={s} value={s}>{s}</option>)}
-               </select>
-            </div>
-
-            {/* Color Filter */}
-            <div className="w-full">
-               <label className="text-xs text-golden-orange uppercase tracking-widest mb-2 block font-bold">Color</label>
-               <select 
-                value={filters.color}
-                onChange={(e) => updateFilter('color', e.target.value)}
-                className="w-full bg-black/20 border border-white/10 text-cream px-3 py-2 text-sm focus:outline-none focus:border-golden-orange"
-               >
-                 {colors.map(c => <option key={c} value={c}>{c}</option>)}
-               </select>
-            </div>
-
-            {/* Occasion Filter */}
-            <div className="w-full">
-               <label className="text-xs text-golden-orange uppercase tracking-widest mb-2 block font-bold">Occasion</label>
-               <select 
-                value={filters.occasion}
-                onChange={(e) => updateFilter('occasion', e.target.value)}
-                className="w-full bg-black/20 border border-white/10 text-cream px-3 py-2 text-sm focus:outline-none focus:border-golden-orange"
-               >
-                 {occasions.map(o => <option key={o} value={o}>{o}</option>)}
-               </select>
-            </div>
-
-             {/* Price Filter */}
-            <div className="w-full relative">
-               <label className="text-xs text-golden-orange uppercase tracking-widest mb-2 block font-bold">
-                 Max Price: ${filters.maxPrice}
-               </label>
-               <input 
-                type="range" 
-                min="50" 
-                max="1000" 
-                step="10"
-                value={filters.maxPrice}
-                onChange={(e) => updateFilter('maxPrice', Number(e.target.value))}
-                className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-golden-orange"
-               />
-               
-               {/* Clear Button Positioned absolutely for desktop, or separate in grid */}
-               <button 
-                onClick={clearFilters}
-                className="absolute -bottom-6 right-0 flex items-center text-xs text-cream/50 hover:text-white uppercase tracking-widest transition-colors"
-               >
-                 <X size={12} className="mr-1" /> Reset
-               </button>
-            </div>
-            
-          </div>
-        </div>
-
-        {/* Results Count & Sort */}
-        <div className="mb-6 flex flex-col sm:flex-row justify-between items-center text-cream/60 text-sm gap-4">
-          <span>Showing {filteredProducts.length} results</span>
           
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+                <div className="w-full">
+                    <label className="text-[10px] text-cream/50 uppercase tracking-widest mb-2 block font-bold">Category</label>
+                    <div className="relative">
+                        <select 
+                            value={filters.category}
+                            onChange={(e) => updateFilter('category', e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 text-cream px-3 py-2.5 text-sm focus:border-golden-orange outline-none appearance-none rounded-sm cursor-pointer"
+                        >
+                            <option value="All">All Categories</option>
+                            {Object.values(Category).map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                        </select>
+                        <ChevronDown size={12} className="absolute right-3 top-3 text-cream/30 pointer-events-none"/>
+                    </div>
+                </div>
+
+                <div className="w-full">
+                    <label className="text-[10px] text-cream/50 uppercase tracking-widest mb-2 block font-bold">Size</label>
+                    <div className="relative">
+                        <select 
+                            value={filters.size}
+                            onChange={(e) => updateFilter('size', e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 text-cream px-3 py-2.5 text-sm focus:border-golden-orange outline-none appearance-none rounded-sm cursor-pointer"
+                        >
+                            {sizes.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                        <ChevronDown size={12} className="absolute right-3 top-3 text-cream/30 pointer-events-none"/>
+                    </div>
+                </div>
+
+                <div className="w-full">
+                    <label className="text-[10px] text-cream/50 uppercase tracking-widest mb-2 block font-bold">Color</label>
+                    <div className="relative">
+                        <select 
+                            value={filters.color}
+                            onChange={(e) => updateFilter('color', e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 text-cream px-3 py-2.5 text-sm focus:border-golden-orange outline-none appearance-none rounded-sm cursor-pointer"
+                        >
+                            {colors.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                        <ChevronDown size={12} className="absolute right-3 top-3 text-cream/30 pointer-events-none"/>
+                    </div>
+                </div>
+
+                <div className="w-full">
+                    <label className="text-[10px] text-cream/50 uppercase tracking-widest mb-2 block font-bold">Occasion</label>
+                    <div className="relative">
+                        <select 
+                            value={filters.occasion}
+                            onChange={(e) => updateFilter('occasion', e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 text-cream px-3 py-2.5 text-sm focus:border-golden-orange outline-none appearance-none rounded-sm cursor-pointer"
+                        >
+                            {occasions.map(o => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                        <ChevronDown size={12} className="absolute right-3 top-3 text-cream/30 pointer-events-none"/>
+                    </div>
+                </div>
+
+                <div className="w-full">
+                   <div className="flex justify-between mb-2">
+                       <label className="text-[10px] text-cream/50 uppercase tracking-widest font-bold">Max Price</label>
+                       <span className="text-xs text-golden-orange font-bold">${filters.maxPrice}</span>
+                   </div>
+                   <input 
+                        type="range" min="50" max="5000" step="50"
+                        value={filters.maxPrice}
+                        onChange={(e) => updateFilter('maxPrice', Number(e.target.value))}
+                        className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-golden-orange"
+                   />
+                </div>
+            </div>
+        </div>
+
+        {/* Sorting & Count */}
+        <div className="mb-8 flex flex-col sm:flex-row justify-between items-center text-cream/60 text-sm gap-4 border-b border-white/5 pb-4">
+          <span className="font-serif italic text-cream text-lg">{filteredProducts.length} <span className="text-sm font-sans text-cream/50 not-italic">Items Found</span></span>
           <div className="flex items-center space-x-3">
-             <div className="flex items-center text-golden-orange space-x-2 bg-[#1f0c05] px-3 py-1 border border-white/10">
-                <ArrowUpDown size={14} />
-                <span className="uppercase tracking-widest text-xs font-bold">Sort</span>
+             <label className="text-[10px] uppercase tracking-widest font-bold">Sort By:</label>
+             <div className="relative">
+                 <select
+                    value={filters.sortBy}
+                    onChange={(e) => updateFilter('sortBy', e.target.value as SortOption)}
+                    className="bg-[#1f0c05] border border-white/10 text-cream px-4 py-2 text-sm focus:border-golden-orange outline-none appearance-none cursor-pointer pr-8 rounded-sm"
+                >
+                    <option value="newest">Newest Arrivals</option>
+                    <option value="price_asc">Price: Low to High</option>
+                    <option value="price_desc">Price: High to Low</option>
+                </select>
+                <ArrowUpDown size={12} className="absolute right-3 top-3 text-cream/30 pointer-events-none"/>
              </div>
-             <select
-                value={filters.sortBy}
-                onChange={(e) => updateFilter('sortBy', e.target.value as SortOption)}
-                className="bg-[#1f0c05] border border-white/10 text-cream px-3 py-1.5 text-sm focus:outline-none focus:border-golden-orange rounded-sm min-w-[180px]"
-            >
-                <option value="newest">Newest Arrivals</option>
-                <option value="price_asc">Price: Low to High</option>
-                <option value="price_desc">Price: High to Low</option>
-            </select>
           </div>
         </div>
 
-        {/* Grid */}
+        {/* Product Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
           {filteredProducts.map((product) => (
-            <ProductCard 
-                key={product.id} 
-                product={product} 
-                onQuickView={setQuickViewProduct} 
-            />
+            <ProductCard key={product.id} product={product} onQuickView={setQuickViewProduct} />
           ))}
           {filteredProducts.length === 0 && (
-            <div className="col-span-full text-center py-20 text-cream/50">
-              <p className="font-serif text-xl">No items match your criteria.</p>
-              <button onClick={clearFilters} className="text-golden-orange mt-2 underline">Reset Filters</button>
+            <div className="col-span-full text-center py-20 text-cream/50 bg-white/5 rounded-sm border border-white/5 border-dashed">
+              <Search size={48} className="mx-auto mb-4 opacity-20"/>
+              <p className="font-serif text-xl mb-2">No items match your criteria.</p>
+              <button onClick={clearFilters} className="text-golden-orange mt-4 underline hover:text-white transition-colors">Clear all filters</button>
             </div>
           )}
         </div>
@@ -262,93 +267,59 @@ const ProductCard: React.FC<{ product: Product; onQuickView: (p: Product) => voi
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-
-    // Default Quick Add: Today + 4 days, First available size
-    const today = new Date();
-    const endDate = new Date();
-    endDate.setDate(today.getDate() + 4);
-
     addToCart({
         id: `${product.id}-${Date.now()}`,
         product: product,
         selectedSize: product.availableSizes[0] || 'One Size',
         duration: 4,
         price: product.rentalPrice,
-        startDate: today.toLocaleDateString(),
-        endDate: endDate.toLocaleDateString()
+        startDate: new Date().toLocaleDateString(),
+        endDate: new Date(Date.now() + 4*86400000).toLocaleDateString(),
+        type: 'rent'
     });
-
-    // Also add to wishlist if not present (optional logic to keep context consistency)
-    if (!isWishlisted) {
-        toggleWishlist(product);
-    }
-
-    alert(`${product.name} has been added to your shopping bag!`);
+    alert("Added to bag!");
   };
 
   return (
-    <div className="group relative flex flex-col h-full">
-      <div className="relative h-[450px] w-full overflow-hidden bg-cream/5 mb-4">
+    <div className="group relative flex flex-col h-full hover:-translate-y-2 transition-transform duration-500">
+      <div className="relative h-[450px] w-full overflow-hidden bg-cream/5 mb-4 shadow-xl">
         <img 
           src={product.images[0]} 
           alt={product.name} 
           className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
         />
         {product.images[1] && (
-           <img 
-            src={product.images[1]} 
-            alt={product.name} 
-            className="absolute inset-0 h-full w-full object-cover object-center opacity-0 group-hover:opacity-100 transition-opacity duration-700 ease-in-out"
-          />
+           <img src={product.images[1]} alt={product.name} className="absolute inset-0 h-full w-full object-cover object-center opacity-0 group-hover:opacity-100 transition-opacity duration-700 ease-in-out" />
         )}
-        <div className="absolute inset-0 bg-black/10 group-hover:bg-black/30 transition-colors duration-500"></div>
         
-        {/* ACTION ICONS TOP RIGHT */}
-        <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
-            {/* 1. Quick Add To Bag Button */}
-            <button 
-                onClick={handleQuickAdd}
-                className="p-2 rounded-full bg-black/40 text-cream hover:bg-golden-orange hover:text-espresso transition-all duration-300 transform hover:scale-110 shadow-lg"
-                title="Add to Cart"
-            >
-                <ShoppingBag size={20} />
+        {/* Hover Actions */}
+        <div className="absolute top-4 right-4 z-20 flex flex-col gap-2 translate-x-12 group-hover:translate-x-0 transition-transform duration-300">
+            <button onClick={handleQuickAdd} className="p-3 rounded-full bg-espresso/80 text-cream hover:bg-golden-orange hover:text-espresso transition-all shadow-lg border border-white/10" title="Quick Add">
+                <ShoppingBag size={18} />
             </button>
-
-            {/* 2. Wishlist / Love Button (Now also triggers Add to Cart per user request) */}
-            <button 
-                onClick={handleQuickAdd}
-                className="p-2 rounded-full bg-black/40 text-cream hover:bg-black/60 transition-all duration-300 transform hover:scale-110 shadow-lg"
-                title="Quick Add & Wishlist"
-            >
-                <Heart size={20} className={isWishlisted ? "fill-golden-orange text-golden-orange" : "text-cream hover:text-golden-orange"} />
+            <button onClick={(e) => {e.preventDefault(); e.stopPropagation(); toggleWishlist(product)}} className="p-3 rounded-full bg-espresso/80 text-cream hover:bg-white hover:text-red-500 transition-all shadow-lg border border-white/10" title="Wishlist">
+                <Heart size={18} className={isWishlisted ? "fill-red-500 text-red-500" : ""} />
             </button>
         </div>
 
-        {/* Strong CTA Button + Quick View on Card */}
-        <div className="absolute bottom-6 left-6 right-6 translate-y-4 opacity-0 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 flex flex-col gap-3">
+        <div className="absolute bottom-6 left-6 right-6 translate-y-8 opacity-0 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500 delay-100 flex flex-col gap-3">
           <Link to={`/product/${product.id}`}>
-            <Button fullWidth variant="primary" className="shadow-lg">Rent Now</Button>
+            <Button fullWidth variant="primary" className="shadow-2xl border-none font-bold tracking-widest">Rent Now</Button>
           </Link>
-          <button 
-            onClick={(e) => { e.preventDefault(); onQuickView(product); }}
-            className="w-full bg-espresso/90 backdrop-blur-md text-cream border border-golden-orange/30 py-3 uppercase tracking-widest text-xs font-bold hover:bg-golden-orange hover:text-espresso transition-all duration-300 flex items-center justify-center gap-2"
-          >
+          <button onClick={(e) => { e.preventDefault(); onQuickView(product); }} className="w-full bg-black/40 backdrop-blur-md text-white border border-white/30 py-3 uppercase tracking-widest text-xs font-bold hover:bg-white hover:text-espresso transition-all duration-300 flex items-center justify-center gap-2">
              <Eye size={14} /> Quick View
           </button>
         </div>
       </div>
       
-      <div className="flex justify-between items-start flex-grow">
+      <div className="flex justify-between items-start flex-grow px-1">
         <div>
-          <p className="text-golden-orange text-xs uppercase tracking-widest mb-1">{product.brand}</p>
+          <p className="text-golden-orange text-[10px] uppercase tracking-widest mb-1 font-bold">{product.brand}</p>
           <h3 className="font-serif text-xl text-cream mb-1 group-hover:text-golden-light transition-colors">{product.name}</h3>
         </div>
       </div>
-      <div className="flex items-baseline space-x-2 mt-2 pt-2 border-t border-white/5">
-        <span className="text-cream font-medium">${product.rentalPrice} <span className="text-xs text-cream/50 font-light">/ 4 days</span></span>
-        {product.availableSizes.length > 0 && (
-           <span className="text-[10px] text-cream/40 uppercase ml-auto">Sizes: {product.availableSizes.slice(0, 3).join(', ')}{product.availableSizes.length > 3 ? '+' : ''}</span>
-        )}
+      <div className="flex items-baseline justify-between mt-2 pt-3 border-t border-white/5 px-1">
+        <span className="text-cream font-medium font-serif text-lg">${product.rentalPrice} <span className="text-xs text-cream/50 font-sans font-light">/ 4 days</span></span>
       </div>
     </div>
   );

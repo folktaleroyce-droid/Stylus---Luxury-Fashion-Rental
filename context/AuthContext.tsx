@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Role, VerificationStatus } from '../types';
 
@@ -14,12 +15,13 @@ export interface RegisteredUser {
   verificationStatus: VerificationStatus;
   verificationDocs?: {
     bvn?: string;
-    govIdUrl?: string; // Changed to clear naming
+    idType?: string; // Added idType
+    govIdUrl?: string; 
     state?: string;
     lga?: string;
     cacNumber?: string;
     businessName?: string;
-    cacCertUrl?: string; // Added for Partners
+    cacCertUrl?: string; 
   };
   walletBalance: number;
   suspensionReason?: string;
@@ -140,6 +142,7 @@ const MOCK_USERS_DB: RegisteredUser[] = [
     walletBalance: 1500,
     verificationDocs: {
         bvn: '22299911188',
+        idType: 'NIN',
         state: 'New York',
         lga: 'Manhattan',
         govIdUrl: 'https://images.unsplash.com/photo-1633265486064-084b2195299b?q=80&w=1000&auto=format&fit=crop'

@@ -23,7 +23,8 @@ export const MOCK_PRODUCTS: Product[] = [
     occasion: 'Gala',
     reviews: [
       { id: 'r1', author: 'Sophia M.', rating: 5, comment: 'Stunning fit. Felt like royalty all night.', date: '2023-11-15' },
-      { id: 'r2', author: 'Elena R.', rating: 4, comment: 'Beautiful fabric, but runs slightly long.', date: '2023-12-02' }
+      { id: 'r2', author: 'Elena R.', rating: 4, comment: 'Beautiful fabric, but runs slightly long.', date: '2023-12-02' },
+      { id: 'r2b', author: 'Jessica T.', rating: 5, comment: 'The velvet is incredibly soft and high quality.', date: '2024-01-20' }
     ],
     rentalCount: 5
   },
@@ -47,7 +48,8 @@ export const MOCK_PRODUCTS: Product[] = [
     color: 'Black',
     occasion: 'Black Tie',
     reviews: [
-      { id: 'r3', author: 'James B.', rating: 5, comment: 'The cut is impeccable. Tom Ford never misses.', date: '2024-01-10' }
+      { id: 'r3', author: 'James B.', rating: 5, comment: 'The cut is impeccable. Tom Ford never misses.', date: '2024-01-10' },
+      { id: 'r3b', author: 'Michael K.', rating: 5, comment: 'Wore this to the Met Gala. Received endless compliments.', date: '2024-02-15' }
     ],
     rentalCount: 2
   },
@@ -69,7 +71,9 @@ export const MOCK_PRODUCTS: Product[] = [
     availableSizes: ['One Size'],
     color: 'Blue',
     occasion: 'Cocktail',
-    reviews: [],
+    reviews: [
+      { id: 'r6', author: 'Claire D.', rating: 5, comment: 'The perfect pop of color for my neutral outfit.', date: '2024-03-01' }
+    ],
     rentalCount: 0
   },
   {
@@ -91,7 +95,8 @@ export const MOCK_PRODUCTS: Product[] = [
     color: 'Gold',
     occasion: 'Business',
     reviews: [
-        { id: 'r4', author: 'William T.', rating: 5, comment: 'A masterpiece. Keeps perfect time and turns heads.', date: '2023-09-20' }
+        { id: 'r4', author: 'William T.', rating: 5, comment: 'A masterpiece. Keeps perfect time and turns heads.', date: '2023-09-20' },
+        { id: 'r4b', author: 'Jonathan P.', rating: 5, comment: 'Verification process was smooth. Watch is pristine.', date: '2024-01-05' }
     ],
     rentalCount: 1
   },
@@ -112,7 +117,9 @@ export const MOCK_PRODUCTS: Product[] = [
     availableSizes: ['One Size'],
     color: 'Gold',
     occasion: 'Casual',
-    reviews: [],
+    reviews: [
+      { id: 'r7', author: 'Amelia S.', rating: 4, comment: 'Beautiful silk, packaged very luxuriously.', date: '2024-02-20' }
+    ],
     rentalCount: 8
   },
   {
@@ -134,7 +141,8 @@ export const MOCK_PRODUCTS: Product[] = [
     color: 'Brown',
     occasion: 'Travel',
     reviews: [
-        { id: 'r5', author: 'Sarah L.', rating: 5, comment: 'Perfect condition. Made my weekend trip so much more stylish.', date: '2024-02-14' }
+        { id: 'r5', author: 'Sarah L.', rating: 5, comment: 'Perfect condition. Made my weekend trip so much more stylish.', date: '2024-02-14' },
+        { id: 'r5b', author: 'David C.', rating: 5, comment: 'Highly recommended for short business trips.', date: '2024-03-10' }
     ],
     rentalCount: 15
   }
