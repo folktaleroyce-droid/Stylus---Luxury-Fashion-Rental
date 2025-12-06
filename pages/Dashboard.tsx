@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock, X, Check, Heart, Eye, Search, Filter, History, ChevronRight, Briefcase, DollarSign, ShieldAlert, FileText, Ban, Trash2 } from 'lucide-react';
+import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock, X, Check, Heart, Eye, Search, Filter, History, ChevronRight, Briefcase, DollarSign, ShieldAlert, FileText, Ban, Trash2, ShoppingBag, Truck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useProduct } from '../context/ProductContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useOrders } from '../context/OrderContext';
-import { Category, Product, VerificationStatus } from '../types';
+import { Category, Product, VerificationStatus, OrderStatus } from '../types';
 import { Button } from '../components/Button';
 import { UserVerificationForm } from '../components/UserVerificationForm';
 import { PartnerVerificationForm } from '../components/PartnerVerificationForm';
@@ -27,8 +27,13 @@ export const Dashboard: React.FC = () => {
   // Filter orders for Partner: contains items owned by partner
   const partnerOrders = orders.filter(o => o.items.some(i => i.product.ownerId === currentUser?.id));
   
-  // User orders
-  const userOrders = orders.filter(o => o.id); // In a real app, we'd filter by userId in Order object
+  // User orders logic
+  const userOrders = orders.filter(o => o.id); // In a real app, verify userId matches currentUser.id
+
+  // Split Active vs History
+  const activeStatuses: OrderStatus[] = ['Processing', 'Pending Approval', 'Accepted', 'Shipped'];
+  const activeOrders = userOrders.filter(o => activeStatuses.includes(o.status));
+  const pastOrders = userOrders.filter(o => !activeStatuses.includes(o.status));
 
   // Handle Verification Submission
   const handleVerificationSubmit = (data: any) => {
@@ -211,7 +216,8 @@ export const Dashboard: React.FC = () => {
                   </>
               ) : (
                   <>
-                    <button onClick={() => setCurrentView('overview')} className={`w-full text-left px-4 py-3 border-l-2 transition-all ${currentView === 'overview' ? 'border-golden-orange bg-white/5 text-golden-orange' : 'border-transparent text-cream hover:bg-white/5'}`}>Active Rentals</button>
+                    <button onClick={() => setCurrentView('overview')} className={`w-full text-left px-4 py-3 border-l-2 transition-all ${currentView === 'overview' ? 'border-golden-orange bg-white/5 text-golden-orange' : 'border-transparent text-cream hover:bg-white/5'}`}>Active Activity</button>
+                    <button onClick={() => setCurrentView('history')} className={`w-full text-left px-4 py-3 border-l-2 transition-all ${currentView === 'history' ? 'border-golden-orange bg-white/5 text-golden-orange' : 'border-transparent text-cream hover:bg-white/5'}`}>Order History</button>
                     <button onClick={() => setCurrentView('wishlist')} className={`w-full text-left px-4 py-3 border-l-2 transition-all ${currentView === 'wishlist' ? 'border-golden-orange bg-white/5 text-golden-orange' : 'border-transparent text-cream hover:bg-white/5'}`}>Wishlist</button>
                   </>
               )}
@@ -253,6 +259,7 @@ export const Dashboard: React.FC = () => {
                          </div>
                      ) : (
                          <form onSubmit={handleAddItem} className="space-y-6">
+                            {/* ... (Existing Partner Form) ... */}
                             <div className="grid grid-cols-2 gap-6">
                                 <div>
                                     <label className="text-xs text-cream/50 mb-1 block">Item Name</label>
@@ -371,7 +378,7 @@ export const Dashboard: React.FC = () => {
              {/* --- USER VIEWS --- */}
              {currentUser.role === 'User' && currentView === 'overview' && (
                  <div>
-                     <h3 className="font-serif text-2xl text-cream mb-6">Active Rentals</h3>
+                     <h3 className="font-serif text-2xl text-cream mb-6">Current Overview</h3>
                      {currentUser.verificationStatus === 'Verified' && (
                          <div className="bg-green-500/10 border border-green-500/30 p-4 mb-6 flex items-center gap-3 rounded-sm">
                              <div className="bg-green-500 text-espresso p-1 rounded-full"><Check size={14}/></div>
@@ -382,16 +389,103 @@ export const Dashboard: React.FC = () => {
                          </div>
                      )}
                      
-                     {userOrders.length === 0 ? <p className="text-cream/50 italic">No active rentals found.</p> : (
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                         <div className="bg-[#1f0c05] border border-white/10 p-6 relative overflow-hidden">
+                             <div className="absolute top-0 right-0 p-4 opacity-10"><ShoppingBag size={64}/></div>
+                             <h4 className="text-cream font-bold text-lg mb-1">Active Rentals</h4>
+                             <p className="text-3xl font-serif text-golden-orange">{activeOrders.length}</p>
+                             <p className="text-xs text-cream/50 mt-2">Items currently in your possession or processing.</p>
+                         </div>
+                         <div className="bg-[#1f0c05] border border-white/10 p-6 relative overflow-hidden">
+                             <div className="absolute top-0 right-0 p-4 opacity-10"><History size={64}/></div>
+                             <h4 className="text-cream font-bold text-lg mb-1">Total History</h4>
+                             <p className="text-3xl font-serif text-cream">{pastOrders.length}</p>
+                             <p className="text-xs text-cream/50 mt-2">Completed orders (Returned or Purchased).</p>
+                         </div>
+                     </div>
+
+                     <h4 className="font-serif text-xl text-cream mb-4 border-b border-white/10 pb-2">Active Engagements</h4>
+                     {activeOrders.length === 0 ? <p className="text-cream/50 italic py-4">No active rentals or purchases pending.</p> : (
                          <div className="grid gap-4">
-                             {userOrders.map(o => (
-                                 <div key={o.id} className="bg-white/5 p-4 border border-white/10">
-                                     <div className="flex justify-between">
-                                         <span className="text-golden-orange font-bold">Order {o.id}</span>
-                                         <span className="text-xs text-cream/60">{o.status}</span>
+                             {activeOrders.map(o => (
+                                 <div key={o.id} className="bg-white/5 p-4 border border-white/10 flex flex-col sm:flex-row gap-4">
+                                     <div className="flex-1">
+                                        <div className="flex justify-between mb-2">
+                                            <span className="text-golden-orange font-bold">Order {o.id}</span>
+                                            <span className={`text-xs px-2 py-0.5 rounded border uppercase font-bold tracking-wide ${o.status === 'Shipped' ? 'border-green-400 text-green-400' : 'border-yellow-400 text-yellow-400'}`}>
+                                                {o.status}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-cream/40 mb-3">{o.date}</p>
+                                        <div className="space-y-3">
+                                            {o.items.map(i => (
+                                                <div key={i.id} className="flex gap-3 bg-black/20 p-2 rounded">
+                                                    <img src={i.product.images[0]} className="w-12 h-16 object-cover" />
+                                                    <div>
+                                                        <p className="text-sm text-cream font-bold">{i.product.name}</p>
+                                                        <p className="text-xs text-golden-orange">{i.type === 'buy' ? 'Purchase' : `Rent (${i.duration} Days)`}</p>
+                                                        {i.type === 'rent' && i.endDate && (
+                                                            <p className="text-[10px] text-cream/50 flex items-center gap-1 mt-1"><Clock size={10}/> Return by: {i.endDate}</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
                                      </div>
-                                     <div className="mt-2">
-                                         {o.items.map(i => <p key={i.id} className="text-sm text-cream">{i.product.name}</p>)}
+                                     <div className="w-full sm:w-48 border-t sm:border-t-0 sm:border-l border-white/10 pt-4 sm:pt-0 sm:pl-4 flex flex-col justify-center">
+                                         {o.status === 'Shipped' && (
+                                             <div className="mb-4">
+                                                 <p className="text-[10px] uppercase text-cream/40 mb-1">Tracking</p>
+                                                 <p className="text-xs text-cream flex items-center gap-1"><Truck size={12}/> UPS: 1Z999...</p>
+                                             </div>
+                                         )}
+                                         <p className="text-[10px] uppercase text-cream/40">Total Value</p>
+                                         <p className="text-xl font-serif text-cream">${o.total}</p>
+                                     </div>
+                                 </div>
+                             ))}
+                         </div>
+                     )}
+                 </div>
+             )}
+
+             {currentUser.role === 'User' && currentView === 'history' && (
+                 <div>
+                     <h3 className="font-serif text-2xl text-cream mb-6">Order History</h3>
+                     {pastOrders.length === 0 ? <div className="bg-white/5 p-8 text-center"><p className="text-cream/50">No historical data found.</p></div> : (
+                         <div className="space-y-4">
+                             {pastOrders.map(o => (
+                                 <div key={o.id} className="bg-white/5 border border-white/5 rounded-sm p-6 hover:border-golden-orange/30 transition-colors">
+                                     <div className="flex flex-col md:flex-row justify-between md:items-center mb-4 pb-4 border-b border-white/5 gap-4">
+                                         <div>
+                                             <div className="flex items-center gap-3">
+                                                <span className="text-lg font-bold text-cream">Order {o.id}</span>
+                                                <span className={`text-[10px] uppercase px-2 py-0.5 rounded border ${o.status === 'Completed' ? 'border-green-500 text-green-500' : 'border-red-500 text-red-500'}`}>{o.status}</span>
+                                             </div>
+                                             <span className="text-xs text-cream/40">{o.date}</span>
+                                         </div>
+                                         <div className="text-right">
+                                             <p className="text-2xl font-serif text-golden-orange">${o.total}</p>
+                                             <button className="text-xs text-cream underline hover:text-golden-orange">View Receipt</button>
+                                         </div>
+                                     </div>
+                                     
+                                     <div className="grid gap-2">
+                                         {o.items.map(item => (
+                                             <div key={item.id} className="flex items-center gap-4 py-2">
+                                                 <img src={item.product.images[0]} className="w-10 h-10 object-cover rounded bg-white/10" />
+                                                 <div className="flex-grow">
+                                                     <p className="text-sm text-cream">{item.product.name}</p>
+                                                     <p className="text-xs text-cream/50">{item.product.brand}</p>
+                                                 </div>
+                                                 <div className="text-right">
+                                                     <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${item.type === 'buy' ? 'bg-blue-500/10 text-blue-400' : 'bg-golden-orange/10 text-golden-orange'}`}>
+                                                         {item.type === 'buy' ? 'Purchased' : 'Rented'}
+                                                     </span>
+                                                 </div>
+                                                 <div className="w-20 text-right text-sm text-cream/70">${item.price}</div>
+                                             </div>
+                                         ))}
                                      </div>
                                  </div>
                              ))}
