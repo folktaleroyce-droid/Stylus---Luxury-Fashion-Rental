@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, Package, Megaphone, TrendingUp, DollarSign, Activity, AlertTriangle, Star, LogOut, X, Mail, Ban, Key, Check, Plus, Search, Trash2, Shield, UserCog, Briefcase, Filter, FileText, Save, ArrowUpDown, ArrowUp, ArrowDown, Eye, BarChart3, LineChart, PieChart, Power } from 'lucide-react';
 import { Button } from '../components/Button';
 import { useAuth } from '../context/AuthContext';
@@ -27,14 +26,14 @@ export const AdminDashboard: React.FC = () => {
   const { products, removeProduct, addProduct } = useProduct();
   const navigate = useNavigate();
 
+  // Filter for pending verifications (Robust filtering)
+  const pendingVerifications = registeredUsers.filter(u => u.verificationStatus === 'Pending');
+
   // New Item State for Admin Add Stock
   const [newItem, setNewItem] = useState<Partial<Product>>({
     name: '', brand: '', category: Category.WOMEN, rentalPrice: 0, retailPrice: 0, buyPrice: 0, isForSale: false, description: '', availableSizes: [], images: [], color: '', occasion: '', autoSellAfterRentals: 0
   });
   const [sizeInput, setSizeInput] = useState('');
-
-  // Filter for pending verifications
-  const pendingVerifications = registeredUsers.filter(u => u.verificationStatus === 'Pending');
 
   // Filter for User Management
   const filteredUsers = registeredUsers.filter(u => {
@@ -240,10 +239,24 @@ export const AdminDashboard: React.FC = () => {
                     <button onClick={() => setActiveTab('rentals')} className={`px-4 py-2 rounded text-sm transition-colors ${activeTab === 'rentals' ? 'bg-golden-orange text-espresso font-bold' : 'text-cream hover:bg-white/5'}`}>Rental Analytics</button>
                     <button onClick={() => setActiveTab('inventory')} className={`px-4 py-2 rounded text-sm transition-colors ${activeTab === 'inventory' ? 'bg-golden-orange text-espresso font-bold' : 'text-cream hover:bg-white/5'}`}>Inventory</button>
                      <button onClick={() => setActiveTab('marketing')} className={`px-4 py-2 rounded text-sm transition-colors ${activeTab === 'marketing' ? 'bg-golden-orange text-espresso font-bold' : 'text-cream hover:bg-white/5'}`}>Marketing</button>
-                    <button onClick={() => setActiveTab('verifications')} className={`px-4 py-2 rounded text-sm relative transition-colors ${activeTab === 'verifications' ? 'bg-golden-orange text-espresso font-bold' : 'text-cream hover:bg-white/5'}`}>
+                    
+                    {/* Verifications Tab with Pulsing Notification */}
+                    <button 
+                        onClick={() => setActiveTab('verifications')} 
+                        className={`px-4 py-2 rounded text-sm relative transition-colors ${
+                            activeTab === 'verifications' 
+                                ? 'bg-golden-orange text-espresso font-bold' 
+                                : pendingVerifications.length > 0 ? 'bg-red-600/20 text-red-400 border border-red-500/50 hover:bg-red-600/30' : 'text-cream hover:bg-white/5'
+                        }`}
+                    >
                         Verifications
-                        {pendingVerifications.length > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center animate-bounce">{pendingVerifications.length}</span>}
+                        {pendingVerifications.length > 0 && (
+                            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] min-w-[20px] h-5 rounded-full flex items-center justify-center animate-bounce shadow-lg border border-espresso">
+                                {pendingVerifications.length}
+                            </span>
+                        )}
                     </button>
+                    
                     <Button variant="outline" onClick={handleLogout} className="text-xs h-9 ml-2">Sign Out</Button>
                 </div>
             </div>
@@ -661,9 +674,9 @@ export const AdminDashboard: React.FC = () => {
                                                     <div className="col-span-1 md:col-span-2 pb-2 border-b border-white/5 mb-2">
                                                         <p className="text-golden-orange text-xs uppercase font-bold mb-1">Business Details</p>
                                                     </div>
-                                                    <p><span className="text-cream/40 uppercase text-xs block mb-1">Business Name:</span> {u.verificationDocs?.businessName}</p>
-                                                    <p><span className="text-cream/40 uppercase text-xs block mb-1">CAC Number:</span> {u.verificationDocs?.cacNumber}</p>
-                                                    <p><span className="text-cream/40 uppercase text-xs block mb-1">Director BVN:</span> {u.verificationDocs?.bvn}</p>
+                                                    <p><span className="text-cream/40 uppercase text-xs block mb-1">Business Name:</span> {u.verificationDocs?.businessName || 'N/A'}</p>
+                                                    <p><span className="text-cream/40 uppercase text-xs block mb-1">CAC Number:</span> {u.verificationDocs?.cacNumber || 'N/A'}</p>
+                                                    <p><span className="text-cream/40 uppercase text-xs block mb-1">Director BVN:</span> {u.verificationDocs?.bvn || 'N/A'}</p>
                                                     
                                                     <div className="col-span-1 md:col-span-2 mt-2 text-xs text-blue-300 bg-blue-900/20 p-2 rounded border border-blue-500/30">
                                                         <span className="font-bold uppercase">Requested Access:</span> Seller Platform
@@ -687,7 +700,7 @@ export const AdminDashboard: React.FC = () => {
                                                     <div className="col-span-1 md:col-span-2 pb-2 border-b border-white/5 mb-2">
                                                         <p className="text-golden-orange text-xs uppercase font-bold mb-1">Personal Identity</p>
                                                     </div>
-                                                    <p><span className="text-cream/40 uppercase text-xs block mb-1">BVN:</span> {u.verificationDocs?.bvn}</p>
+                                                    <p><span className="text-cream/40 uppercase text-xs block mb-1">BVN:</span> {u.verificationDocs?.bvn || 'N/A'}</p>
                                                     <p><span className="text-cream/40 uppercase text-xs block mb-1">ID Type:</span> {u.verificationDocs?.idType || 'N/A'}</p>
                                                     
                                                     <div className="col-span-1 md:col-span-2 mt-2 text-xs text-golden-orange bg-golden-orange/10 p-2 rounded border border-golden-orange/30">

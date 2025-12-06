@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Role, VerificationStatus } from '../types';
 
@@ -242,7 +241,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       walletBalance: role === 'Partner' ? 0 : 500, // Sign up bonus for demo
     };
     
-    setRegisteredUsers(prev => [...prev, newUser]);
+    setRegisteredUsers(prev => {
+        const updated = [...prev, newUser];
+        localStorage.setItem('stylus_users_db', JSON.stringify(updated)); // Force save immediately
+        return updated;
+    });
   };
 
   const updateUserStatus = (id: string, newStatus: 'Active' | 'Suspended', reason?: string) => {
@@ -272,6 +275,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
     setRegisteredUsers(updatedUsers);
     if (currentUser?.id === id) setCurrentUser(updatedUsers.find(u => u.id === id) || null);
+    
+    // Force immediate save for admin to see
+    localStorage.setItem('stylus_users_db', JSON.stringify(updatedUsers));
   };
 
   const approveVerification = (id: string) => {
