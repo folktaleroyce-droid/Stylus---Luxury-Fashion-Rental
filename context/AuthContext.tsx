@@ -200,6 +200,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  // CROSS-TAB SYNC: Listen for storage changes to update state in other tabs
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+        if (e.key === 'stylus_users_db') {
+            const newUsers = e.newValue ? JSON.parse(e.newValue) : [];
+            setRegisteredUsers(newUsers);
+            
+            // If the currently logged in user was updated, reflect changes immediately
+            if (currentUser) {
+                const updatedMe = newUsers.find((u: RegisteredUser) => u.id === currentUser.id);
+                if (updatedMe) {
+                    setCurrentUser(updatedMe);
+                    // Also update admin status if role changed
+                    setIsAdmin(updatedMe.role === 'Admin');
+                }
+            }
+        }
+        if (e.key === 'stylus_transactions') {
+            const newTx = e.newValue ? JSON.parse(e.newValue) : [];
+            setTransactions(newTx);
+        }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [currentUser]);
+
   // Save DB changes
   useEffect(() => {
     if (registeredUsers.length > 0) {
@@ -264,7 +291,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     setRegisteredUsers(prev => {
         const updated = [...prev, newUser];
-        localStorage.setItem('stylus_users_db', JSON.stringify(updated));
         return updated;
     });
   };
@@ -314,12 +340,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     if (currentUser?.id === id) setCurrentUser(updatedUsers.find(u => u.id === id) || null);
-    localStorage.setItem('stylus_users_db', JSON.stringify(updatedUsers));
   };
 
   const approveVerification = (id: string) => {
     const updatedUsers = registeredUsers.map(u => u.id === id ? { ...u, verificationStatus: 'Verified' as VerificationStatus } : u);
     setRegisteredUsers(updatedUsers);
+    // Explicitly update current user if it matches, to trigger immediate UI refresh in single-page context
     if (currentUser?.id === id) setCurrentUser(updatedUsers.find(u => u.id === id) || null);
   };
 

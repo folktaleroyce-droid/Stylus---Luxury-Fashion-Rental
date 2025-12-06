@@ -1,8 +1,7 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock, X, Check, Heart, Eye, Search, Filter, History, ChevronRight, Briefcase, DollarSign, ShieldAlert, FileText, Ban, Trash2, ShoppingBag, Truck, Wallet, ShieldCheck, Banknote, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock, X, Check, Heart, Eye, Search, Filter, History, ChevronRight, Briefcase, DollarSign, ShieldAlert, FileText, Ban, Trash2, ShoppingBag, Truck, Wallet, ShieldCheck, Banknote, ArrowUpRight, ArrowDownLeft, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useProduct } from '../context/ProductContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -331,7 +330,7 @@ export const Dashboard: React.FC = () => {
                    <span className={`text-[10px] px-2 py-0.5 uppercase tracking-widest border rounded ${currentUser.role === 'Partner' ? 'border-blue-400 text-blue-400' : 'border-golden-orange text-golden-orange'}`}>
                        {currentUser.role}
                    </span>
-                   <span className={`text-[10px] px-2 py-0.5 uppercase tracking-widest border rounded ${currentUser.verificationStatus === 'Verified' ? 'border-green-400 text-green-400' : 'border-red-400 text-red-400'}`}>
+                   <span className={`text-[10px] px-2 py-0.5 uppercase tracking-widest border rounded ${currentUser.verificationStatus === 'Verified' ? 'border-green-400 text-green-400' : currentUser.verificationStatus === 'Rejected' ? 'border-red-400 text-red-400' : 'border-red-400 text-red-400'}`}>
                        {currentUser.verificationStatus}
                    </span>
                </div>
@@ -621,6 +620,27 @@ export const Dashboard: React.FC = () => {
                              <div className="relative z-10">
                                  <h4 className="text-green-400 font-bold text-base uppercase tracking-wide mb-1">Account Verified</h4>
                                  <p className="text-cream/70 text-sm">Your identity has been confirmed. You now have unrestricted access to the Stylus Vault.</p>
+                             </div>
+                         </div>
+                     )}
+
+                     {currentUser.verificationStatus === 'Rejected' && (
+                         <div className="bg-red-500/10 border border-red-500/30 p-6 mb-8 flex items-start gap-4 rounded-sm shadow-lg relative overflow-hidden animate-fade-in">
+                             <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                                <AlertCircle size={64} />
+                             </div>
+                             <div className="bg-red-500 text-white p-2 rounded-full shrink-0 relative z-10">
+                                <X size={20}/>
+                             </div>
+                             <div className="relative z-10 w-full">
+                                 <h4 className="text-red-400 font-bold text-base uppercase tracking-wide mb-1">Verification Rejected</h4>
+                                 <p className="text-cream/70 text-sm mb-3">Admin Note: "{currentUser.adminNotes || 'No specific reason provided'}"</p>
+                                 <button 
+                                    onClick={() => setVerificationModal(true)}
+                                    className="bg-red-500 text-white px-4 py-2 text-xs uppercase font-bold rounded-sm hover:bg-red-600 transition-colors"
+                                 >
+                                     Resubmit Documents
+                                 </button>
                              </div>
                          </div>
                      )}

@@ -1,7 +1,6 @@
 
-
 import React, { useState, useEffect } from 'react';
-import { Users, Package, Megaphone, TrendingUp, DollarSign, Activity, AlertTriangle, Star, LogOut, X, Mail, Ban, Key, Check, Plus, Search, Trash2, Shield, UserCog, Briefcase, Filter, FileText, Save, ArrowUpDown, ArrowUp, ArrowDown, Eye, BarChart3, LineChart, PieChart, Power, Globe, Wallet, ArrowRightLeft } from 'lucide-react';
+import { Users, Package, Megaphone, TrendingUp, DollarSign, Activity, AlertTriangle, Star, LogOut, X, Mail, Ban, Key, Check, Plus, Search, Trash2, Shield, UserCog, Briefcase, Filter, FileText, Save, ArrowUpDown, ArrowUp, ArrowDown, Eye, BarChart3, LineChart, PieChart, Power, Globe, Wallet, ArrowRightLeft, ShieldCheck, XCircle, CheckCircle } from 'lucide-react';
 import { Button } from '../components/Button';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -62,13 +61,26 @@ export const AdminDashboard: React.FC = () => {
           deleteUser(userId);
       }
   };
-
-  const handleReject = (userId: string) => {
-      const reason = prompt("Enter reason for rejection (will be sent to user):", "Document unclear or invalid");
-      if (reason) {
-          rejectVerification(userId, reason);
+  
+  const handleApprove = (userId: string, userName: string) => {
+      if(confirm(`Approve verification for ${userName}?`)) {
+        approveVerification(userId);
       }
   };
+
+  const handleReject = (userId: string) => {
+      const reason = prompt("Please provide a reason for rejection (this will be sent to the user):", "Document ID number did not match upload.");
+      if (reason) {
+          rejectVerification(userId, reason);
+          alert("User rejected and notified.");
+      }
+  };
+
+  const handleManualVerify = (userId: string, userName: string) => {
+      if(confirm(`FORCE VERIFY: Are you sure you want to manually verify ${userName} without waiting for document submission?`)) {
+          approveVerification(userId);
+      }
+  }
 
   const handleExportUsers = () => {
       const headers = ["ID", "Name", "Email", "Role", "Status", "Joined", "Verification"];
@@ -331,7 +343,6 @@ export const AdminDashboard: React.FC = () => {
                                     <th className="p-4">Role</th>
                                     <th className="p-4">Status</th>
                                     <th className="p-4">Verification</th>
-                                    <th className="p-4">Activity Score</th>
                                     <th className="p-4">Actions</th>
                                 </tr>
                             </thead>
@@ -364,12 +375,25 @@ export const AdminDashboard: React.FC = () => {
                                                 {u.verificationStatus}
                                              </span>
                                         </td>
-                                        <td className="p-4">
-                                            <div className="w-24 bg-white/10 h-1.5 rounded-full overflow-hidden">
-                                                <div className="bg-golden-orange h-full" style={{ width: `${Math.random() * 100}%` }}></div>
-                                            </div>
-                                        </td>
                                         <td className="p-4 flex gap-2">
+                                            {/* Verification Controls */}
+                                            {u.verificationStatus === 'Pending' && (
+                                                <>
+                                                    <button onClick={() => handleApprove(u.id, u.name)} className="p-2 rounded border border-green-500/50 text-green-500 hover:bg-green-500/10" title="Approve Verification">
+                                                        <CheckCircle size={14} />
+                                                    </button>
+                                                    <button onClick={() => handleReject(u.id)} className="p-2 rounded border border-red-500/50 text-red-500 hover:bg-red-500/10" title="Reject Verification">
+                                                        <XCircle size={14} />
+                                                    </button>
+                                                </>
+                                            )}
+                                            {u.verificationStatus === 'Unverified' && (
+                                                <button onClick={() => handleManualVerify(u.id, u.name)} className="p-2 rounded border border-blue-500/50 text-blue-500 hover:bg-blue-500/10" title="Force Manual Verify (Override)">
+                                                    <ShieldCheck size={14} />
+                                                </button>
+                                            )}
+                                            
+                                            {/* Account Controls */}
                                             <button 
                                                 onClick={() => handleSuspendToggle(u.id, u.status)}
                                                 className={`p-2 rounded border transition-colors ${u.status === 'Active' ? 'border-yellow-600/50 text-yellow-500 hover:bg-yellow-600/10' : 'border-green-600/50 text-green-500 hover:bg-green-600/10'}`}
@@ -919,7 +943,7 @@ export const AdminDashboard: React.FC = () => {
                                     
                                     <div className="flex flex-row md:flex-col gap-3 min-w-[140px] w-full md:w-auto mt-4 md:mt-0">
                                         <button 
-                                            onClick={() => approveVerification(u.id)} 
+                                            onClick={() => handleApprove(u.id, u.name)} 
                                             className="w-full bg-green-600 hover:bg-green-500 text-white px-4 py-3 text-sm font-bold rounded-sm transition-colors shadow-lg flex items-center justify-center gap-2 uppercase tracking-wide"
                                         >
                                             <Check size={16}/> Approve
