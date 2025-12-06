@@ -1,6 +1,7 @@
 
+
 import React, { useState, useEffect } from 'react';
-import { Users, Package, Megaphone, TrendingUp, DollarSign, Activity, AlertTriangle, Star, LogOut, X, Mail, Ban, Key, Check, Plus, Search, Trash2, Shield, UserCog, Briefcase, Filter, FileText, Save, ArrowUpDown, ArrowUp, ArrowDown, Eye, BarChart3, LineChart, PieChart, Power, Globe } from 'lucide-react';
+import { Users, Package, Megaphone, TrendingUp, DollarSign, Activity, AlertTriangle, Star, LogOut, X, Mail, Ban, Key, Check, Plus, Search, Trash2, Shield, UserCog, Briefcase, Filter, FileText, Save, ArrowUpDown, ArrowUp, ArrowDown, Eye, BarChart3, LineChart, PieChart, Power, Globe, Wallet, ArrowRightLeft } from 'lucide-react';
 import { Button } from '../components/Button';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -9,7 +10,7 @@ import { useOrders } from '../context/OrderContext';
 import { Category, Product } from '../types';
 
 export const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'users' | 'rentals' | 'inventory' | 'marketing' | 'verifications' | 'global_activity'>('rentals');
+  const [activeTab, setActiveTab] = useState<'users' | 'rentals' | 'inventory' | 'marketing' | 'verifications' | 'global_activity' | 'financials'>('rentals');
   const [selectedDoc, setSelectedDoc] = useState<{ url: string, title: string } | null>(null);
   const [showAddStockModal, setShowAddStockModal] = useState(false);
   const [userFilter, setUserFilter] = useState<'All' | 'User' | 'Partner'>('All');
@@ -22,7 +23,9 @@ export const AdminDashboard: React.FC = () => {
     approveVerification, 
     rejectVerification, 
     updateUserStatus,
-    currentUser
+    currentUser,
+    transactions,
+    processWithdrawal
   } = useAuth();
   
   const { products, removeProduct, addProduct } = useProduct();
@@ -100,6 +103,13 @@ export const AdminDashboard: React.FC = () => {
           updateOrderItemStatus(orderId, itemId, status);
       }
   };
+  
+  const handleProcessWithdrawal = (txId: string) => {
+      if(confirm("Confirm that you have transferred funds to the partner's bank account?")) {
+          processWithdrawal(txId);
+          alert("Withdrawal marked as completed.");
+      }
+  }
 
   const handleAddStockSubmit = (e: React.FormEvent) => {
       e.preventDefault();
@@ -244,9 +254,10 @@ export const AdminDashboard: React.FC = () => {
                     <p className="text-golden-orange text-xs uppercase tracking-widest mt-1">Admin Control Panel</p>
                 </div>
                 <div className="flex gap-2 flex-wrap mt-4 md:mt-0">
-                    <button onClick={() => setActiveTab('users')} className={`px-4 py-2 rounded text-sm transition-colors ${activeTab === 'users' ? 'bg-golden-orange text-espresso font-bold' : 'text-cream hover:bg-white/5'}`}>User Management</button>
-                    <button onClick={() => setActiveTab('global_activity')} className={`px-4 py-2 rounded text-sm transition-colors ${activeTab === 'global_activity' ? 'bg-golden-orange text-espresso font-bold' : 'text-cream hover:bg-white/5'}`}>Global Activity</button>
-                    <button onClick={() => setActiveTab('rentals')} className={`px-4 py-2 rounded text-sm transition-colors ${activeTab === 'rentals' ? 'bg-golden-orange text-espresso font-bold' : 'text-cream hover:bg-white/5'}`}>Rental Analytics</button>
+                    <button onClick={() => setActiveTab('users')} className={`px-4 py-2 rounded text-sm transition-colors ${activeTab === 'users' ? 'bg-golden-orange text-espresso font-bold' : 'text-cream hover:bg-white/5'}`}>Users</button>
+                    <button onClick={() => setActiveTab('global_activity')} className={`px-4 py-2 rounded text-sm transition-colors ${activeTab === 'global_activity' ? 'bg-golden-orange text-espresso font-bold' : 'text-cream hover:bg-white/5'}`}>Activity</button>
+                    <button onClick={() => setActiveTab('financials')} className={`px-4 py-2 rounded text-sm transition-colors ${activeTab === 'financials' ? 'bg-golden-orange text-espresso font-bold' : 'text-cream hover:bg-white/5'}`}>Financials</button>
+                    <button onClick={() => setActiveTab('rentals')} className={`px-4 py-2 rounded text-sm transition-colors ${activeTab === 'rentals' ? 'bg-golden-orange text-espresso font-bold' : 'text-cream hover:bg-white/5'}`}>Analytics</button>
                     <button onClick={() => setActiveTab('inventory')} className={`px-4 py-2 rounded text-sm transition-colors ${activeTab === 'inventory' ? 'bg-golden-orange text-espresso font-bold' : 'text-cream hover:bg-white/5'}`}>Inventory</button>
                      <button onClick={() => setActiveTab('marketing')} className={`px-4 py-2 rounded text-sm transition-colors ${activeTab === 'marketing' ? 'bg-golden-orange text-espresso font-bold' : 'text-cream hover:bg-white/5'}`}>Marketing</button>
                     
@@ -259,7 +270,7 @@ export const AdminDashboard: React.FC = () => {
                                 : pendingVerifications.length > 0 ? 'bg-red-600/20 text-red-400 border border-red-500/50 hover:bg-red-600/30' : 'text-cream hover:bg-white/5'
                         }`}
                     >
-                        Verifications
+                        Verify
                         {pendingVerifications.length > 0 && (
                             <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] min-w-[20px] h-5 rounded-full flex items-center justify-center animate-bounce shadow-lg border border-espresso">
                                 {pendingVerifications.length}
@@ -379,6 +390,114 @@ export const AdminDashboard: React.FC = () => {
                             </tbody>
                         </table>
                      </div>
+                </div>
+            )}
+            
+            {/* FINANCIALS TAB */}
+            {activeTab === 'financials' && (
+                <div className="animate-fade-in">
+                    <h2 className="font-serif text-2xl text-cream mb-6">Financial Operations</h2>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                        {/* Pending Withdrawals */}
+                        <div className="bg-[#1f0c05] border border-white/10 p-6 rounded-sm shadow-xl">
+                            <h3 className="font-serif text-lg text-cream mb-4 flex items-center gap-2">
+                                <AlertTriangle size={18} className="text-yellow-500"/> Pending Withdrawals
+                            </h3>
+                            {transactions.filter(t => t.type === 'Withdrawal' && t.status === 'Pending').length === 0 ? (
+                                <p className="text-cream/50 italic text-sm">No pending requests.</p>
+                            ) : (
+                                <div className="space-y-4">
+                                    {transactions.filter(t => t.type === 'Withdrawal' && t.status === 'Pending').map(tx => (
+                                        <div key={tx.id} className="bg-white/5 p-4 border border-white/5 flex flex-col md:flex-row justify-between gap-4">
+                                            <div>
+                                                <p className="font-bold text-cream">{tx.userName}</p>
+                                                <p className="text-xs text-cream/50 font-mono">{tx.description}</p>
+                                                <p className="text-xs text-golden-orange mt-1">Amount: ${tx.amount.toLocaleString()}</p>
+                                            </div>
+                                            <button 
+                                                onClick={() => handleProcessWithdrawal(tx.id)}
+                                                className="bg-golden-orange text-espresso font-bold text-xs px-3 py-2 rounded hover:bg-white transition-colors"
+                                            >
+                                                Mark Paid
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                         {/* Global Ledger Summary */}
+                         <div className="bg-[#1f0c05] border border-white/10 p-6 rounded-sm shadow-xl">
+                            <h3 className="font-serif text-lg text-cream mb-4 flex items-center gap-2">
+                                <Wallet size={18} className="text-golden-orange"/> Ledger Summary
+                            </h3>
+                            <div className="space-y-4">
+                                <div className="flex justify-between border-b border-white/5 pb-2">
+                                    <span className="text-sm text-cream/70">Total Fees Collected</span>
+                                    <span className="text-sm font-bold text-green-400">
+                                        ${transactions.filter(t => t.type === 'Fee' && t.status === 'Completed').reduce((sum, t) => sum + t.amount, 0).toLocaleString()}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between border-b border-white/5 pb-2">
+                                    <span className="text-sm text-cream/70">Total Withdrawals Processed</span>
+                                    <span className="text-sm font-bold text-blue-400">
+                                        ${transactions.filter(t => t.type === 'Withdrawal' && t.status === 'Completed').reduce((sum, t) => sum + t.amount, 0).toLocaleString()}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between border-b border-white/5 pb-2">
+                                    <span className="text-sm text-cream/70">Escrow Held</span>
+                                    <span className="text-sm font-bold text-golden-orange">
+                                        ${transactions.filter(t => t.type === 'Withdrawal' && t.status === 'Pending').reduce((sum, t) => sum + t.amount, 0).toLocaleString()}
+                                    </span>
+                                </div>
+                            </div>
+                         </div>
+                    </div>
+
+                    <h3 className="font-serif text-lg text-cream mb-4">Master Transaction List</h3>
+                    <div className="bg-[#1f0c05] border border-white/10 rounded-sm overflow-hidden">
+                        <table className="w-full text-left text-sm text-cream/70">
+                            <thead className="bg-white/5 uppercase text-xs tracking-wider text-golden-orange">
+                                <tr>
+                                    <th className="p-4">ID</th>
+                                    <th className="p-4">Date</th>
+                                    <th className="p-4">User</th>
+                                    <th className="p-4">Type</th>
+                                    <th className="p-4">Description</th>
+                                    <th className="p-4">Method (Encrypted)</th>
+                                    <th className="p-4">Amount</th>
+                                    <th className="p-4">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                                {transactions.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(tx => (
+                                    <tr key={tx.id} className="hover:bg-white/5 transition-colors">
+                                        <td className="p-4 text-xs font-mono opacity-50">{tx.id.substring(0,8)}...</td>
+                                        <td className="p-4 text-xs">{tx.date}</td>
+                                        <td className="p-4 font-bold">{tx.userName}</td>
+                                        <td className="p-4">
+                                             <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${
+                                                tx.type === 'Fee' ? 'bg-purple-500/10 text-purple-400' :
+                                                tx.type === 'Withdrawal' ? 'bg-blue-500/10 text-blue-400' : 
+                                                tx.type === 'Credit' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
+                                            }`}>
+                                                {tx.type}
+                                            </span>
+                                        </td>
+                                        <td className="p-4 text-xs">{tx.description}</td>
+                                        <td className="p-4 text-xs font-mono opacity-60">
+                                            {tx.paymentMethod ? (tx.paymentMethod.includes('Bank') ? 'Bank Transfer' : tx.paymentMethod.includes('Wallet') ? 'Wallet' : 'Ext. Payment Gateway') : 'N/A'}
+                                        </td>
+                                        <td className="p-4 text-cream font-bold">${tx.amount.toLocaleString()}</td>
+                                        <td className="p-4">
+                                            {tx.status}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             )}
             

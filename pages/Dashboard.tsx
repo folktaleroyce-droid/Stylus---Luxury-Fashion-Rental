@@ -1,7 +1,8 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock, X, Check, Heart, Eye, Search, Filter, History, ChevronRight, Briefcase, DollarSign, ShieldAlert, FileText, Ban, Trash2, ShoppingBag, Truck, Wallet, ShieldCheck } from 'lucide-react';
+import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock, X, Check, Heart, Eye, Search, Filter, History, ChevronRight, Briefcase, DollarSign, ShieldAlert, FileText, Ban, Trash2, ShoppingBag, Truck, Wallet, ShieldCheck, Banknote, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useProduct } from '../context/ProductContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -13,7 +14,7 @@ import { PartnerVerificationForm } from '../components/PartnerVerificationForm';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { logout, currentUser, submitVerification, updateWallet } = useAuth();
+  const { logout, currentUser, submitVerification, updateWallet, requestWithdrawal, transactions } = useAuth();
   const { products, addProduct, removeProduct, incrementRentalCount } = useProduct();
   const { wishlist } = useWishlist();
   const { orders, updateOrderItemStatus } = useOrders();
@@ -22,9 +23,12 @@ export const Dashboard: React.FC = () => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [verificationModal, setVerificationModal] = useState(false);
   
-  // Wallet Funding State
+  // Wallet Funding & Withdrawal State
   const [fundModal, setFundModal] = useState(false);
+  const [withdrawModal, setWithdrawModal] = useState(false);
   const [fundAmount, setFundAmount] = useState('');
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [bankDetails, setBankDetails] = useState({ bankName: '', accountNumber: '', accountName: '' });
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   // Filter products for Partner
@@ -35,6 +39,9 @@ export const Dashboard: React.FC = () => {
   
   // User orders logic
   const userOrders = orders.filter(o => o.userId === currentUser?.id);
+  
+  // Transaction History for current user
+  const userTransactions = transactions.filter(t => t.userId === currentUser?.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   // Split Active vs History based on items (if any item is active, show order in active)
   const activeStatuses: OrderStatus[] = ['Processing', 'Pending Approval', 'Accepted', 'Shipped'];
@@ -54,14 +61,23 @@ export const Dashboard: React.FC = () => {
     navigate('/login');
   };
 
-  const handleWithdraw = () => {
-      const amount = prompt("Enter amount to withdraw ($):");
-      if (amount && !isNaN(Number(amount)) && Number(amount) > 0 && Number(amount) <= (currentUser?.walletBalance || 0)) {
-          updateWallet(currentUser!.id, -Number(amount));
-          alert(`Withdrawal of $${amount} processed to linked account.`);
-      } else {
-          alert("Invalid amount or insufficient funds.");
+  const handleWithdrawSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      const amount = Number(withdrawAmount);
+      if (isNaN(amount) || amount <= 0) {
+          alert("Invalid amount.");
+          return;
       }
+      if (amount > (currentUser?.walletBalance || 0)) {
+          alert("Insufficient funds.");
+          return;
+      }
+      
+      const details = `${bankDetails.bankName} - ${bankDetails.accountNumber} (${bankDetails.accountName})`;
+      requestWithdrawal(currentUser!.id, amount, details);
+      setWithdrawModal(false);
+      setWithdrawAmount('');
+      alert("Withdrawal request submitted for processing.");
   };
 
   const handleFundWallet = (e: React.FormEvent) => {
@@ -75,7 +91,7 @@ export const Dashboard: React.FC = () => {
       setIsProcessingPayment(true);
       // Simulate API call to payment gateway
       setTimeout(() => {
-          updateWallet(currentUser!.id, amount);
+          updateWallet(currentUser!.id, amount, 'Wallet Fund via Card');
           setIsProcessingPayment(false);
           setFundModal(false);
           setFundAmount('');
@@ -165,6 +181,69 @@ export const Dashboard: React.FC = () => {
                   ) : (
                       <PartnerVerificationForm onSubmit={handleVerificationSubmit} />
                   )}
+              </div>
+          </div>
+      )}
+
+      {/* Withdrawal Modal */}
+      {withdrawModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+              <div className="bg-[#1f0c05] border border-golden-orange w-full max-w-md p-8 relative shadow-2xl rounded-sm">
+                  <button onClick={() => setWithdrawModal(false)} className="absolute top-4 right-4 text-cream/50 hover:text-golden-orange"><X size={24}/></button>
+                  <h2 className="font-serif text-2xl text-cream mb-2">Withdraw Earnings</h2>
+                  <p className="text-xs text-cream/50 mb-6 uppercase tracking-widest">Process Transfer to Bank</p>
+                  
+                  <div className="bg-golden-orange/10 p-4 mb-6 border border-golden-orange/20 text-center">
+                      <p className="text-xs text-golden-orange uppercase">Available Balance</p>
+                      <p className="text-2xl font-serif text-cream">${currentUser.walletBalance.toFixed(2)}</p>
+                  </div>
+
+                  <form onSubmit={handleWithdrawSubmit} className="space-y-4">
+                      <div>
+                          <label className="text-xs text-cream/50 mb-1 block uppercase">Amount to Withdraw ($)</label>
+                          <input 
+                            type="number" 
+                            required 
+                            min="10"
+                            max={currentUser.walletBalance}
+                            value={withdrawAmount} 
+                            onChange={e => setWithdrawAmount(e.target.value)} 
+                            className="w-full bg-black/20 border border-white/10 p-3 text-cream focus:border-golden-orange outline-none font-serif text-lg" 
+                          />
+                      </div>
+                      
+                      <div className="pt-2">
+                          <label className="text-xs text-cream/50 mb-2 block uppercase font-bold">Bank Details</label>
+                          <div className="space-y-3">
+                              <input 
+                                required 
+                                type="text" 
+                                placeholder="Bank Name" 
+                                value={bankDetails.bankName}
+                                onChange={e => setBankDetails({...bankDetails, bankName: e.target.value})}
+                                className="w-full bg-black/20 border border-white/10 p-3 text-cream text-sm focus:border-golden-orange outline-none" 
+                              />
+                              <input 
+                                required 
+                                type="text" 
+                                placeholder="Account Number" 
+                                value={bankDetails.accountNumber}
+                                onChange={e => setBankDetails({...bankDetails, accountNumber: e.target.value})}
+                                className="w-full bg-black/20 border border-white/10 p-3 text-cream text-sm focus:border-golden-orange outline-none" 
+                              />
+                               <input 
+                                required 
+                                type="text" 
+                                placeholder="Account Name" 
+                                value={bankDetails.accountName}
+                                onChange={e => setBankDetails({...bankDetails, accountName: e.target.value})}
+                                className="w-full bg-black/20 border border-white/10 p-3 text-cream text-sm focus:border-golden-orange outline-none" 
+                              />
+                          </div>
+                      </div>
+
+                      <Button fullWidth className="mt-4">Submit Request</Button>
+                  </form>
               </div>
           </div>
       )}
@@ -266,7 +345,7 @@ export const Dashboard: React.FC = () => {
                    <p className="text-2xl font-serif text-golden-orange mb-3">${currentUser.walletBalance.toFixed(2)}</p>
                    
                    {currentUser.role === 'Partner' ? (
-                       <button onClick={handleWithdraw} className="w-full bg-white/5 border border-white/10 text-cream py-2 text-xs uppercase font-bold hover:bg-white/10 transition-colors">Withdraw Funds</button>
+                       <button onClick={() => setWithdrawModal(true)} className="w-full bg-white/5 border border-white/10 text-cream py-2 text-xs uppercase font-bold hover:bg-white/10 transition-colors">Withdraw Funds</button>
                    ) : (
                        <button onClick={() => setFundModal(true)} className="w-full bg-golden-orange text-espresso py-2 text-xs uppercase font-bold hover:bg-white hover:text-espresso transition-colors shadow-lg">Fund Wallet</button>
                    )}
@@ -283,6 +362,7 @@ export const Dashboard: React.FC = () => {
               {currentUser.role === 'Partner' ? (
                   <>
                     <button onClick={() => setCurrentView('overview')} className={`w-full text-left px-4 py-3 border-l-2 transition-all ${currentView === 'overview' ? 'border-golden-orange bg-white/5 text-golden-orange' : 'border-transparent text-cream hover:bg-white/5'}`}>Dashboard</button>
+                    <button onClick={() => setCurrentView('finances')} className={`w-full text-left px-4 py-3 border-l-2 transition-all ${currentView === 'finances' ? 'border-golden-orange bg-white/5 text-golden-orange' : 'border-transparent text-cream hover:bg-white/5'}`}>Financials</button>
                     <button onClick={() => setCurrentView('listings')} className={`w-full text-left px-4 py-3 border-l-2 transition-all ${currentView === 'listings' ? 'border-golden-orange bg-white/5 text-golden-orange' : 'border-transparent text-cream hover:bg-white/5'}`}>My Listings</button>
                     <button onClick={() => setCurrentView('add-item')} className={`w-full text-left px-4 py-3 border-l-2 transition-all ${currentView === 'add-item' ? 'border-golden-orange bg-white/5 text-golden-orange' : 'border-transparent text-cream hover:bg-white/5'}`}>Add New Item</button>
                     <button onClick={() => setCurrentView('orders')} className={`w-full text-left px-4 py-3 border-l-2 transition-all ${currentView === 'orders' ? 'border-golden-orange bg-white/5 text-golden-orange' : 'border-transparent text-cream hover:bg-white/5'}`}>Incoming Requests</button>
@@ -291,6 +371,7 @@ export const Dashboard: React.FC = () => {
                   <>
                     <button onClick={() => setCurrentView('overview')} className={`w-full text-left px-4 py-3 border-l-2 transition-all ${currentView === 'overview' ? 'border-golden-orange bg-white/5 text-golden-orange' : 'border-transparent text-cream hover:bg-white/5'}`}>Active Activity</button>
                     <button onClick={() => setCurrentView('history')} className={`w-full text-left px-4 py-3 border-l-2 transition-all ${currentView === 'history' ? 'border-golden-orange bg-white/5 text-golden-orange' : 'border-transparent text-cream hover:bg-white/5'}`}>Order History</button>
+                    <button onClick={() => setCurrentView('finances')} className={`w-full text-left px-4 py-3 border-l-2 transition-all ${currentView === 'finances' ? 'border-golden-orange bg-white/5 text-golden-orange' : 'border-transparent text-cream hover:bg-white/5'}`}>Transactions</button>
                     <button onClick={() => setCurrentView('wishlist')} className={`w-full text-left px-4 py-3 border-l-2 transition-all ${currentView === 'wishlist' ? 'border-golden-orange bg-white/5 text-golden-orange' : 'border-transparent text-cream hover:bg-white/5'}`}>Wishlist</button>
                   </>
               )}
@@ -315,6 +396,64 @@ export const Dashboard: React.FC = () => {
                          <h3 className="text-cream/50 uppercase text-xs">Verification</h3>
                          <p className={`text-xl font-serif ${currentUser.verificationStatus === 'Verified' ? 'text-green-400' : 'text-red-400'}`}>{currentUser.verificationStatus}</p>
                      </div>
+                 </div>
+             )}
+
+             {currentUser.role === 'Partner' && currentView === 'finances' && (
+                 <div>
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="font-serif text-2xl text-cream">Financial History</h3>
+                        <Button onClick={() => setWithdrawModal(true)} variant="secondary" className="text-xs">
+                             <Banknote size={16} className="mr-2"/> Withdraw Funds
+                        </Button>
+                    </div>
+                    
+                    <div className="bg-[#1f0c05] border border-white/10 rounded-sm overflow-hidden">
+                        <table className="w-full text-left text-sm text-cream/70">
+                            <thead className="bg-white/5 uppercase text-xs tracking-wider text-golden-orange">
+                                <tr>
+                                    <th className="p-4">Date</th>
+                                    <th className="p-4">Description</th>
+                                    <th className="p-4">Type</th>
+                                    <th className="p-4">Amount</th>
+                                    <th className="p-4">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                                {userTransactions.map(tx => (
+                                    <tr key={tx.id} className="hover:bg-white/5 transition-colors">
+                                        <td className="p-4 text-xs text-cream/50">{tx.date}</td>
+                                        <td className="p-4 font-medium text-cream">{tx.description}</td>
+                                        <td className="p-4">
+                                            <span className={`flex items-center gap-1 text-xs uppercase font-bold ${
+                                                tx.type === 'Credit' ? 'text-green-400' : 
+                                                tx.type === 'Debit' ? 'text-red-400' : 
+                                                tx.type === 'Withdrawal' ? 'text-blue-400' : 'text-yellow-500'
+                                            }`}>
+                                                {tx.type === 'Credit' && <ArrowDownLeft size={12}/>}
+                                                {tx.type === 'Withdrawal' && <ArrowUpRight size={12}/>}
+                                                {tx.type}
+                                            </span>
+                                        </td>
+                                        <td className="p-4 font-serif text-cream">${tx.amount.toLocaleString()}</td>
+                                        <td className="p-4">
+                                            <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${
+                                                tx.status === 'Completed' ? 'bg-green-500/10 text-green-400' : 
+                                                tx.status === 'Pending' ? 'bg-yellow-500/10 text-yellow-500' : 'bg-red-500/10 text-red-400'
+                                            }`}>
+                                                {tx.status}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {userTransactions.length === 0 && (
+                                    <tr>
+                                        <td colSpan={5} className="p-8 text-center text-cream/50 italic">No transactions found.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                  </div>
              )}
 
@@ -580,6 +719,45 @@ export const Dashboard: React.FC = () => {
                              ))}
                          </div>
                      )}
+                 </div>
+             )}
+             
+             {currentUser.role === 'User' && currentView === 'finances' && (
+                 <div>
+                    <h3 className="font-serif text-2xl text-cream mb-6">Transactions</h3>
+                    <div className="bg-[#1f0c05] border border-white/10 rounded-sm overflow-hidden">
+                        <table className="w-full text-left text-sm text-cream/70">
+                            <thead className="bg-white/5 uppercase text-xs tracking-wider text-golden-orange">
+                                <tr>
+                                    <th className="p-4">Date</th>
+                                    <th className="p-4">Description</th>
+                                    <th className="p-4">Type</th>
+                                    <th className="p-4">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                                {userTransactions.map(tx => (
+                                    <tr key={tx.id} className="hover:bg-white/5 transition-colors">
+                                        <td className="p-4 text-xs text-cream/50">{tx.date}</td>
+                                        <td className="p-4 font-medium text-cream">{tx.description}</td>
+                                        <td className="p-4">
+                                            <span className={`flex items-center gap-1 text-xs uppercase font-bold ${
+                                                tx.type === 'Credit' ? 'text-green-400' : 'text-red-400'
+                                            }`}>
+                                                {tx.type}
+                                            </span>
+                                        </td>
+                                        <td className="p-4 font-serif text-cream">${tx.amount.toLocaleString()}</td>
+                                    </tr>
+                                ))}
+                                {userTransactions.length === 0 && (
+                                    <tr>
+                                        <td colSpan={4} className="p-8 text-center text-cream/50 italic">No transactions found.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                  </div>
              )}
 

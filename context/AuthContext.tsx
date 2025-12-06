@@ -1,5 +1,6 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Role, VerificationStatus } from '../types';
+import { Role, VerificationStatus, Transaction } from '../types';
 
 // Extended User Interface
 export interface RegisteredUser {
@@ -36,6 +37,7 @@ interface AuthContextType {
   isAdmin: boolean;
   currentUser: RegisteredUser | null;
   registeredUsers: RegisteredUser[];
+  transactions: Transaction[];
   login: (email: string, password?: string) => boolean;
   logout: () => void;
   registerUser: (name: string, email: string, role?: Role) => void;
@@ -45,7 +47,9 @@ interface AuthContextType {
   submitVerification: (id: string, docs: Partial<RegisteredUser['verificationDocs']>) => void;
   approveVerification: (id: string) => void;
   rejectVerification: (id: string, reason: string) => void;
-  updateWallet: (id: string, amount: number) => void;
+  updateWallet: (id: string, amount: number, description: string, type?: Transaction['type']) => void;
+  requestWithdrawal: (id: string, amount: number, bankDetails: string) => void;
+  processWithdrawal: (transactionId: string) => void;
   deleteUser: (id: string) => void;
 }
 
@@ -54,6 +58,7 @@ const AuthContext = createContext<AuthContextType>({
   isAdmin: false,
   currentUser: null,
   registeredUsers: [],
+  transactions: [],
   login: () => false,
   logout: () => {},
   registerUser: () => {},
@@ -64,6 +69,8 @@ const AuthContext = createContext<AuthContextType>({
   approveVerification: () => {},
   rejectVerification: () => {},
   updateWallet: () => {},
+  requestWithdrawal: () => {},
+  processWithdrawal: () => {},
   deleteUser: () => {},
 });
 
@@ -149,11 +156,19 @@ const MOCK_USERS_DB: RegisteredUser[] = [
   },
 ];
 
+// Mock Transactions
+const MOCK_TRANSACTIONS: Transaction[] = [
+    { id: 'tx-1', userId: '1', userName: 'Stylus Partner', type: 'Fee', amount: 20000, description: 'Partnership Verification Fee', date: 'Nov 02, 2023', status: 'Completed', paymentMethod: 'Card ending 4242' },
+    { id: 'tx-2', userId: '1', userName: 'Stylus Partner', type: 'Credit', amount: 5000, description: 'Rental Earnings: Order #ORD-8821', date: 'Jan 10, 2024', status: 'Completed', paymentMethod: 'Wallet' },
+    { id: 'tx-3', userId: '4', userName: 'Victoria Sterling', type: 'Credit', amount: 1500, description: 'Wallet Deposit', date: 'Feb 15, 2024', status: 'Completed', paymentMethod: 'Card ending 8811' },
+];
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUser, setCurrentUser] = useState<RegisteredUser | null>(null);
   const [registeredUsers, setRegisteredUsers] = useState<RegisteredUser[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
 
   // Load data on mount
   useEffect(() => {
@@ -164,6 +179,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setRegisteredUsers(MOCK_USERS_DB);
     }
     
+    const storedTx = localStorage.getItem('stylus_transactions');
+    if (storedTx) {
+        setTransactions(JSON.parse(storedTx));
+    } else {
+        setTransactions(MOCK_TRANSACTIONS);
+    }
+
     // Check session
     const storedAuth = localStorage.getItem('stylus_auth');
     const storedUserId = localStorage.getItem('stylus_user_id');
@@ -185,19 +207,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [registeredUsers]);
 
+  useEffect(() => {
+      localStorage.setItem('stylus_transactions', JSON.stringify(transactions));
+  }, [transactions]);
+
   const login = (emailOrName: string, password?: string) => {
     // 1. Check for SPECIAL Credentials logic as requested
     if (emailOrName === 'Stylus') {
       if (password === 'Sty!usAdm1n#29XQ') {
-        // Master Admin - find existing admin or fallback
         const adminUser = registeredUsers.find(u => u.role === 'Admin') || MOCK_USERS_DB[2];
         return performLogin(adminUser);
       } else if (password === 'StylusUser#4829') {
-        // Default User
         const defaultUser = registeredUsers.find(u => u.email === 'user@stylus.com') || MOCK_USERS_DB[1];
         return performLogin(defaultUser);
       } else if (password === 'StylusPartner@9931') {
-        // Default Partner
         const defaultPartner = registeredUsers.find(u => u.email === 'partner@stylus.com') || MOCK_USERS_DB[0];
         return performLogin(defaultPartner);
       } else {
@@ -205,10 +228,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // 2. Standard DB Check
     const foundUser = registeredUsers.find(u => u.email === emailOrName || u.name === emailOrName);
     if (foundUser) {
-        // For demo simplicity, we accept any password if it's a standard user not using "Stylus" username
         return performLogin(foundUser);
     }
     return false;
@@ -243,7 +264,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     setRegisteredUsers(prev => {
         const updated = [...prev, newUser];
-        localStorage.setItem('stylus_users_db', JSON.stringify(updated)); // Force save immediately
+        localStorage.setItem('stylus_users_db', JSON.stringify(updated));
         return updated;
     });
   };
@@ -274,9 +295,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
        u.id === id ? { ...u, verificationStatus: 'Pending' as VerificationStatus, verificationDocs: { ...u.verificationDocs, ...docs } } : u
     );
     setRegisteredUsers(updatedUsers);
-    if (currentUser?.id === id) setCurrentUser(updatedUsers.find(u => u.id === id) || null);
     
-    // Force immediate save for admin to see
+    // If it's a partner, log the registration fee transaction
+    const user = registeredUsers.find(u => u.id === id);
+    if (user && user.role === 'Partner') {
+        const feeTx: Transaction = {
+            id: `tx-fee-${Date.now()}`,
+            userId: id,
+            userName: user.name,
+            type: 'Fee',
+            amount: 20000,
+            description: 'One-Time Partnership Verification Fee',
+            date: new Date().toLocaleDateString(),
+            status: 'Completed',
+            paymentMethod: 'Card ending ****' // Simulated
+        };
+        setTransactions(prev => [feeTx, ...prev]);
+    }
+
+    if (currentUser?.id === id) setCurrentUser(updatedUsers.find(u => u.id === id) || null);
     localStorage.setItem('stylus_users_db', JSON.stringify(updatedUsers));
   };
 
@@ -292,11 +329,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (currentUser?.id === id) setCurrentUser(updatedUsers.find(u => u.id === id) || null);
   };
 
-  const updateWallet = (id: string, amount: number) => {
+  const updateWallet = (id: string, amount: number, description: string, type: Transaction['type'] = amount > 0 ? 'Credit' : 'Debit') => {
     const updatedUsers = registeredUsers.map(u => u.id === id ? { ...u, walletBalance: u.walletBalance + amount } : u);
     setRegisteredUsers(updatedUsers);
+    
+    // Log Transaction
+    const user = registeredUsers.find(u => u.id === id);
+    const newTx: Transaction = {
+        id: `tx-${Date.now()}`,
+        userId: id,
+        userName: user?.name || 'Unknown',
+        type: type,
+        amount: Math.abs(amount),
+        description: description,
+        date: new Date().toLocaleDateString(),
+        status: 'Completed',
+        paymentMethod: 'Wallet'
+    };
+    setTransactions(prev => [newTx, ...prev]);
+
     if (currentUser?.id === id) setCurrentUser(updatedUsers.find(u => u.id === id) || null);
-  }
+  };
+
+  const requestWithdrawal = (id: string, amount: number, bankDetails: string) => {
+      // 1. Deduct from wallet balance immediately (Escrow)
+      const updatedUsers = registeredUsers.map(u => u.id === id ? { ...u, walletBalance: u.walletBalance - amount } : u);
+      setRegisteredUsers(updatedUsers);
+      
+      const user = registeredUsers.find(u => u.id === id);
+      
+      // 2. Create Pending Transaction
+      const withdrawalTx: Transaction = {
+          id: `tx-wd-${Date.now()}`,
+          userId: id,
+          userName: user?.name || 'Unknown',
+          type: 'Withdrawal',
+          amount: amount,
+          description: `Withdrawal to ${bankDetails}`,
+          date: new Date().toLocaleDateString(),
+          status: 'Pending',
+          paymentMethod: 'Bank Transfer'
+      };
+      setTransactions(prev => [withdrawalTx, ...prev]);
+      
+      if (currentUser?.id === id) setCurrentUser(updatedUsers.find(u => u.id === id) || null);
+  };
+
+  const processWithdrawal = (transactionId: string) => {
+      setTransactions(prev => prev.map(t => 
+          t.id === transactionId ? { ...t, status: 'Completed' } : t
+      ));
+  };
 
   const deleteUser = (id: string) => {
     setRegisteredUsers(prev => prev.filter(u => u.id !== id));
@@ -316,7 +399,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isAuthenticated, 
       isAdmin, 
       currentUser, 
-      registeredUsers, 
+      registeredUsers,
+      transactions,
       login, 
       logout, 
       registerUser,
@@ -327,6 +411,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       approveVerification,
       rejectVerification,
       updateWallet,
+      requestWithdrawal,
+      processWithdrawal,
       deleteUser 
     }}>
       {children}

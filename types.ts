@@ -11,7 +11,7 @@ export enum Category {
 export type SortOption = 'newest' | 'price_asc' | 'price_desc';
 export type Role = 'User' | 'Partner' | 'Admin';
 export type VerificationStatus = 'Unverified' | 'Pending' | 'Verified' | 'Rejected';
-export type OrderStatus = 'Processing' | 'Pending Approval' | 'Accepted' | 'Shipped' | 'Completed' | 'Returned' | 'Cancelled';
+export type OrderStatus = 'Processing' | 'Pending Approval' | 'Accepted' | 'Shipped' | 'Completed' | 'Returned' | 'Cancelled' | 'Rejected';
 
 export interface Review {
   id: string;
@@ -57,6 +57,18 @@ export interface ChatMessage {
   role: 'user' | 'model';
   text: string;
   timestamp: Date;
+}
+
+export interface Transaction {
+  id: string;
+  userId: string;
+  userName: string;
+  type: 'Credit' | 'Debit' | 'Withdrawal' | 'Fee';
+  amount: number;
+  description: string;
+  date: string;
+  status: 'Pending' | 'Completed' | 'Failed';
+  paymentMethod?: string; // e.g. "Wallet", "Bank Transfer", "Card ending ****"
 }
 
 export interface UserProfile {
