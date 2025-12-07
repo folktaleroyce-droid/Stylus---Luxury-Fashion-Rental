@@ -1,6 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
-import { Users, Package, Megaphone, TrendingUp, DollarSign, Activity, AlertTriangle, Star, LogOut, X, Mail, Ban, Key, Check, Plus, Search, Trash2, Shield, UserCog, Briefcase, Filter, FileText, Save, ArrowUpDown, ArrowUp, ArrowDown, Eye, BarChart3, LineChart, PieChart, Power, Globe, Wallet, ArrowRightLeft, ShieldCheck, XCircle, CheckCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { 
+  Check, Plus, Search, Trash2, ShieldCheck, Power, 
+  AlertTriangle, Wallet, BarChart3, PieChart, Star, 
+  Activity, TrendingUp, DollarSign, ArrowUp, X, 
+  CheckCircle, XCircle, FileText, Eye, Building2, User 
+} from 'lucide-react';
 import { Button } from '../components/Button';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -14,25 +19,34 @@ export const AdminDashboard: React.FC = () => {
   const [showAddStockModal, setShowAddStockModal] = useState(false);
   const [userFilter, setUserFilter] = useState<'All' | 'User' | 'Partner'>('All');
   
-  // Destructure all necessary actions from AuthContext
+  // Destructure with robust safety defaults to prevent blank screens
+  const auth = useAuth();
   const { 
     logout, 
-    registeredUsers, 
+    registeredUsers: contextUsers, 
     deleteUser, 
     approveVerification, 
     rejectVerification, 
     updateUserStatus,
-    currentUser,
-    transactions,
+    transactions: contextTransactions,
     processWithdrawal
-  } = useAuth();
+  } = auth || {};
+
+  const registeredUsers = contextUsers || [];
+  const transactions = contextTransactions || [];
   
-  const { products, removeProduct, addProduct } = useProduct();
-  const { orders, updateOrderItemStatus } = useOrders();
+  const productContext = useProduct();
+  const { products: contextProducts, removeProduct, addProduct } = productContext || {};
+  const products = contextProducts || [];
+
+  const orderContext = useOrders();
+  const { orders: contextOrders, updateOrderItemStatus } = orderContext || {};
+  const orders = contextOrders || [];
+  
   const navigate = useNavigate();
 
-  // Filter for pending verifications (Robust filtering)
-  const pendingVerifications = registeredUsers.filter(u => u.verificationStatus === 'Pending');
+  // Robust filtering
+  const pendingVerifications = registeredUsers.filter(u => u && u.verificationStatus === 'Pending');
 
   // New Item State for Admin Add Stock
   const [newItem, setNewItem] = useState<Partial<Product>>({
@@ -43,42 +57,45 @@ export const AdminDashboard: React.FC = () => {
   // Filter for User Management
   const filteredUsers = registeredUsers.filter(u => {
       if (userFilter === 'All') return true;
-      return u.role === userFilter;
+      return u?.role === userFilter;
   });
 
-  const handleLogout = () => { logout(); navigate('/login'); };
+  const handleLogout = () => { 
+      if (logout) logout(); 
+      navigate('/login'); 
+  };
 
   const handleSuspendToggle = (userId: string, currentStatus: string) => {
       const newStatus = currentStatus === 'Active' ? 'Suspended' : 'Active';
       const reason = newStatus === 'Suspended' ? prompt("Enter reason for suspension:") : undefined;
       if (newStatus === 'Suspended' && !reason) return; // Cancel if no reason provided
       
-      updateUserStatus(userId, newStatus, reason || undefined);
+      if (updateUserStatus) updateUserStatus(userId, newStatus, reason || undefined);
   };
 
   const handleDeleteUser = (userId: string) => {
       if(confirm("Are you sure you want to PERMANENTLY DELETE this user? This action cannot be undone.")) {
-          deleteUser(userId);
+          if (deleteUser) deleteUser(userId);
       }
   };
   
   const handleApprove = (userId: string, userName: string) => {
       if(confirm(`Approve verification for ${userName}?`)) {
-        approveVerification(userId);
+        if (approveVerification) approveVerification(userId);
       }
   };
 
   const handleReject = (userId: string) => {
       const reason = prompt("Please provide a reason for rejection (this will be sent to the user):", "Document ID number did not match upload.");
       if (reason) {
-          rejectVerification(userId, reason);
+          if (rejectVerification) rejectVerification(userId, reason);
           alert("User rejected and notified.");
       }
   };
 
   const handleManualVerify = (userId: string, userName: string) => {
       if(confirm(`FORCE VERIFY: Are you sure you want to manually verify ${userName} without waiting for document submission?`)) {
-          approveVerification(userId);
+          if (approveVerification) approveVerification(userId);
       }
   }
 
@@ -106,19 +123,19 @@ export const AdminDashboard: React.FC = () => {
 
   const handleDeleteProduct = (id: string) => {
       if(confirm("Are you sure you want to delete this product from the global inventory?")) {
-          removeProduct(id);
+          if (removeProduct) removeProduct(id);
       }
   };
   
   const handleForceStatus = (orderId: string, itemId: string, status: any) => {
       if(confirm(`Are you sure you want to FORCE update this transaction to '${status}'? This overrides partner control.`)) {
-          updateOrderItemStatus(orderId, itemId, status);
+          if (updateOrderItemStatus) updateOrderItemStatus(orderId, itemId, status);
       }
   };
   
   const handleProcessWithdrawal = (txId: string) => {
       if(confirm("Confirm that you have transferred funds to the partner's bank account?")) {
-          processWithdrawal(txId);
+          if (processWithdrawal) processWithdrawal(txId);
           alert("Withdrawal marked as completed.");
       }
   }
@@ -144,7 +161,7 @@ export const AdminDashboard: React.FC = () => {
         reviews: [],
         rentalCount: 0
     };
-    addProduct(product);
+    if (addProduct) addProduct(product);
     setShowAddStockModal(false);
     setNewItem({ name: '', brand: '', category: Category.WOMEN, rentalPrice: 0, retailPrice: 0, buyPrice: 0, isForSale: false, description: '', availableSizes: [], images: [], color: '', occasion: '', autoSellAfterRentals: 0 });
     setSizeInput('');
@@ -169,6 +186,8 @@ export const AdminDashboard: React.FC = () => {
           return str;
       }).join(', ')})`;
   };
+
+  if (!auth) return <div className="min-h-screen bg-espresso flex items-center justify-center text-cream">Loading Dashboard...</div>;
 
   return (
     <div className="min-h-screen bg-espresso pt-8 pb-20 animate-fade-in relative">
@@ -495,7 +514,12 @@ export const AdminDashboard: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
-                                {transactions.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(tx => (
+                                {transactions.sort((a,b) => {
+                                    const dateA = new Date(a.date).getTime();
+                                    const dateB = new Date(b.date).getTime();
+                                    // Handle invalid dates safely
+                                    return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA);
+                                }).map(tx => (
                                     <tr key={tx.id} className="hover:bg-white/5 transition-colors">
                                         <td className="p-4 text-xs font-mono opacity-50">{tx.id.substring(0,8)}...</td>
                                         <td className="p-4 text-xs">{tx.date}</td>
@@ -544,7 +568,7 @@ export const AdminDashboard: React.FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-white/5">
-                                    {orders.flatMap(order => order.items.map((item, idx) => ({ ...item, orderId: order.id, orderDate: order.date, renterName: order.userName }))).map((txn, i) => (
+                                    {(orders || []).flatMap(order => (order?.items || []).map((item, idx) => ({ ...item, orderId: order.id, orderDate: order.date, renterName: order.userName }))).map((txn, i) => (
                                         <tr key={i} className="hover:bg-white/5 transition-colors">
                                             <td className="p-4 font-bold text-cream">{txn.orderId}</td>
                                             <td className="p-4 text-xs text-cream/50">{txn.orderDate}</td>
@@ -672,7 +696,7 @@ export const AdminDashboard: React.FC = () => {
                             </div>
                         </div>
 
-                         {/* Category Performance Chart - Donut/Pie style via Conic Gradient */}
+                         {/* Category Performance Chart */}
                         <div className="bg-[#1f0c05] border border-white/10 p-6 rounded-sm">
                              <h3 className="font-serif text-lg text-cream mb-6 flex items-center gap-2"><PieChart size={18}/> Category Performance</h3>
                              <div className="flex flex-col items-center justify-center">
@@ -902,7 +926,7 @@ export const AdminDashboard: React.FC = () => {
                                                     </div>
 
                                                     <div className="col-span-1 md:col-span-2 mt-4 flex items-center justify-between border-t border-white/5 pt-4">
-                                                        <p className="text-green-400 font-bold flex items-center gap-2 text-xs uppercase tracking-wide"><Check size={14}/> Fee Paid (₦25,000)</p>
+                                                        <p className="text-green-400 font-bold flex items-center gap-2 text-xs uppercase tracking-wide"><Check size={14}/> Fee Paid (₦20,000)</p>
                                                         {u.verificationDocs?.cacCertUrl && (
                                                             <button 
                                                                 onClick={() => setSelectedDoc({ url: u.verificationDocs!.cacCertUrl!, title: `CAC Certificate: ${u.verificationDocs?.businessName}` })}
