@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Category, Product, ProductFilter, SortOption } from '../types';
-import { Filter, Search, X, Eye, ArrowUpDown, Heart, ShoppingBag, SlidersHorizontal, ChevronDown, Sparkles } from 'lucide-react';
+import { Filter, Search, X, Eye, ArrowUpDown, Heart, ShoppingBag, SlidersHorizontal, ChevronDown, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useProduct } from '../context/ProductContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useCart } from '../context/CartContext';
@@ -13,6 +13,7 @@ export const Catalog: React.FC = () => {
   const { products } = useProduct();
   const { addToSearchHistory, currentUser } = useAuth();
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
+  const [quickViewIndex, setQuickViewIndex] = useState(0);
   
   // AI Recommendations
   const [aiRecs, setAiRecs] = useState<string>('');
@@ -27,6 +28,11 @@ export const Catalog: React.FC = () => {
     maxPrice: 5000,
     sortBy: 'newest'
   });
+
+  useEffect(() => {
+      // Reset index when product changes
+      setQuickViewIndex(0);
+  }, [quickViewProduct]);
 
   useEffect(() => {
       // Fetch AI recommendations if user has history
@@ -88,20 +94,56 @@ export const Catalog: React.FC = () => {
     setFilters(prev => ({ ...prev, [key]: value }));
   };
 
+  const nextQuickViewImage = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!quickViewProduct) return;
+      setQuickViewIndex((prev) => (prev + 1) % quickViewProduct.images.length);
+  };
+
+  const prevQuickViewImage = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!quickViewProduct) return;
+      setQuickViewIndex((prev) => (prev - 1 + quickViewProduct.images.length) % quickViewProduct.images.length);
+  };
+
   return (
     <div className="min-h-screen bg-espresso pb-20 animate-fade-in">
-      {/* Quick View Modal ... (Same as before) ... */}
+      {/* Quick View Modal */}
       {quickViewProduct && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setQuickViewProduct(null)}>
             <div className="bg-[#1f0c05] border border-golden-orange w-full max-w-4xl rounded-sm relative shadow-[0_0_50px_rgba(0,0,0,0.8)] flex flex-col md:flex-row overflow-hidden" onClick={e => e.stopPropagation()}>
                 <button 
                     onClick={() => setQuickViewProduct(null)} 
-                    className="absolute top-4 right-4 text-cream/50 hover:text-golden-orange z-10 p-2 bg-black/20 rounded-full transition-colors"
+                    className="absolute top-4 right-4 text-cream/50 hover:text-golden-orange z-20 p-2 bg-black/20 rounded-full transition-colors"
                 >
                     <X size={24} />
                 </button>
-                <div className="w-full md:w-1/2 h-64 md:h-auto bg-white/5 relative">
-                    <img src={quickViewProduct.images[0]} alt={quickViewProduct.name} className="w-full h-full object-cover" />
+                <div className="w-full md:w-1/2 h-64 md:h-[500px] bg-white/5 relative group">
+                    <img src={quickViewProduct.images[quickViewIndex]} alt={quickViewProduct.name} className="w-full h-full object-cover" />
+                    
+                    {/* Navigation Arrows for Quick View */}
+                    {quickViewProduct.images.length > 1 && (
+                        <>
+                            <button 
+                                onClick={prevQuickViewImage}
+                                className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 hover:bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-all"
+                            >
+                                <ChevronLeft size={24} />
+                            </button>
+                            <button 
+                                onClick={nextQuickViewImage}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 hover:bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-all"
+                            >
+                                <ChevronRight size={24} />
+                            </button>
+                            {/* Dots */}
+                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                                {quickViewProduct.images.map((_, idx) => (
+                                    <div key={idx} className={`w-1.5 h-1.5 rounded-full transition-all ${quickViewIndex === idx ? 'bg-golden-orange scale-125' : 'bg-white/50'}`} />
+                                ))}
+                            </div>
+                        </>
+                    )}
                 </div>
                 <div className="p-8 w-full md:w-1/2 flex flex-col justify-center bg-[#1f0c05]">
                     <span className="text-golden-orange text-xs uppercase tracking-widest mb-2 font-bold">{quickViewProduct.brand}</span>

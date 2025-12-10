@@ -49,8 +49,6 @@ export const ProductDetail: React.FC = () => {
   // Keyboard navigation for lightbox
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (!product) return;
-    // Allow arrow keys even if lightbox is closed for main gallery if focused? 
-    // Usually best to keep it global for detail page.
     if (e.key === 'ArrowRight') {
         setActiveImageIndex((prev) => (prev + 1) % product.images.length);
     }
@@ -256,7 +254,6 @@ export const ProductDetail: React.FC = () => {
                  <div>
                      <div 
                         className="mb-4 relative h-[600px] w-full bg-black/20 rounded-sm overflow-hidden group"
-                        // Removed cursor-zoom-in here to allow specific interaction areas
                      >
                          <img 
                             src={product.images[activeImageIndex] || product.images[0]} 
@@ -271,22 +268,32 @@ export const ProductDetail: React.FC = () => {
                              <>
                                 <button 
                                     onClick={prevImage} 
-                                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/60 text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-md hover:scale-110"
+                                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/60 text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-md hover:scale-110 z-10"
                                 >
                                     <ChevronLeft size={24}/>
                                 </button>
                                 <button 
                                     onClick={nextImage} 
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/60 text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-md hover:scale-110"
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/60 text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-md hover:scale-110 z-10"
                                 >
                                     <ChevronRight size={24}/>
                                 </button>
+                                
+                                {/* Indicators */}
+                                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 pointer-events-none">
+                                    {product.images.map((_, idx) => (
+                                        <div 
+                                            key={idx} 
+                                            className={`w-2 h-2 rounded-full transition-all shadow-md ${activeImageIndex === idx ? 'bg-golden-orange scale-125' : 'bg-white/50'}`}
+                                        />
+                                    ))}
+                                </div>
                              </>
                          )}
 
-                         <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex justify-center pointer-events-none">
-                             <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-full text-white text-xs flex items-center gap-2 border border-white/20">
-                                <Maximize2 size={12}/> Click to Expand Gallery
+                         <div className="absolute inset-x-0 bottom-0 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-12 pointer-events-none">
+                             <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full text-white text-xs flex items-center gap-2 border border-white/10 pointer-events-auto cursor-pointer hover:bg-black/80 transition-colors" onClick={() => setIsLightboxOpen(true)}>
+                                <Maximize2 size={12}/> View Full Screen
                              </div>
                          </div>
 
@@ -297,14 +304,14 @@ export const ProductDetail: React.FC = () => {
                          </div>
                      </div>
                      
-                     {/* Thumbnail Grid */}
+                     {/* Thumbnail Filmstrip */}
                      {product.images.length > 1 && (
-                         <div className="grid grid-cols-5 gap-3">
+                         <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
                              {product.images.map((img, idx) => (
                                  <button 
                                     key={idx} 
                                     onClick={() => { setIsImageLoading(true); setActiveImageIndex(idx); }} 
-                                    className={`relative aspect-[3/4] rounded-sm overflow-hidden transition-all duration-300 ${activeImageIndex === idx ? 'ring-2 ring-golden-orange ring-offset-2 ring-offset-espresso opacity-100 shadow-lg scale-[1.02]' : 'opacity-60 hover:opacity-100 grayscale hover:grayscale-0'}`}
+                                    className={`relative w-20 h-24 flex-shrink-0 rounded-sm overflow-hidden transition-all duration-300 ${activeImageIndex === idx ? 'ring-2 ring-golden-orange ring-offset-2 ring-offset-espresso opacity-100' : 'opacity-60 hover:opacity-100 grayscale hover:grayscale-0'}`}
                                  >
                                      <img src={img} className="w-full h-full object-cover" alt="" />
                                  </button>
