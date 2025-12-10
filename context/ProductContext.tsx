@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState } from 'react';
 import { Product, Category } from '../types';
 import { MOCK_PRODUCTS } from '../constants';
@@ -36,8 +35,14 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (product.id === productId) {
         const newCount = (product.rentalCount || 0) + 1;
         let isForSale = product.isForSale;
-
-        // Auto-conversion logic: if threshold is set and met, enable sale
+        
+        // Fixed rule: Max 5 rentals. Then it MUST be sell only.
+        const RENTAL_THRESHOLD = 5;
+        if (newCount >= RENTAL_THRESHOLD) {
+            isForSale = true; // Force enable sale
+        }
+        
+        // Legacy: if autoSellAfterRentals was set lower than 5
         if (product.autoSellAfterRentals && newCount >= product.autoSellAfterRentals) {
           isForSale = true;
         }

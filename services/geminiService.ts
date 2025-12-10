@@ -55,3 +55,43 @@ export const getStylingAdvice = async (userMessage: string): Promise<string> => 
     return "I am unable to access the styling archives at this moment. Please ensure your concierge connection (API Key) is active.";
   }
 };
+
+export const getRecommendations = async (searchHistory: string[], browsingContext: string): Promise<string> => {
+    try {
+        const ai = getAiClient();
+        const prompt = `
+            User Search History: ${searchHistory.join(', ')}
+            Current Context: ${browsingContext}
+            
+            Based on the user's search history and luxury fashion trends, suggest 3 specific types of items (e.g., "Vintage Chanel Clutch", "Velvet Tuxedo") they might like. 
+            Format as a concise, elegant list. Do not explain, just list.
+        `;
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+            config: { temperature: 0.5 }
+        });
+        return response.text || "Curated selections just for you.";
+    } catch (e) {
+        return "Timeless classics selected for your taste.";
+    }
+};
+
+export const getDeliveryEstimate = async (userLocation: string, productLocation: string): Promise<string> => {
+    try {
+        const ai = getAiClient();
+        const prompt = `Estimate delivery time from ${productLocation} to ${userLocation} for a premium courier. Return ONLY the range (e.g. "1-2 Business Days").`;
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+        });
+        return response.text?.trim() || "2-3 Business Days";
+    } catch (e) {
+        return "2-3 Business Days";
+    }
+};
+
+export const checkRentalThreshold = (rentalCount: number): boolean => {
+    // AI Monitoring logic rule
+    return rentalCount >= 5;
+};

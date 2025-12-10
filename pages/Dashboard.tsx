@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock, X, Check, Heart, Eye, Search, Filter, History, ChevronRight, Briefcase, DollarSign, ShieldAlert, FileText, Ban, Trash2, ShoppingBag, Truck, Wallet, ShieldCheck, Banknote, ArrowUpRight, ArrowDownLeft, AlertCircle } from 'lucide-react';
+import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock, X, Check, Heart, Eye, Search, Filter, History, ChevronRight, Briefcase, DollarSign, ShieldAlert, FileText, Ban, Trash2, ShoppingBag, Truck, Wallet, ShieldCheck, Banknote, ArrowUpRight, ArrowDownLeft, AlertCircle, Image as ImageIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useProduct } from '../context/ProductContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -10,6 +9,7 @@ import { Category, Product, VerificationStatus, OrderStatus } from '../types';
 import { Button } from '../components/Button';
 import { UserVerificationForm } from '../components/UserVerificationForm';
 import { PartnerVerificationForm } from '../components/PartnerVerificationForm';
+import { checkRentalThreshold } from '../services/geminiService';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -99,18 +99,38 @@ export const Dashboard: React.FC = () => {
   };
 
   // Partner Action: Accept specific Item
-  const handleAcceptItem = (orderId: string, itemId: string, productId: string) => {
+  const handleAcceptItem = (orderId: string, itemId: string, productId: string, price: number) => {
+      if (currentUser?.status === 'Suspended') {
+          alert("Action Blocked: Your account is suspended.");
+          return;
+      }
       updateOrderItemStatus(orderId, itemId, 'Accepted');
-      // Update rental stats
       incrementRentalCount(productId);
-      alert("Item accepted. Renter notified.");
+      
+      // Credit Partner Wallet immediately upon acceptance (System release funds)
+      updateWallet(currentUser!.id, price, `Rental Earnings: Order #${orderId}`, 'Credit');
+      
+      alert("Item accepted. Funds credited to wallet.");
   };
 
   const handleRejectItem = (orderId: string, itemId: string) => {
-      if (confirm("Rejecting an order request? This will refund the user.")) {
+      if (currentUser?.status === 'Suspended') {
+           alert("Action Blocked: Your account is suspended.");
+           return;
+      }
+      
+      const order = orders.find(o => o.id === orderId);
+      const item = order?.items.find(i => i.id === itemId);
+      
+      if (!order || !item) return;
+
+      if (confirm(`Are you sure you want to DECLINE this request for ${item.product.name}?\n\nThis will trigger an immediate full refund of $${item.price} to the customer.`)) {
         updateOrderItemStatus(orderId, itemId, 'Rejected');
-        // In a real app, trigger refund logic here
-        alert("Item rejected.");
+        
+        // Refund Logic: Credit back the user who placed the order
+        updateWallet(order.userId, item.price, `Refund: Request Declined for ${item.product.name}`, 'Credit');
+        
+        alert("Item rejected. Customer has been refunded.");
       }
   };
 
@@ -119,10 +139,13 @@ export const Dashboard: React.FC = () => {
     name: '', brand: '', category: Category.WOMEN, rentalPrice: 0, retailPrice: 0, buyPrice: 0, isForSale: false, description: '', availableSizes: [], images: [], color: '', occasion: '', autoSellAfterRentals: 0
   });
   const [sizeInput, setSizeInput] = useState('');
-  const [imageFile, setImageFile] = useState<File | null>(null);
-
+  
   const handleAddItem = (e: React.FormEvent) => {
     e.preventDefault();
+    if (currentUser?.status === 'Suspended') {
+        alert("Action Blocked: Your account is suspended.");
+        return;
+    }
     if(currentUser?.verificationStatus !== 'Verified') {
         alert("You must be a verified partner to list items.");
         return;
@@ -136,7 +159,7 @@ export const Dashboard: React.FC = () => {
         retailPrice: Number(newItem.retailPrice),
         buyPrice: Number(newItem.buyPrice),
         isForSale: newItem.isForSale,
-        autoSellAfterRentals: Number(newItem.autoSellAfterRentals) || undefined,
+        autoSellAfterRentals: 5, // Default to 5 max rentals per updated rules
         ownerId: currentUser.id,
         description: newItem.description || '',
         images: newItem.images && newItem.images.length > 0 ? newItem.images : ['https://images.unsplash.com/photo-1549439602-43ebca2327af?q=80&w=1000&auto=format&fit=crop'],
@@ -147,7 +170,7 @@ export const Dashboard: React.FC = () => {
         rentalCount: 0
     };
     addProduct(product);
-    alert("Item listed successfully!");
+    alert("Item listed successfully! It is now visible globally.");
     setCurrentView('listings');
   };
 
@@ -158,14 +181,38 @@ export const Dashboard: React.FC = () => {
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setImageFile(file);
-      setNewItem({ ...newItem, images: [URL.createObjectURL(file)] });
+    if (e.target.files && e.target.files.length > 0) {
+      const newImages = Array.from(e.target.files).map((file: File) => URL.createObjectURL(file));
+      setNewItem(prev => ({ ...prev, images: [...(prev.images || []), ...newImages] }));
     }
   };
 
+  const removeImage = (index: number) => {
+      setNewItem(prev => ({
+          ...prev,
+          images: prev.images?.filter((_, i) => i !== index)
+      }));
+  };
+
   if (!currentUser) return null;
+
+  // Suspension Overlay
+  if (currentUser.status === 'Suspended') {
+      return (
+          <div className="min-h-screen bg-espresso flex items-center justify-center p-4">
+              <div className="bg-red-900/20 border border-red-500 p-8 max-w-lg text-center rounded-sm">
+                  <ShieldAlert className="w-16 h-16 text-red-500 mx-auto mb-4" />
+                  <h1 className="text-3xl font-serif text-cream mb-2">Account Suspended</h1>
+                  <p className="text-red-300 mb-6 font-bold">{currentUser.suspensionReason || "Violation of Terms of Service"}</p>
+                  <p className="text-cream/60 mb-8">Access to trading, renting, and wallet withdrawals has been temporarily revoked. Please contact support.</p>
+                  <div className="flex justify-center gap-4">
+                      <Button onClick={performLogout}>Sign Out</Button>
+                      <Link to="/contact"><Button variant="outline">Contact Support</Button></Link>
+                  </div>
+              </div>
+          </div>
+      );
+  }
 
   return (
     <div className="min-h-screen bg-espresso pb-20 animate-fade-in">
@@ -344,7 +391,10 @@ export const Dashboard: React.FC = () => {
                    <p className="text-2xl font-serif text-golden-orange mb-3">${currentUser.walletBalance.toFixed(2)}</p>
                    
                    {currentUser.role === 'Partner' ? (
-                       <button onClick={() => setWithdrawModal(true)} className="w-full bg-white/5 border border-white/10 text-cream py-2 text-xs uppercase font-bold hover:bg-white/10 transition-colors">Withdraw Funds</button>
+                       <div className="flex gap-2">
+                           <button onClick={() => setFundModal(true)} className="flex-1 bg-white/5 border border-white/10 text-cream py-2 text-xs uppercase font-bold hover:bg-white/10 transition-colors">Deposit</button>
+                           <button onClick={() => setWithdrawModal(true)} className="flex-1 bg-white/5 border border-white/10 text-cream py-2 text-xs uppercase font-bold hover:bg-white/10 transition-colors">Withdraw</button>
+                       </div>
                    ) : (
                        <button onClick={() => setFundModal(true)} className="w-full bg-golden-orange text-espresso py-2 text-xs uppercase font-bold hover:bg-white hover:text-espresso transition-colors shadow-lg">Fund Wallet</button>
                    )}
@@ -506,18 +556,46 @@ export const Dashboard: React.FC = () => {
                                 </div>
                                 <div>
                                     <label className="text-xs text-cream/50 mb-1 block">Auto-sell Threshold (Rentals)</label>
-                                    <p className="text-xs text-cream/40 mb-2">Automatically convert to 'For Sale' after this many rentals.</p>
-                                    <input type="number" placeholder="e.g. 10" value={newItem.autoSellAfterRentals || ''} onChange={e => setNewItem({...newItem, autoSellAfterRentals: Number(e.target.value)})} className="w-full bg-black/20 border border-white/10 p-3 text-cream focus:border-golden-orange outline-none" />
+                                    <p className="text-xs text-cream/40 mb-2">Automatically convert to 'For Sale' after this many rentals (Default 5).</p>
+                                    <input disabled type="number" placeholder="5" value="5" className="w-full bg-black/20 border border-white/10 p-3 text-cream/50 focus:border-golden-orange outline-none cursor-not-allowed" />
                                 </div>
                             </div>
 
-                            <div className="border-2 border-dashed border-white/10 p-6 text-center cursor-pointer">
-                                <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" id="img-upload" />
-                                <label htmlFor="img-upload" className="cursor-pointer text-cream/60">
-                                    {newItem.images && newItem.images.length > 0 ? "Image Selected" : "Click to Upload Image"}
-                                </label>
+                            <div>
+                                <label className="text-xs text-cream/50 mb-2 block uppercase font-bold tracking-wider">Product Gallery</label>
+                                <div className="border-2 border-dashed border-white/10 p-8 text-center cursor-pointer relative hover:border-golden-orange/50 hover:bg-white/5 transition-all group rounded-sm">
+                                    <input type="file" multiple accept="image/*" onChange={handleImageUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" id="img-upload" />
+                                    <div className="pointer-events-none flex flex-col items-center">
+                                        <div className="bg-black/40 p-3 rounded-full mb-3 group-hover:scale-110 transition-transform">
+                                            <ImageIcon className="text-cream/50" size={24} />
+                                        </div>
+                                        <p className="text-cream text-sm font-bold mb-1">Click to Upload Images</p>
+                                        <p className="text-cream/40 text-xs">Support multiple files (JPG, PNG)</p>
+                                    </div>
+                                </div>
+                                
+                                {newItem.images && newItem.images.length > 0 && (
+                                    <div className="mt-4">
+                                        <p className="text-[10px] text-cream/40 uppercase mb-2">Uploaded ({newItem.images.length})</p>
+                                        <div className="flex flex-wrap gap-3">
+                                            {newItem.images.map((src, idx) => (
+                                                <div key={idx} className="relative group w-24 h-24 rounded-sm overflow-hidden border border-white/10">
+                                                    <img src={src} className="w-full h-full object-cover transition-transform group-hover:scale-105" alt="Preview"/>
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={() => removeImage(idx)} 
+                                                        className="absolute top-1 right-1 bg-red-500/90 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                                                        title="Remove Image"
+                                                    >
+                                                        <X size={12} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                            <Button fullWidth type="submit">Publish Listing</Button>
+                            <Button fullWidth type="submit">Publish Listing (Global Visibility)</Button>
                          </form>
                      )}
                  </div>
@@ -536,8 +614,8 @@ export const Dashboard: React.FC = () => {
                                      {item.isForSale && <span>Buy: ${item.buyPrice}</span>}
                                  </div>
                                  <div className="flex items-center gap-4 mt-2">
-                                    <span className="text-xs text-cream/50 bg-black/20 px-2 py-1 rounded">Rentals: {item.rentalCount || 0}</span>
-                                    {item.autoSellAfterRentals && <span className="text-xs text-golden-orange bg-golden-orange/10 px-2 py-1 rounded border border-golden-orange/30">Auto-sell at: {item.autoSellAfterRentals}</span>}
+                                    <span className="text-xs text-cream/50 bg-black/20 px-2 py-1 rounded">Rentals: {item.rentalCount || 0}/5</span>
+                                    {item.rentalCount && item.rentalCount >= 5 && <span className="text-xs text-red-400 bg-red-900/10 px-2 py-1 rounded border border-red-500/30">Max Rentals Reached - Sell Only</span>}
                                  </div>
                                  <div className="flex gap-2 mt-4">
                                      <button className="text-xs border border-white/20 px-3 py-1 text-cream hover:border-golden-orange rounded-sm">Edit</button>
@@ -588,7 +666,7 @@ export const Dashboard: React.FC = () => {
                                              
                                              {item.status === 'Pending Approval' && (
                                                  <div className="flex gap-2">
-                                                     <button onClick={() => handleAcceptItem(order.id, item.id, item.product.id)} className="bg-green-600 hover:bg-green-500 text-white px-3 py-1 text-xs rounded transition-colors">Accept</button>
+                                                     <button onClick={() => handleAcceptItem(order.id, item.id, item.product.id, item.price)} className="bg-green-600 hover:bg-green-500 text-white px-3 py-1 text-xs rounded transition-colors">Accept & Credit</button>
                                                      <button onClick={() => handleRejectItem(order.id, item.id)} className="bg-red-600 hover:bg-red-500 text-white px-3 py-1 text-xs rounded transition-colors">Decline</button>
                                                  </div>
                                              )}
@@ -608,7 +686,8 @@ export const Dashboard: React.FC = () => {
                         <h3 className="font-serif text-2xl text-cream">Current Overview</h3>
                         <span className="text-xs text-cream/50 uppercase tracking-widest">{new Date().toLocaleDateString()}</span>
                      </div>
-                     
+                     {/* ... rest of user view ... */}
+                     {/* No changes needed for user view */}
                      {currentUser.verificationStatus === 'Verified' && (
                          <div className="bg-green-500/10 border border-green-500/30 p-6 mb-8 flex items-start md:items-center gap-4 rounded-sm shadow-lg relative overflow-hidden animate-fade-in">
                              <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
@@ -697,6 +776,7 @@ export const Dashboard: React.FC = () => {
                  </div>
              )}
 
+             {/* ... remaining sections ... */}
              {currentUser.role === 'User' && currentView === 'history' && (
                  <div>
                      <h3 className="font-serif text-2xl text-cream mb-6">Order History</h3>

@@ -1,16 +1,21 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Category, Product, ProductFilter, SortOption } from '../types';
-import { Filter, Search, X, Eye, ArrowUpDown, Heart, ShoppingBag, SlidersHorizontal, ChevronDown } from 'lucide-react';
+import { Filter, Search, X, Eye, ArrowUpDown, Heart, ShoppingBag, SlidersHorizontal, ChevronDown, Sparkles } from 'lucide-react';
 import { useProduct } from '../context/ProductContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/Button';
+import { getRecommendations } from '../services/geminiService';
 
 export const Catalog: React.FC = () => {
   const { products } = useProduct();
+  const { addToSearchHistory, currentUser } = useAuth();
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
+  
+  // AI Recommendations
+  const [aiRecs, setAiRecs] = useState<string>('');
   
   // Consolidated Filter State
   const [filters, setFilters] = useState<ProductFilter>({
@@ -22,6 +27,27 @@ export const Catalog: React.FC = () => {
     maxPrice: 5000,
     sortBy: 'newest'
   });
+
+  useEffect(() => {
+      // Fetch AI recommendations if user has history
+      const fetchRecs = async () => {
+          if (currentUser?.searchHistory && currentUser.searchHistory.length > 0) {
+              const recs = await getRecommendations(currentUser.searchHistory, "Browsing Full Catalog");
+              setAiRecs(recs);
+          }
+      };
+      fetchRecs();
+  }, [currentUser]);
+
+  // Debounced Search Tracking
+  useEffect(() => {
+      const timer = setTimeout(() => {
+          if (filters.searchQuery.length > 3) {
+              addToSearchHistory(filters.searchQuery);
+          }
+      }, 2000);
+      return () => clearTimeout(timer);
+  }, [filters.searchQuery]);
 
   const colors = ['All', ...Array.from(new Set(products.map(p => p.color).filter(Boolean)))];
   const occasions = ['All', ...Array.from(new Set(products.map(p => p.occasion).filter(Boolean)))];
@@ -64,8 +90,7 @@ export const Catalog: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-espresso pb-20 animate-fade-in">
-      
-      {/* Quick View Modal */}
+      {/* Quick View Modal ... (Same as before) ... */}
       {quickViewProduct && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setQuickViewProduct(null)}>
             <div className="bg-[#1f0c05] border border-golden-orange w-full max-w-4xl rounded-sm relative shadow-[0_0_50px_rgba(0,0,0,0.8)] flex flex-col md:flex-row overflow-hidden" onClick={e => e.stopPropagation()}>
@@ -135,6 +160,15 @@ export const Catalog: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
         
+        {/* AI Recommendations */}
+        {currentUser && aiRecs && (
+            <div className="mb-10 bg-gradient-to-r from-[#1f0c05] to-[#2a1208] border border-golden-orange/30 p-6 rounded-sm relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 text-golden-orange/10"><Sparkles size={80}/></div>
+                <h3 className="text-golden-orange font-serif text-xl mb-2 flex items-center gap-2"><Sparkles size={18}/> Curated For You</h3>
+                <p className="text-cream/80 italic font-light">{aiRecs}</p>
+            </div>
+        )}
+
         {/* Filter Panel */}
         <div className="bg-[#1f0c05] border border-white/10 p-6 mb-10 rounded-sm shadow-xl relative overflow-hidden">
             <div className="absolute top-0 left-0 w-1 h-full bg-golden-orange"></div>
@@ -163,7 +197,7 @@ export const Catalog: React.FC = () => {
                         <ChevronDown size={12} className="absolute right-3 top-3 text-cream/30 pointer-events-none"/>
                     </div>
                 </div>
-
+                {/* ... other filters ... */}
                 <div className="w-full">
                     <label className="text-[10px] text-cream/50 uppercase tracking-widest mb-2 block font-bold">Size</label>
                     <div className="relative">
@@ -320,6 +354,7 @@ const ProductCard: React.FC<{ product: Product; onQuickView: (p: Product) => voi
       </div>
       <div className="flex items-baseline justify-between mt-2 pt-3 border-t border-white/5 px-1">
         <span className="text-cream font-medium font-serif text-lg">${product.rentalPrice} <span className="text-xs text-cream/50 font-sans font-light">/ 4 days</span></span>
+        {product.rentalCount && product.rentalCount >= 5 && <span className="text-[10px] text-red-400 border border-red-500/50 px-2 py-0.5 rounded uppercase font-bold">Sell Only</span>}
       </div>
     </div>
   );

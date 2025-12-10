@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Role, VerificationStatus, Transaction } from '../types';
 
@@ -30,6 +29,8 @@ export interface RegisteredUser {
   lastActive: string;
   avgSpend: string;
   rentalHistoryCount: number;
+  searchHistory: string[]; // Added search history
+  location?: string; // Added location for delivery calc
 }
 
 interface AuthContextType {
@@ -48,9 +49,11 @@ interface AuthContextType {
   approveVerification: (id: string) => void;
   rejectVerification: (id: string, reason: string) => void;
   updateWallet: (id: string, amount: number, description: string, type?: Transaction['type']) => void;
+  transferFunds: (fromId: string, toId: string, amount: number, description: string) => void;
   requestWithdrawal: (id: string, amount: number, bankDetails: string) => void;
   processWithdrawal: (transactionId: string) => void;
   deleteUser: (id: string) => void;
+  addToSearchHistory: (query: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -69,9 +72,11 @@ const AuthContext = createContext<AuthContextType>({
   approveVerification: () => {},
   rejectVerification: () => {},
   updateWallet: () => {},
+  transferFunds: () => {},
   requestWithdrawal: () => {},
   processWithdrawal: () => {},
   deleteUser: () => {},
+  addToSearchHistory: () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -93,6 +98,8 @@ const MOCK_USERS_DB: RegisteredUser[] = [
     avgSpend: '$0', 
     rentalHistoryCount: 0, 
     walletBalance: 5200, 
+    location: 'London, UK',
+    searchHistory: [],
     verificationDocs: { 
         businessName: 'Luxe Attire Ltd', 
         cacNumber: 'RC-998877',
@@ -113,7 +120,9 @@ const MOCK_USERS_DB: RegisteredUser[] = [
     lastActive: '3 months ago', 
     avgSpend: '$150', 
     rentalHistoryCount: 1, 
-    walletBalance: 200 
+    walletBalance: 200,
+    location: 'Los Angeles, USA',
+    searchHistory: ['Cocktail Dresses', 'Gucci Bags']
   },
   { 
     id: '3', 
@@ -129,7 +138,9 @@ const MOCK_USERS_DB: RegisteredUser[] = [
     lastActive: '5 hours ago', 
     avgSpend: '$1,200', 
     rentalHistoryCount: 8, 
-    walletBalance: 0 
+    walletBalance: 0,
+    location: 'New York, USA',
+    searchHistory: []
   },
   { 
     id: '4', 
@@ -146,6 +157,8 @@ const MOCK_USERS_DB: RegisteredUser[] = [
     avgSpend: '$450', 
     rentalHistoryCount: 12, 
     walletBalance: 1500,
+    location: 'New York, USA',
+    searchHistory: ['Gala Gowns', 'Velvet', 'Chanel'],
     verificationDocs: {
         bvn: '22299911188',
         idType: 'NIN',
@@ -287,6 +300,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       avgSpend: '$0',
       rentalHistoryCount: 0,
       walletBalance: role === 'Partner' ? 0 : 500, // Sign up bonus for demo
+      location: 'New York, USA',
+      searchHistory: []
     };
     
     setRegisteredUsers(prev => {
@@ -376,6 +391,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (currentUser?.id === id) setCurrentUser(updatedUsers.find(u => u.id === id) || null);
   };
+  
+  const transferFunds = (fromId: string, toId: string, amount: number, description: string) => {
+      // Deduct from Sender
+      updateWallet(fromId, -amount, `Payment Out: ${description}`, 'Debit');
+      // Credit to Receiver
+      updateWallet(toId, amount, `Payment In: ${description}`, 'Credit');
+  };
 
   const requestWithdrawal = (id: string, amount: number, bankDetails: string) => {
       // 1. Deduct from wallet balance immediately (Escrow)
@@ -411,6 +433,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setRegisteredUsers(prev => prev.filter(u => u.id !== id));
     if (currentUser?.id === id) logout();
   };
+  
+  const addToSearchHistory = (query: string) => {
+      if (!currentUser) return;
+      const history = currentUser.searchHistory || [];
+      const newHistory = [query, ...history].slice(0, 5); // Keep last 5
+      
+      const updatedUsers = registeredUsers.map(u => u.id === currentUser.id ? { ...u, searchHistory: newHistory } : u);
+      setRegisteredUsers(updatedUsers);
+      setCurrentUser({ ...currentUser, searchHistory: newHistory });
+  };
 
   const logout = () => {
     localStorage.removeItem('stylus_auth');
@@ -437,9 +469,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       approveVerification,
       rejectVerification,
       updateWallet,
+      transferFunds,
       requestWithdrawal,
       processWithdrawal,
-      deleteUser 
+      deleteUser,
+      addToSearchHistory
     }}>
       {children}
     </AuthContext.Provider>

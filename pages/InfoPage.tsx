@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ShieldCheck, FileText, Sparkles, Lock, ShoppingBag, Trash2, ArrowRight, Wallet, AlertTriangle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -14,12 +13,17 @@ interface InfoPageProps {
 export const InfoPage: React.FC<InfoPageProps> = ({ type }) => {
   const { cart, removeFromCart, cartTotal, clearCart } = useCart();
   const { addOrder } = useOrders();
-  const { currentUser, updateWallet, isAuthenticated } = useAuth();
+  const { currentUser, updateWallet, transferFunds, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   const handleCheckout = () => {
     if (!isAuthenticated || !currentUser) {
         navigate('/login', { state: { from: { pathname: '/bag' } } });
+        return;
+    }
+    
+    if (currentUser.status === 'Suspended') {
+        alert("Transaction Declined: Your account is currently suspended.");
         return;
     }
 
@@ -31,19 +35,35 @@ export const InfoPage: React.FC<InfoPageProps> = ({ type }) => {
     }
 
     if(confirm(`Confirm payment of $${cartTotal.toFixed(2)} from your wallet?`)) {
-        // Deduct from wallet
-        updateWallet(currentUser.id, -cartTotal);
+        
+        // Process Payments for each item
+        cart.forEach(item => {
+             const ownerId = item.product.ownerId;
+             if (item.type === 'buy') {
+                 // Immediate Transfer for Purchases
+                 if (ownerId && ownerId !== 'stylus-official') {
+                     transferFunds(currentUser.id, ownerId, item.price, `Sale Earnings: ${item.product.name}`);
+                 } else {
+                     // Pay to Platform (Admin/Burn)
+                     updateWallet(currentUser.id, -item.price, `Purchase: ${item.product.name}`, 'Debit');
+                 }
+             } else {
+                 // Rent: Deduct from user now. Partner gets credited later upon approval in Dashboard.
+                 updateWallet(currentUser.id, -item.price, `Rental Hold: ${item.product.name}`, 'Debit');
+             }
+        });
         
         // Add current cart to order history
         addOrder(cart, cartTotal, currentUser.id, currentUser.name);
         
         // Clear cart and redirect
-        alert("Payment successful. Your request has been sent to the partner for approval!");
+        alert("Payment processed successfully. Rentals sent for approval. Purchases are confirmed.");
         clearCart();
         navigate('/dashboard');
     }
   };
-
+  
+  // Content definitions...
   const content = {
     privacy: {
       title: 'Privacy Policy',
@@ -132,6 +152,9 @@ export const InfoPage: React.FC<InfoPageProps> = ({ type }) => {
                              <div>
                                 <p className="text-xs text-golden-orange uppercase tracking-wide mb-1">{item.product.brand}</p>
                                 <h4 className="font-serif text-xl text-cream">{item.product.name}</h4>
+                                <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${item.type === 'buy' ? 'bg-blue-500/10 text-blue-400' : 'bg-golden-orange/10 text-golden-orange'}`}>
+                                     {item.type === 'buy' ? 'Purchasing' : 'Renting'}
+                                </span>
                              </div>
                              <p className="font-serif text-lg text-cream">${item.price}</p>
                           </div>
