@@ -4,10 +4,10 @@ import {
   AlertTriangle, Wallet, BarChart3, PieChart, Star, 
   Activity, TrendingUp, DollarSign, ArrowUp, X, 
   CheckCircle, XCircle, FileText, Eye, Building2, User,
-  Download 
+  Download, ExternalLink, Calendar
 } from 'lucide-react';
 import { Button } from '../components/Button';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, RegisteredUser } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useProduct } from '../context/ProductContext';
 import { useOrders } from '../context/OrderContext';
@@ -16,6 +16,7 @@ import { Category, Product } from '../types';
 export const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'users' | 'rentals' | 'inventory' | 'marketing' | 'verifications' | 'global_activity' | 'financials'>('rentals');
   const [selectedDoc, setSelectedDoc] = useState<{ url: string, title: string } | null>(null);
+  const [reviewUser, setReviewUser] = useState<RegisteredUser | null>(null); // New state for detailed review
   const [showAddStockModal, setShowAddStockModal] = useState(false);
   const [userFilter, setUserFilter] = useState<'All' | 'User' | 'Partner'>('All');
   
@@ -53,6 +54,7 @@ export const AdminDashboard: React.FC = () => {
   const [sizeInput, setSizeInput] = useState('');
 
   const filteredUsers = registeredUsers.filter(u => {
+      if (activeTab === 'verifications') return u.verificationStatus === 'Pending';
       if (userFilter === 'All') return true;
       return u?.role === userFilter;
   });
@@ -79,6 +81,7 @@ export const AdminDashboard: React.FC = () => {
   const handleApprove = (userId: string, userName: string) => {
       if(confirm(`Approve verification for ${userName}?`)) {
         if (approveVerification) approveVerification(userId);
+        setReviewUser(null); // Close modal if open
       }
   };
 
@@ -87,6 +90,7 @@ export const AdminDashboard: React.FC = () => {
       if (reason) {
           if (rejectVerification) rejectVerification(userId, reason);
           alert("User rejected and notified.");
+          setReviewUser(null); // Close modal if open
       }
   };
 
@@ -123,18 +127,6 @@ export const AdminDashboard: React.FC = () => {
       document.body.removeChild(link);
   };
 
-  const handleDeleteProduct = (id: string) => {
-      if(confirm("Are you sure you want to delete this product from the global inventory?")) {
-          if (removeProduct) removeProduct(id);
-      }
-  };
-  
-  const handleForceStatus = (orderId: string, itemId: string, status: any) => {
-      if(confirm(`Are you sure you want to FORCE update this transaction to '${status}'? This overrides partner control.`)) {
-          if (updateOrderItemStatus) updateOrderItemStatus(orderId, itemId, status);
-      }
-  };
-  
   const handleProcessWithdrawal = (txId: string) => {
       if(confirm("Confirm that you have transferred funds to the partner's bank account?")) {
           if (processWithdrawal) processWithdrawal(txId);
@@ -170,39 +162,150 @@ export const AdminDashboard: React.FC = () => {
     alert("Item added to global inventory.");
   };
 
-  // Mock Data for Charts
-  const categoryData = [
-      { name: 'Women', value: 45, color: '#e1af4d' }, // Golden Orange
-      { name: 'Men', value: 25, color: '#ebc35b' },   // Golden Light
-      { name: 'Bags', value: 20, color: '#f9edd2' },   // Cream
-      { name: 'Watches', value: 10, color: '#854d0e' } // Darker Gold/Brown
-  ];
-
-  const getConicGradient = () => {
-      let currentDeg = 0;
-      return `conic-gradient(${categoryData.map(d => {
-          const deg = (d.value / 100) * 360;
-          const str = `${d.color} ${currentDeg}deg ${currentDeg + deg}deg`;
-          currentDeg += deg;
-          return str;
-      }).join(', ')})`;
-  };
-
   if (!auth) return <div className="min-h-screen bg-espresso flex items-center justify-center text-cream">Loading Dashboard...</div>;
 
   return (
     <div className="min-h-screen bg-espresso pt-8 pb-20 animate-fade-in relative">
         {/* Document Viewer Modal */}
         {selectedDoc && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4" onClick={() => setSelectedDoc(null)}>
-                <div className="max-w-4xl w-full bg-[#1f0c05] border border-golden-orange p-4 relative" onClick={e => e.stopPropagation()}>
+            <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95 p-4" onClick={() => setSelectedDoc(null)}>
+                <div className="max-w-5xl w-full h-[90vh] bg-[#1f0c05] border border-golden-orange p-4 relative flex flex-col" onClick={e => e.stopPropagation()}>
                     <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
                         <h3 className="text-cream font-serif text-xl">{selectedDoc.title}</h3>
                         <button onClick={() => setSelectedDoc(null)} className="text-cream/50 hover:text-white"><X/></button>
                     </div>
-                    <div className="h-[600px] w-full bg-black/50 flex items-center justify-center overflow-hidden">
+                    <div className="flex-grow flex items-center justify-center overflow-hidden bg-black/30">
                         <img src={selectedDoc.url} alt="Document" className="max-h-full max-w-full object-contain" />
                     </div>
+                </div>
+            </div>
+        )}
+
+        {/* Verification Review Modal */}
+        {reviewUser && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+                <div className="bg-[#1f0c05] border border-golden-orange w-full max-w-4xl p-8 relative rounded-sm shadow-2xl my-8">
+                     <button onClick={() => setReviewUser(null)} className="absolute top-4 right-4 text-cream/50 hover:text-golden-orange"><X size={24}/></button>
+                     
+                     <div className="flex items-center gap-4 mb-6 border-b border-white/10 pb-6">
+                         <div className="w-16 h-16 bg-golden-orange/20 rounded-full flex items-center justify-center text-golden-orange text-2xl font-serif border border-golden-orange/30">
+                             {reviewUser.name.charAt(0)}
+                         </div>
+                         <div>
+                             <h2 className="font-serif text-3xl text-cream">{reviewUser.name}</h2>
+                             <div className="flex gap-4 text-sm text-cream/60 mt-1">
+                                 <span className="flex items-center gap-1"><User size={14}/> {reviewUser.role}</span>
+                                 <span>{reviewUser.email}</span>
+                                 <span className="flex items-center gap-1"><Calendar size={14}/> Joined: {reviewUser.joined}</span>
+                             </div>
+                         </div>
+                     </div>
+
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                         {/* LEFT: Claimed Data */}
+                         <div className="bg-white/5 p-6 rounded-sm border border-white/5">
+                             <h3 className="text-golden-orange font-bold uppercase tracking-widest text-xs mb-4 flex items-center gap-2">
+                                 <FileText size={16}/> Application Data
+                             </h3>
+                             <div className="space-y-4">
+                                 <div className="grid grid-cols-2 gap-4">
+                                     <div>
+                                         <p className="text-[10px] text-cream/40 uppercase">ID Type</p>
+                                         <p className="text-cream">{reviewUser.verificationDocs?.idType || 'N/A'}</p>
+                                     </div>
+                                     <div>
+                                         <p className="text-[10px] text-cream/40 uppercase">BVN / ID Number</p>
+                                         <p className="text-cream font-mono bg-black/20 p-1 px-2 rounded inline-block">{reviewUser.verificationDocs?.bvn || 'N/A'}</p>
+                                     </div>
+                                 </div>
+                                 
+                                 {reviewUser.role === 'Partner' && (
+                                     <>
+                                         <div className="h-px bg-white/10 my-2"></div>
+                                         <div>
+                                             <p className="text-[10px] text-cream/40 uppercase">Business Name</p>
+                                             <p className="text-cream font-bold">{reviewUser.verificationDocs?.businessName || 'N/A'}</p>
+                                         </div>
+                                         <div>
+                                             <p className="text-[10px] text-cream/40 uppercase">CAC Number</p>
+                                             <p className="text-cream font-mono">{reviewUser.verificationDocs?.cacNumber || 'N/A'}</p>
+                                         </div>
+                                     </>
+                                 )}
+                                 
+                                 <div className="bg-blue-500/10 p-3 border border-blue-500/30 rounded mt-4">
+                                     <p className="text-[10px] text-blue-300 uppercase font-bold mb-1">System Check</p>
+                                     <p className="text-xs text-blue-200">User wallet initialized. No previous fraud flags.</p>
+                                 </div>
+                             </div>
+                         </div>
+
+                         {/* RIGHT: Document Evidence */}
+                         <div className="bg-white/5 p-6 rounded-sm border border-white/5">
+                             <h3 className="text-golden-orange font-bold uppercase tracking-widest text-xs mb-4 flex items-center gap-2">
+                                 <ShieldCheck size={16}/> Submitted Documents
+                             </h3>
+                             
+                             <div className="space-y-6">
+                                 {/* ID Document */}
+                                 <div>
+                                     <div className="flex justify-between items-center mb-2">
+                                         <p className="text-xs text-cream/70">Government ID</p>
+                                         <button 
+                                            onClick={() => setSelectedDoc({url: reviewUser.verificationDocs?.govIdUrl || '', title: 'Government ID'})}
+                                            className="text-[10px] text-golden-orange flex items-center gap-1 hover:text-white"
+                                         >
+                                             <ExternalLink size={10}/> View Full Size
+                                         </button>
+                                     </div>
+                                     <div 
+                                        className="h-32 bg-black/40 border border-white/10 rounded overflow-hidden cursor-pointer hover:border-golden-orange transition-colors"
+                                        onClick={() => setSelectedDoc({url: reviewUser.verificationDocs?.govIdUrl || '', title: 'Government ID'})}
+                                     >
+                                         {reviewUser.verificationDocs?.govIdUrl ? (
+                                             <img src={reviewUser.verificationDocs.govIdUrl} className="w-full h-full object-cover" alt="ID" />
+                                         ) : (
+                                             <div className="w-full h-full flex items-center justify-center text-cream/30 text-xs">No Document Uploaded</div>
+                                         )}
+                                     </div>
+                                 </div>
+
+                                 {/* CAC Document (Partners Only) */}
+                                 {reviewUser.role === 'Partner' && (
+                                     <div>
+                                         <div className="flex justify-between items-center mb-2">
+                                             <p className="text-xs text-cream/70">CAC Certificate</p>
+                                             <button 
+                                                onClick={() => setSelectedDoc({url: reviewUser.verificationDocs?.cacCertUrl || '', title: 'CAC Certificate'})}
+                                                className="text-[10px] text-golden-orange flex items-center gap-1 hover:text-white"
+                                             >
+                                                 <ExternalLink size={10}/> View Full Size
+                                             </button>
+                                         </div>
+                                         <div 
+                                            className="h-32 bg-black/40 border border-white/10 rounded overflow-hidden cursor-pointer hover:border-golden-orange transition-colors"
+                                            onClick={() => setSelectedDoc({url: reviewUser.verificationDocs?.cacCertUrl || '', title: 'CAC Certificate'})}
+                                         >
+                                             {reviewUser.verificationDocs?.cacCertUrl ? (
+                                                 <img src={reviewUser.verificationDocs.cacCertUrl} className="w-full h-full object-cover" alt="CAC" />
+                                             ) : (
+                                                 <div className="w-full h-full flex items-center justify-center text-cream/30 text-xs">No Document Uploaded</div>
+                                             )}
+                                         </div>
+                                     </div>
+                                 )}
+                             </div>
+                         </div>
+                     </div>
+
+                     <div className="flex gap-4 pt-6 border-t border-white/10">
+                         <Button onClick={() => handleApprove(reviewUser.id, reviewUser.name)} className="flex-1 bg-green-600 hover:bg-green-500 text-white border-none shadow-lg">
+                             <CheckCircle size={18} className="mr-2"/> Approve Application
+                         </Button>
+                         <Button onClick={() => handleReject(reviewUser.id)} variant="outline" className="flex-1 border-red-500 text-red-500 hover:bg-red-600 hover:text-white">
+                             <XCircle size={18} className="mr-2"/> Reject Application
+                         </Button>
+                     </div>
                 </div>
             </div>
         )}
@@ -280,16 +383,18 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             {/* 1. USER MANAGEMENT TAB */}
-            {activeTab === 'users' && (
+            {(activeTab === 'users' || activeTab === 'verifications') && (
                 <div className="animate-fade-in">
                      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                        <h2 className="font-serif text-2xl text-cream">User Management</h2>
+                        <h2 className="font-serif text-2xl text-cream">{activeTab === 'verifications' ? 'Pending Verifications' : 'User Management'}</h2>
                         <div className="flex gap-2 items-center flex-wrap">
-                             <div className="bg-black/20 p-1 rounded border border-white/10 flex">
-                                 <button onClick={() => setUserFilter('All')} className={`px-3 py-1 text-xs uppercase rounded ${userFilter === 'All' ? 'bg-golden-orange text-espresso font-bold' : 'text-cream/50'}`}>All</button>
-                                 <button onClick={() => setUserFilter('User')} className={`px-3 py-1 text-xs uppercase rounded ${userFilter === 'User' ? 'bg-golden-orange text-espresso font-bold' : 'text-cream/50'}`}>Users</button>
-                                 <button onClick={() => setUserFilter('Partner')} className={`px-3 py-1 text-xs uppercase rounded ${userFilter === 'Partner' ? 'bg-golden-orange text-espresso font-bold' : 'text-cream/50'}`}>Partners</button>
-                             </div>
+                             {activeTab !== 'verifications' && (
+                                <div className="bg-black/20 p-1 rounded border border-white/10 flex">
+                                    <button onClick={() => setUserFilter('All')} className={`px-3 py-1 text-xs uppercase rounded ${userFilter === 'All' ? 'bg-golden-orange text-espresso font-bold' : 'text-cream/50'}`}>All</button>
+                                    <button onClick={() => setUserFilter('User')} className={`px-3 py-1 text-xs uppercase rounded ${userFilter === 'User' ? 'bg-golden-orange text-espresso font-bold' : 'text-cream/50'}`}>Users</button>
+                                    <button onClick={() => setUserFilter('Partner')} className={`px-3 py-1 text-xs uppercase rounded ${userFilter === 'Partner' ? 'bg-golden-orange text-espresso font-bold' : 'text-cream/50'}`}>Partners</button>
+                                </div>
+                             )}
                         </div>
                      </div>
                      
@@ -305,7 +410,9 @@ export const AdminDashboard: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
-                                {filteredUsers.map(u => (
+                                {filteredUsers.length === 0 ? (
+                                    <tr><td colSpan={5} className="p-8 text-center text-cream/50">No users found for this filter.</td></tr>
+                                ) : filteredUsers.map(u => (
                                     <tr key={u.id} className="hover:bg-white/5 transition-colors">
                                         <td className="p-4 font-bold text-white">
                                             <div className="flex items-center gap-2">
@@ -337,11 +444,8 @@ export const AdminDashboard: React.FC = () => {
                                             {/* Verification Controls */}
                                             {u.verificationStatus === 'Pending' && (
                                                 <>
-                                                    <button onClick={() => handleApprove(u.id, u.name)} className="p-2 rounded border border-green-500/50 text-green-500 hover:bg-green-500/10" title="Approve Verification">
-                                                        <CheckCircle size={14} />
-                                                    </button>
-                                                    <button onClick={() => handleReject(u.id)} className="p-2 rounded border border-red-500/50 text-red-500 hover:bg-red-500/10" title="Reject Verification">
-                                                        <XCircle size={14} />
+                                                    <button onClick={() => setReviewUser(u)} className="p-2 rounded border border-golden-orange/50 text-golden-orange hover:bg-golden-orange/10 bg-golden-orange/5 flex items-center gap-1" title="Review Application Details">
+                                                        <FileText size={14} /> <span className="text-[10px] font-bold uppercase hidden md:inline">Review</span>
                                                     </button>
                                                 </>
                                             )}
@@ -435,7 +539,6 @@ export const AdminDashboard: React.FC = () => {
             {activeTab === 'rentals' && <div className="p-4 bg-white/5 border border-white/10"><p className="text-center text-cream/50">Analytics Visualization (See Dashboard for full mock)</p></div>}
             {activeTab === 'financials' && <div className="p-4 bg-white/5 border border-white/10"><p className="text-center text-cream/50">Financial Transactions & Ledger</p></div>}
             {activeTab === 'inventory' && <div className="p-4 bg-white/5 border border-white/10"><p className="text-center text-cream/50">Global Inventory Management</p></div>}
-            {activeTab === 'verifications' && <div className="p-4 bg-white/5 border border-white/10"><p className="text-center text-cream/50">Pending Verification Requests</p></div>}
         </div>
     </div>
   );
