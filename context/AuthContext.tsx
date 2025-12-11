@@ -332,13 +332,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const submitVerification = (id: string, docs: Partial<RegisteredUser['verificationDocs']>) => {
+    // 1. Calculate new state first
     const updatedUsers = registeredUsers.map(u => 
        u.id === id ? { ...u, verificationStatus: 'Pending' as VerificationStatus, verificationDocs: { ...u.verificationDocs, ...docs } } : u
     );
     setRegisteredUsers(updatedUsers);
     
+    // 2. Find the user from the UPDATED list to ensure we have the latest data
+    const user = updatedUsers.find(u => u.id === id);
+
     // If it's a partner, log the registration fee transaction
-    const user = registeredUsers.find(u => u.id === id);
     if (user && user.role === 'Partner') {
         const feeTx: Transaction = {
             id: `tx-fee-${Date.now()}`,
@@ -354,7 +357,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setTransactions(prev => [feeTx, ...prev]);
     }
 
-    if (currentUser?.id === id) setCurrentUser(updatedUsers.find(u => u.id === id) || null);
+    // 3. Update currentUser if it matches the modified user
+    if (currentUser?.id === id) {
+         if (user) setCurrentUser(user);
+    }
   };
 
   const approveVerification = (id: string) => {

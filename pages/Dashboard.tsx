@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock, X, Check, Heart, Eye, Search, Filter, History, ChevronRight, Briefcase, DollarSign, ShieldAlert, FileText, Ban, Trash2, ShoppingBag, Truck, Wallet, ShieldCheck, Banknote, ArrowUpRight, ArrowDownLeft, AlertCircle, Image as ImageIcon } from 'lucide-react';
+import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock, X, Check, Heart, Eye, Search, Filter, History, ChevronRight, Briefcase, DollarSign, ShieldAlert, FileText, Ban, Trash2, ShoppingBag, Truck, Wallet, ShieldCheck, Banknote, ArrowUpRight, ArrowDownLeft, AlertCircle, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useProduct } from '../context/ProductContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -50,9 +50,10 @@ export const Dashboard: React.FC = () => {
 
   // Handle Verification Submission
   const handleVerificationSubmit = (data: any) => {
-      submitVerification(currentUser!.id, data);
+      if (!currentUser) return;
+      submitVerification(currentUser.id, data);
       setVerificationModal(false);
-      alert("Verification documents submitted successfully. Please wait for Admin approval.");
+      // Removed alert to prevent UI blocking/race conditions. The status update in UI is sufficient feedback.
   };
 
   const performLogout = () => {
@@ -90,11 +91,13 @@ export const Dashboard: React.FC = () => {
       setIsProcessingPayment(true);
       // Simulate API call to payment gateway
       setTimeout(() => {
-          updateWallet(currentUser!.id, amount, 'Wallet Fund via Card');
-          setIsProcessingPayment(false);
-          setFundModal(false);
-          setFundAmount('');
-          alert(`Successfully added $${amount} to your Stylus Wallet.`);
+          if (currentUser) {
+            updateWallet(currentUser.id, amount, 'Wallet Fund via Card');
+            setIsProcessingPayment(false);
+            setFundModal(false);
+            setFundAmount('');
+            alert(`Successfully added $${amount} to your Stylus Wallet.`);
+          }
       }, 2000);
   };
 
@@ -108,7 +111,9 @@ export const Dashboard: React.FC = () => {
       incrementRentalCount(productId);
       
       // Credit Partner Wallet immediately upon acceptance (System release funds)
-      updateWallet(currentUser!.id, price, `Rental Earnings: Order #${orderId}`, 'Credit');
+      if (currentUser) {
+          updateWallet(currentUser.id, price, `Rental Earnings: Order #${orderId}`, 'Credit');
+      }
       
       alert("Item accepted. Funds credited to wallet.");
   };
@@ -150,28 +155,30 @@ export const Dashboard: React.FC = () => {
         alert("You must be a verified partner to list items.");
         return;
     }
-    const product: Product = {
-        id: Math.random().toString(36).substr(2, 9),
-        name: newItem.name!,
-        brand: newItem.brand!,
-        category: newItem.category as Category,
-        rentalPrice: Number(newItem.rentalPrice),
-        retailPrice: Number(newItem.retailPrice),
-        buyPrice: Number(newItem.buyPrice),
-        isForSale: newItem.isForSale,
-        autoSellAfterRentals: 5, // Default to 5 max rentals per updated rules
-        ownerId: currentUser.id,
-        description: newItem.description || '',
-        images: newItem.images && newItem.images.length > 0 ? newItem.images : ['https://images.unsplash.com/photo-1549439602-43ebca2327af?q=80&w=1000&auto=format&fit=crop'],
-        availableSizes: sizeInput.split(',').map(s => s.trim()).filter(s => s),
-        color: newItem.color || 'Multi',
-        occasion: newItem.occasion || 'General',
-        reviews: [],
-        rentalCount: 0
-    };
-    addProduct(product);
-    alert("Item listed successfully! It is now visible globally.");
-    setCurrentView('listings');
+    if (currentUser) {
+        const product: Product = {
+            id: Math.random().toString(36).substr(2, 9),
+            name: newItem.name!,
+            brand: newItem.brand!,
+            category: newItem.category as Category,
+            rentalPrice: Number(newItem.rentalPrice),
+            retailPrice: Number(newItem.retailPrice),
+            buyPrice: Number(newItem.buyPrice),
+            isForSale: newItem.isForSale,
+            autoSellAfterRentals: 5, // Default to 5 max rentals per updated rules
+            ownerId: currentUser.id,
+            description: newItem.description || '',
+            images: newItem.images && newItem.images.length > 0 ? newItem.images : ['https://images.unsplash.com/photo-1549439602-43ebca2327af?q=80&w=1000&auto=format&fit=crop'],
+            availableSizes: sizeInput.split(',').map(s => s.trim()).filter(s => s),
+            color: newItem.color || 'Multi',
+            occasion: newItem.occasion || 'General',
+            reviews: [],
+            rentalCount: 0
+        };
+        addProduct(product);
+        alert("Item listed successfully! It is now visible globally.");
+        setCurrentView('listings');
+    }
   };
 
   const handleRemoveItem = (id: string) => {
@@ -194,7 +201,17 @@ export const Dashboard: React.FC = () => {
       }));
   };
 
-  if (!currentUser) return null;
+  // If user is null, show loading instead of returning null to avoid white screen
+  if (!currentUser) {
+      return (
+          <div className="min-h-screen bg-espresso flex items-center justify-center text-cream">
+              <div className="flex flex-col items-center gap-4">
+                  <Loader2 className="animate-spin text-golden-orange" size={32} />
+                  <p className="text-sm uppercase tracking-widest">Loading Dashboard...</p>
+              </div>
+          </div>
+      );
+  }
 
   // Suspension Overlay
   if (currentUser.status === 'Suspended') {
