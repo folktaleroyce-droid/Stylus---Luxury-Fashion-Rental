@@ -231,24 +231,24 @@ export const Catalog: React.FC = () => {
                         <select 
                             value={filters.category}
                             onChange={(e) => updateFilter('category', e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 text-cream px-3 py-2.5 text-sm focus:border-golden-orange outline-none appearance-none rounded-sm cursor-pointer"
+                            className="w-full bg-[#1a0a04] border border-white/10 text-cream px-3 py-2.5 text-sm focus:border-golden-orange outline-none appearance-none rounded-sm cursor-pointer"
                         >
-                            <option value="All">All Categories</option>
-                            {Object.values(Category).map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                            <option value="All" className="bg-[#1f0c05] text-cream">All Categories</option>
+                            {Object.values(Category).map(cat => <option key={cat} value={cat} className="bg-[#1f0c05] text-cream">{cat}</option>)}
                         </select>
                         <ChevronDown size={12} className="absolute right-3 top-3 text-cream/30 pointer-events-none"/>
                     </div>
                 </div>
-                {/* ... other filters ... */}
+                
                 <div className="w-full">
                     <label className="text-[10px] text-cream/50 uppercase tracking-widest mb-2 block font-bold">Size</label>
                     <div className="relative">
                         <select 
                             value={filters.size}
                             onChange={(e) => updateFilter('size', e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 text-cream px-3 py-2.5 text-sm focus:border-golden-orange outline-none appearance-none rounded-sm cursor-pointer"
+                            className="w-full bg-[#1a0a04] border border-white/10 text-cream px-3 py-2.5 text-sm focus:border-golden-orange outline-none appearance-none rounded-sm cursor-pointer"
                         >
-                            {sizes.map(s => <option key={s} value={s}>{s}</option>)}
+                            {sizes.map(s => <option key={s} value={s} className="bg-[#1f0c05] text-cream">{s}</option>)}
                         </select>
                         <ChevronDown size={12} className="absolute right-3 top-3 text-cream/30 pointer-events-none"/>
                     </div>
@@ -260,9 +260,9 @@ export const Catalog: React.FC = () => {
                         <select 
                             value={filters.color}
                             onChange={(e) => updateFilter('color', e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 text-cream px-3 py-2.5 text-sm focus:border-golden-orange outline-none appearance-none rounded-sm cursor-pointer"
+                            className="w-full bg-[#1a0a04] border border-white/10 text-cream px-3 py-2.5 text-sm focus:border-golden-orange outline-none appearance-none rounded-sm cursor-pointer"
                         >
-                            {colors.map(c => <option key={c} value={c}>{c}</option>)}
+                            {colors.map(c => <option key={c} value={c} className="bg-[#1f0c05] text-cream">{c}</option>)}
                         </select>
                         <ChevronDown size={12} className="absolute right-3 top-3 text-cream/30 pointer-events-none"/>
                     </div>
@@ -274,9 +274,9 @@ export const Catalog: React.FC = () => {
                         <select 
                             value={filters.occasion}
                             onChange={(e) => updateFilter('occasion', e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 text-cream px-3 py-2.5 text-sm focus:border-golden-orange outline-none appearance-none rounded-sm cursor-pointer"
+                            className="w-full bg-[#1a0a04] border border-white/10 text-cream px-3 py-2.5 text-sm focus:border-golden-orange outline-none appearance-none rounded-sm cursor-pointer"
                         >
-                            {occasions.map(o => <option key={o} value={o}>{o}</option>)}
+                            {occasions.map(o => <option key={o} value={o} className="bg-[#1f0c05] text-cream">{o}</option>)}
                         </select>
                         <ChevronDown size={12} className="absolute right-3 top-3 text-cream/30 pointer-events-none"/>
                     </div>
@@ -308,9 +308,9 @@ export const Catalog: React.FC = () => {
                     onChange={(e) => updateFilter('sortBy', e.target.value as SortOption)}
                     className="bg-[#1f0c05] border border-white/10 text-cream px-4 py-2 text-sm focus:border-golden-orange outline-none appearance-none cursor-pointer pr-8 rounded-sm"
                 >
-                    <option value="newest">Newest Arrivals</option>
-                    <option value="price_asc">Price: Low to High</option>
-                    <option value="price_desc">Price: High to Low</option>
+                    <option value="newest" className="bg-[#1f0c05] text-cream">Newest Arrivals</option>
+                    <option value="price_asc" className="bg-[#1f0c05] text-cream">Price: Low to High</option>
+                    <option value="price_desc" className="bg-[#1f0c05] text-cream">Price: High to Low</option>
                 </select>
                 <ArrowUpDown size={12} className="absolute right-3 top-3 text-cream/30 pointer-events-none"/>
              </div>

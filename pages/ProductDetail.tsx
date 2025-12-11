@@ -135,8 +135,8 @@ export const ProductDetail: React.FC = () => {
                 className={`
                     h-10 w-10 text-xs font-medium rounded-full flex items-center justify-center transition-all relative
                     ${disabled ? 'text-cream/20 cursor-not-allowed' : 'text-cream hover:bg-white/10'}
-                    ${selected ? 'bg-golden-orange text-espresso font-bold shadow-[0_0_10px_rgba(225,175,77,0.5)] z-10' : ''}
-                    ${inRange ? 'bg-golden-orange/20 text-golden-orange rounded-none' : ''}
+                    ${selected ? 'bg-golden-orange text-espresso font-bold shadow-[0_0_15px_rgba(225,175,77,0.8)] z-10 scale-110' : ''}
+                    ${inRange ? 'bg-gradient-to-r from-golden-orange/40 to-golden-orange/10 text-golden-light rounded-none border-y border-golden-orange/20' : ''}
                     ${inRange && day === daysInMonth ? 'rounded-r-full' : ''} 
                     ${inRange && day === 1 ? 'rounded-l-full' : ''}
                 `}

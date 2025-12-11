@@ -94,8 +94,16 @@ export const AdminDashboard: React.FC = () => {
       }
   };
 
-  const handleManualVerify = (userId: string, userName: string) => {
-      if(confirm(`FORCE VERIFY: Are you sure you want to manually verify ${userName} without waiting for document submission?`)) {
+  // Allow manual override for ANY status (prompt for verification if not pending)
+  const handleManualVerify = (userId: string, userName: string, currentStatus: string) => {
+      if (currentStatus === 'Verified') {
+          if (confirm(`User ${userName} is already verified. Do you want to REJECT/REVOKE their verification?`)) {
+               handleReject(userId);
+          }
+          return;
+      }
+      
+      if(confirm(`FORCE VERIFY: Are you sure you want to manually verify ${userName}?`)) {
           if (approveVerification) approveVerification(userId);
       }
   }
@@ -442,15 +450,23 @@ export const AdminDashboard: React.FC = () => {
                                         </td>
                                         <td className="p-4 flex gap-2">
                                             {/* Verification Controls */}
-                                            {u.verificationStatus === 'Pending' && (
+                                            {u.verificationStatus === 'Pending' ? (
                                                 <>
                                                     <button onClick={() => setReviewUser(u)} className="p-2 rounded border border-golden-orange/50 text-golden-orange hover:bg-golden-orange/10 bg-golden-orange/5 flex items-center gap-1" title="Review Application Details">
                                                         <FileText size={14} /> <span className="text-[10px] font-bold uppercase hidden md:inline">Review</span>
                                                     </button>
+                                                    
+                                                    {/* NEW: Direct Action Buttons for Pending Users */}
+                                                    <button onClick={() => handleApprove(u.id, u.name)} className="p-2 rounded bg-green-600 hover:bg-green-500 text-white border border-green-500/50" title="Quick Approve">
+                                                        <Check size={14}/>
+                                                    </button>
+                                                    <button onClick={() => handleReject(u.id)} className="p-2 rounded bg-red-600 hover:bg-red-500 text-white border border-red-500/50" title="Quick Reject">
+                                                        <X size={14}/>
+                                                    </button>
                                                 </>
-                                            )}
-                                            {u.verificationStatus === 'Unverified' && (
-                                                <button onClick={() => handleManualVerify(u.id, u.name)} className="p-2 rounded border border-blue-500/50 text-blue-500 hover:bg-blue-500/10" title="Force Manual Verify (Override)">
+                                            ) : (
+                                                 // Manual Override for any status
+                                                 <button onClick={() => handleManualVerify(u.id, u.name, u.verificationStatus)} className="p-2 rounded border border-blue-500/50 text-blue-500 hover:bg-blue-500/10" title="Manual Status Override">
                                                     <ShieldCheck size={14} />
                                                 </button>
                                             )}

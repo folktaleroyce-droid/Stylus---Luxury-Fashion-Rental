@@ -73,11 +73,23 @@ export const Dashboard: React.FC = () => {
           return;
       }
       
-      const details = `${bankDetails.bankName} - ${bankDetails.accountNumber} (${bankDetails.accountName})`;
-      requestWithdrawal(currentUser!.id, amount, details);
-      setWithdrawModal(false);
-      setWithdrawAmount('');
-      alert("Withdrawal request submitted for processing.");
+      const confirmMessage = 
+`CONFIRM WITHDRAWAL REQUEST
+
+Amount: $${amount.toFixed(2)}
+Bank: ${bankDetails.bankName}
+Account Number: ${bankDetails.accountNumber}
+Account Name: ${bankDetails.accountName}
+
+Proceed with this transaction?`;
+
+      if (window.confirm(confirmMessage)) {
+          const details = `${bankDetails.bankName} - ${bankDetails.accountNumber} (${bankDetails.accountName})`;
+          requestWithdrawal(currentUser!.id, amount, details);
+          setWithdrawModal(false);
+          setWithdrawAmount('');
+          alert("Withdrawal request submitted for processing.");
+      }
   };
 
   const handleFundWallet = (e: React.FormEvent) => {
@@ -465,6 +477,7 @@ export const Dashboard: React.FC = () => {
                  </div>
              )}
 
+             {/* ... Partner Finances, Add Item, Listings, Orders omitted for brevity as they are unchanged ... */}
              {currentUser.role === 'Partner' && currentView === 'finances' && (
                  <div>
                     <div className="flex justify-between items-center mb-6">
@@ -654,6 +667,7 @@ export const Dashboard: React.FC = () => {
 
                          return (
                              <div key={order.id} className="bg-white/5 p-6 border border-white/10 mb-6 rounded-sm">
+                                 {/* ... existing order rendering ... */}
                                  <div className="flex justify-between items-start mb-4 border-b border-white/5 pb-2">
                                      <div>
                                          <p className="text-xs text-cream/40 uppercase">Order ID: {order.id}</p>
@@ -703,8 +717,21 @@ export const Dashboard: React.FC = () => {
                         <h3 className="font-serif text-2xl text-cream">Current Overview</h3>
                         <span className="text-xs text-cream/50 uppercase tracking-widest">{new Date().toLocaleDateString()}</span>
                      </div>
-                     {/* ... rest of user view ... */}
-                     {/* No changes needed for user view */}
+                     
+                     {/* Search History Section - NEW */}
+                     {currentUser.searchHistory && currentUser.searchHistory.length > 0 && (
+                         <div className="mb-8 p-4 border border-white/5 bg-white/5 rounded-sm">
+                             <h4 className="text-xs uppercase text-cream/50 mb-3 flex items-center gap-2"><Search size={14}/> Recent Interests</h4>
+                             <div className="flex flex-wrap gap-2">
+                                 {currentUser.searchHistory.map((term, idx) => (
+                                     <Link to="/catalog" key={idx} className="bg-black/30 hover:bg-golden-orange/20 text-cream/80 hover:text-golden-orange px-3 py-1 rounded-full text-sm border border-white/10 transition-colors">
+                                         {term}
+                                     </Link>
+                                 ))}
+                             </div>
+                         </div>
+                     )}
+
                      {currentUser.verificationStatus === 'Verified' && (
                          <div className="bg-green-500/10 border border-green-500/30 p-6 mb-8 flex items-start md:items-center gap-4 rounded-sm shadow-lg relative overflow-hidden animate-fade-in">
                              <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
