@@ -9,7 +9,7 @@ export const AIStylist: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'model',
-      text: 'Welcome to Stylus Concierge. I am your personal AI stylist. Are you looking for something for a specific occasion, or perhaps a signature piece to elevate your wardrobe?',
+      text: "Welcome to Stylus Concierge. I am your personal AI stylist, here to curate your perfect look.\n\nTell me about your upcoming event, your preferred brands, or a specific style you're chasing.\n\nTry asking:\n• \"I need a velvet tuxedo for a black-tie gala.\"\n• \"Suggest a vintage Chanel bag for a summer wedding.\"\n• \"What are the trending accessories for a business power lunch?\"",
       timestamp: new Date()
     }
   ]);
@@ -89,7 +89,7 @@ export const AIStylist: React.FC = () => {
               <div className="flex items-start gap-3">
                 {msg.role === 'model' && <Sparkles size={16} className="mt-1 flex-shrink-0 text-golden-light" />}
                 {msg.role === 'user' && <User size={16} className="mt-1 flex-shrink-0 opacity-50" />}
-                <p className="leading-relaxed text-sm">{msg.text}</p>
+                <p className="leading-relaxed text-sm whitespace-pre-wrap">{msg.text}</p>
               </div>
               <span className={`text-[10px] block mt-2 opacity-50 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
                 {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
