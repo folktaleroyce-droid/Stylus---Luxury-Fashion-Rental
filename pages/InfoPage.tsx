@@ -1,10 +1,12 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { ShieldCheck, FileText, Sparkles, Lock, ShoppingBag, Trash2, ArrowRight, Wallet, AlertTriangle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { useCart } from '../context/CartContext';
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
+import { PaymentModal } from '../components/PaymentModal';
 
 interface InfoPageProps {
   type: 'privacy' | 'terms' | 'authenticity' | 'edit' | 'bag';
@@ -15,8 +17,13 @@ export const InfoPage: React.FC<InfoPageProps> = ({ type }) => {
   const { addOrder } = useOrders();
   const { currentUser, updateWallet, transferFunds, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
-  const handleCheckout = () => {
+  // Determine payment required (Cart Total - Wallet Balance if insufficient)
+  // For this logic: if wallet balance covers it, direct debit. If not, use payment gateway for full amount (simplified) 
+  // or top-up logic. Here we will use gateway for simplicity if user chooses "Secure Checkout" without sufficient funds.
+  
+  const handleCheckoutClick = () => {
     if (!isAuthenticated || !currentUser) {
         navigate('/login', { state: { from: { pathname: '/bag' } } });
         return;
@@ -27,40 +34,55 @@ export const InfoPage: React.FC<InfoPageProps> = ({ type }) => {
         return;
     }
 
-    if (currentUser.walletBalance < cartTotal) {
-        if(confirm(`Insufficient funds in your wallet ($${currentUser.walletBalance.toFixed(2)}). Total needed: $${cartTotal.toFixed(2)}.\n\nWould you like to go to your dashboard to fund your wallet?`)) {
-            navigate('/dashboard');
+    if (currentUser.walletBalance >= cartTotal) {
+        // Sufficient funds logic (Internal Wallet)
+        if(confirm(`Pay $${cartTotal.toFixed(2)} using your wallet balance?`)) {
+            processSuccessfulOrder('WALLET');
         }
-        return;
+    } else {
+        // Insufficient funds -> Open Payment Gateway
+        setShowPaymentModal(true);
     }
+  };
 
-    if(confirm(`Confirm payment of $${cartTotal.toFixed(2)} from your wallet?`)) {
-        
-        // Process Payments for each item
-        cart.forEach(item => {
-             const ownerId = item.product.ownerId;
-             if (item.type === 'buy') {
-                 // Immediate Transfer for Purchases
-                 if (ownerId && ownerId !== 'stylus-official') {
-                     transferFunds(currentUser.id, ownerId, item.price, `Sale Earnings: ${item.product.name}`);
-                 } else {
-                     // Pay to Platform (Admin/Burn)
-                     updateWallet(currentUser.id, -item.price, `Purchase: ${item.product.name}`, 'Debit');
-                 }
-             } else {
-                 // Rent: Deduct from user now. Partner gets credited later upon approval in Dashboard.
-                 updateWallet(currentUser.id, -item.price, `Rental Hold: ${item.product.name}`, 'Debit');
-             }
-        });
-        
-        // Add current cart to order history
-        addOrder(cart, cartTotal, currentUser.id, currentUser.name);
-        
-        // Clear cart and redirect
-        alert("Payment processed successfully. Rentals sent for approval. Purchases are confirmed.");
-        clearCart();
-        navigate('/dashboard');
-    }
+  const processSuccessfulOrder = (method: string) => {
+      if (!currentUser) return;
+
+      // 1. Process Wallet Deduction only if method is WALLET (Gateway already charged card)
+      if (method === 'WALLET') {
+          cart.forEach(item => {
+             // Logic simplified: Deduct total from user
+             // In real app, we distribute to partners here
+          });
+          updateWallet(currentUser.id, -cartTotal, `Order Payment (Wallet)`, 'Debit');
+      } 
+      // If Gateway, we assume money is "In System", so we might Credit the user's wallet then debit it, 
+      // or just handle the order logic directly. Let's just handle order logic.
+
+      // 2. Distribute Funds to Partners (Mock Logic)
+      cart.forEach(item => {
+           const ownerId = item.product.ownerId;
+           if (item.type === 'buy' && ownerId && ownerId !== 'stylus-official') {
+               transferFunds(currentUser.id, ownerId, item.price, `Sale Earnings: ${item.product.name}`);
+           }
+      });
+      
+      // 3. Create Order Record
+      addOrder(cart, cartTotal, currentUser.id, currentUser.name);
+      
+      // 4. Cleanup
+      clearCart();
+      setShowPaymentModal(false);
+      navigate('/dashboard');
+  };
+
+  const handlePaymentSuccess = (transactionId: string) => {
+      // Payment Gateway succeeded.
+      // We can record this transaction in history
+      if (currentUser) {
+          updateWallet(currentUser.id, 0, `External Payment ${transactionId}`, 'Credit'); // Just log it, 0 amount as it was direct payment
+      }
+      processSuccessfulOrder('GATEWAY');
   };
   
   // Content definitions...
@@ -202,8 +224,8 @@ export const InfoPage: React.FC<InfoPageProps> = ({ type }) => {
                    )}
 
                    <div className="flex flex-col gap-4">
-                     <Button fullWidth onClick={handleCheckout} className="flex justify-center items-center">
-                        Secure Checkout <ArrowRight size={16} className="ml-2" />
+                     <Button fullWidth onClick={handleCheckoutClick} className="flex justify-center items-center">
+                        {isAuthenticated && currentUser && currentUser.walletBalance >= cartTotal ? "Pay with Wallet" : "Secure Checkout"} <ArrowRight size={16} className="ml-2" />
                      </Button>
                      <Link to="/catalog">
                         <Button fullWidth variant="outline">Continue Shopping</Button>
@@ -221,6 +243,16 @@ export const InfoPage: React.FC<InfoPageProps> = ({ type }) => {
 
   return (
     <div className="min-h-screen bg-espresso pt-20 pb-20 animate-fade-in">
+      {showPaymentModal && currentUser && (
+          <PaymentModal 
+            amount={cartTotal} 
+            description={`Order Checkout (${cart.length} items)`}
+            userId={currentUser.id}
+            onSuccess={handlePaymentSuccess}
+            onClose={() => setShowPaymentModal(false)}
+          />
+      )}
+
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <div className="flex justify-center">
           {current.icon}
