@@ -17,9 +17,12 @@ When advising:
 // Helper to safely get the API key without crashing if 'process' is undefined
 const getApiKey = () => {
   try {
-    return process.env.API_KEY;
+    if (typeof process !== 'undefined' && process.env) {
+        return process.env.API_KEY;
+    }
+    return undefined;
   } catch (e) {
-    console.warn("API Key not found in environment.");
+    console.warn("API Key environment check failed.");
     return undefined;
   }
 };

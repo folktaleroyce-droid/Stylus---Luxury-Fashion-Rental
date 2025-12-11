@@ -36,6 +36,7 @@ export interface RegisteredUser {
 interface AuthContextType {
   isAuthenticated: boolean;
   isAdmin: boolean;
+  isLoading: boolean; // Added isLoading
   currentUser: RegisteredUser | null;
   registeredUsers: RegisteredUser[];
   transactions: Transaction[];
@@ -59,6 +60,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   isAdmin: false,
+  isLoading: true, // Default to true
   currentUser: null,
   registeredUsers: [],
   transactions: [],
@@ -179,6 +181,7 @@ const MOCK_TRANSACTIONS: Transaction[] = [
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Initial loading state
   const [currentUser, setCurrentUser] = useState<RegisteredUser | null>(null);
   const [registeredUsers, setRegisteredUsers] = useState<RegisteredUser[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -186,15 +189,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Load data on mount
   useEffect(() => {
     const storedUsers = localStorage.getItem('stylus_users_db');
+    let currentUsersList = MOCK_USERS_DB;
+
     if (storedUsers) {
-      setRegisteredUsers(JSON.parse(storedUsers));
+      try {
+        currentUsersList = JSON.parse(storedUsers);
+        setRegisteredUsers(currentUsersList);
+      } catch (e) {
+        setRegisteredUsers(MOCK_USERS_DB);
+      }
     } else {
       setRegisteredUsers(MOCK_USERS_DB);
     }
     
     const storedTx = localStorage.getItem('stylus_transactions');
     if (storedTx) {
-        setTransactions(JSON.parse(storedTx));
+        try {
+            setTransactions(JSON.parse(storedTx));
+        } catch (e) {
+            setTransactions(MOCK_TRANSACTIONS);
+        }
     } else {
         setTransactions(MOCK_TRANSACTIONS);
     }
@@ -202,15 +216,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check session
     const storedAuth = localStorage.getItem('stylus_auth');
     const storedUserId = localStorage.getItem('stylus_user_id');
+    
     if (storedAuth === 'true' && storedUserId) {
-      const users = storedUsers ? JSON.parse(storedUsers) : MOCK_USERS_DB;
-      const user = users.find((u: RegisteredUser) => u.id === storedUserId);
+      const user = currentUsersList.find((u: RegisteredUser) => u.id === storedUserId);
       if (user) {
         setIsAuthenticated(true);
         setCurrentUser(user);
         setIsAdmin(user.role === 'Admin');
       }
     }
+    
+    // Auth check complete
+    setIsLoading(false);
   }, []);
 
   // CROSS-TAB SYNC: Listen for storage changes to update state in other tabs
@@ -462,6 +479,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider value={{ 
       isAuthenticated, 
       isAdmin, 
+      isLoading,
       currentUser, 
       registeredUsers,
       transactions,
