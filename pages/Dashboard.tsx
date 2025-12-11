@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock, X, Check, Heart, Eye, Search, Filter, History, ChevronRight, Briefcase, DollarSign, ShieldAlert, FileText, Ban, Trash2, ShoppingBag, Truck, Wallet, ShieldCheck, Banknote, ArrowUpRight, ArrowDownLeft, AlertCircle, Image as ImageIcon, Loader2, Bike, Car, MapPin, Phone, User, Power, AlertTriangle } from 'lucide-react';
+import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock, X, Check, Heart, Eye, Search, Filter, History, ChevronRight, Briefcase, DollarSign, ShieldAlert, FileText, Ban, Trash2, ShoppingBag, Truck, Wallet, ShieldCheck, Banknote, ArrowUpRight, ArrowDownLeft, AlertCircle, Image as ImageIcon, Loader2, Bike, Car, MapPin, Phone, User, Power, AlertTriangle, RotateCcw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useProduct } from '../context/ProductContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -10,6 +10,42 @@ import { Button } from '../components/Button';
 import { UserVerificationForm } from '../components/UserVerificationForm';
 import { PartnerVerificationForm } from '../components/PartnerVerificationForm';
 import { checkRentalThreshold } from '../services/geminiService';
+
+// --- Tracking Component ---
+const OrderTimeline: React.FC<{ status: OrderStatus, type: 'rent' | 'buy' }> = ({ status, type }) => {
+    const steps = type === 'buy' 
+        ? ['Processing', 'Accepted', 'Shipped', 'Completed']
+        : ['Processing', 'Accepted', 'Shipped', 'Delivered', 'Returned', 'Completed'];
+        
+    // Map status to index. Handle 'Delivered' mapping to 'Completed' for buys visually if needed
+    let currentIdx = steps.indexOf(status);
+    if (status === 'Pending Approval') currentIdx = 0; // Treat as processing visually
+    
+    // If status isn't in steps (e.g. Rejected), show nothing or error
+    if (status === 'Rejected' || status === 'Cancelled') {
+        return <div className="text-red-500 text-[10px] font-bold uppercase tracking-widest mt-2 border border-red-500/50 p-1 inline-block rounded">Order {status}</div>;
+    }
+
+    return (
+        <div className="w-full mt-3 mb-2 px-1">
+            <div className="flex items-center justify-between relative">
+                {/* Connecting Line */}
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-0.5 bg-white/10 -z-0"></div>
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 bg-golden-orange -z-0 transition-all duration-500" style={{ width: `${(currentIdx / (steps.length - 1)) * 100}%` }}></div>
+
+                {steps.map((step, idx) => (
+                    <div key={step} className="flex flex-col items-center relative z-10 group">
+                        <div className={`w-2.5 h-2.5 rounded-full border-2 transition-colors duration-300 ${idx <= currentIdx ? 'bg-golden-orange border-golden-orange' : 'bg-[#1f0c05] border-white/30'}`}></div>
+                        <span className={`text-[8px] uppercase mt-1.5 font-bold transition-colors duration-300 absolute -bottom-5 w-20 text-center ${idx <= currentIdx ? 'text-golden-orange' : 'text-white/20'}`}>
+                            {step}
+                        </span>
+                    </div>
+                ))}
+            </div>
+            <div className="h-4"></div>{/* Spacer for text */}
+        </div>
+    );
+};
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -48,7 +84,7 @@ export const Dashboard: React.FC = () => {
   const userTransactions = transactions.filter(t => t.userId === currentUser?.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   // Split Active vs History based on items (if any item is active, show order in active)
-  const activeStatuses: OrderStatus[] = ['Processing', 'Pending Approval', 'Accepted', 'Shipped', 'Delivered'];
+  const activeStatuses: OrderStatus[] = ['Processing', 'Pending Approval', 'Accepted', 'Shipped', 'Delivered', 'Returned'];
   
   const activeOrders = userOrders.filter(o => o.items.some(i => activeStatuses.includes(i.status)));
   const pastOrders = userOrders.filter(o => !activeOrders.includes(o));
@@ -58,7 +94,6 @@ export const Dashboard: React.FC = () => {
       if (!currentUser) return;
       submitVerification(currentUser.id, data);
       setVerificationModal(false);
-      // Removed alert to prevent UI blocking/race conditions. The status update in UI is sufficient feedback.
   };
 
   const performLogout = () => {
@@ -106,7 +141,6 @@ Proceed with this transaction?`;
       }
       
       setIsProcessingPayment(true);
-      // Simulate API call to payment gateway
       setTimeout(() => {
           if (currentUser) {
             updateWallet(currentUser.id, amount, 'Wallet Fund via Card');
@@ -126,12 +160,9 @@ Proceed with this transaction?`;
       }
       updateOrderItemStatus(orderId, itemId, 'Accepted');
       incrementRentalCount(productId);
-      
-      // Credit Partner Wallet immediately upon acceptance (System release funds)
       if (currentUser) {
           updateWallet(currentUser.id, price, `Rental Earnings: Order #${orderId}`, 'Credit');
       }
-      
       alert("Item accepted. Ready for Dispatch.");
   };
 
@@ -186,21 +217,33 @@ Do you wish to proceed with rejection?`;
 
       if (confirm(confirmMessage)) {
         updateOrderItemStatus(orderId, itemId, 'Rejected');
-        
-        // 1. Refund the User
         updateWallet(order.userId, item.price, `Refund: Request Declined for ${item.product.name}`, 'Credit');
-        
-        // 2. Penalize the Partner
         if (currentUser) {
             updateWallet(currentUser.id, -penaltyAmount, `Penalty: Order Rejection (${item.product.name})`, 'Fee');
         }
-        
         alert(`Item rejected. Customer refunded. Penalty of $${penaltyAmount} charged.`);
       }
   };
 
-  const handleUserReceiveItem = (orderId: string, itemId: string) => {
-      if (confirm("Confirm that you have physically received this item? This will mark the transaction as completed.")) {
+  const handleUserReceiveItem = (orderId: string, itemId: string, type: 'rent' | 'buy') => {
+      const nextStatus = type === 'buy' ? 'Completed' : 'Delivered';
+      const msg = type === 'buy' 
+        ? "Confirm you have received your purchase? This will complete the transaction." 
+        : "Confirm you have received the rental? This marks the start of your rental period.";
+
+      if (confirm(msg)) {
+          updateOrderItemStatus(orderId, itemId, nextStatus);
+      }
+  };
+
+  const handleReturnItem = (orderId: string, itemId: string) => {
+      if (confirm("Are you ready to return this item? A courier will be notified for pickup.")) {
+          updateOrderItemStatus(orderId, itemId, 'Returned');
+      }
+  };
+
+  const handlePartnerConfirmReturn = (orderId: string, itemId: string) => {
+      if (confirm("Confirm that you have received the item back in good condition? This completes the order.")) {
           updateOrderItemStatus(orderId, itemId, 'Completed');
       }
   };
@@ -231,8 +274,8 @@ Do you wish to proceed with rejection?`;
             retailPrice: Number(newItem.retailPrice),
             buyPrice: Number(newItem.buyPrice),
             isForSale: newItem.isForSale,
-            isAvailable: true, // Default available
-            autoSellAfterRentals: 5, // Default to 5 max rentals per updated rules
+            isAvailable: true,
+            autoSellAfterRentals: 5,
             ownerId: currentUser.id,
             description: newItem.description || '',
             images: newItem.images && newItem.images.length > 0 ? newItem.images : ['https://images.unsplash.com/photo-1549439602-43ebca2327af?q=80&w=1000&auto=format&fit=crop'],
@@ -272,7 +315,6 @@ Do you wish to proceed with rejection?`;
       }));
   };
 
-  // If user is null, show loading instead of returning null to avoid white screen
   if (!currentUser) {
       return (
           <div className="min-h-screen bg-espresso flex items-center justify-center text-cream">
@@ -284,7 +326,6 @@ Do you wish to proceed with rejection?`;
       );
   }
 
-  // Suspension Overlay
   if (currentUser.status === 'Suspended') {
       return (
           <div className="min-h-screen bg-espresso flex items-center justify-center p-4">
@@ -846,7 +887,7 @@ Do you wish to proceed with rejection?`;
                                          </div>
                                          <div className="flex flex-col items-end justify-center min-w-[150px]">
                                              <div className="mb-2">
-                                                 <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${item.status === 'Pending Approval' ? 'bg-yellow-500/10 text-yellow-500' : item.status === 'Accepted' || item.status === 'Shipped' ? 'bg-green-500/10 text-green-500' : item.status === 'Completed' ? 'bg-blue-500/10 text-blue-400' : 'bg-red-500/10 text-red-500'}`}>
+                                                 <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${item.status === 'Pending Approval' ? 'bg-yellow-500/10 text-yellow-500' : item.status === 'Accepted' || item.status === 'Shipped' || item.status === 'Delivered' ? 'bg-green-500/10 text-green-500' : item.status === 'Completed' ? 'bg-blue-500/10 text-blue-400' : item.status === 'Returned' ? 'bg-purple-500/10 text-purple-400' : 'bg-red-500/10 text-red-500'}`}>
                                                      {item.status}
                                                  </span>
                                              </div>
@@ -864,6 +905,15 @@ Do you wish to proceed with rejection?`;
                                                     className="bg-golden-orange hover:bg-white text-espresso px-3 py-1 text-xs rounded transition-colors font-bold flex items-center gap-1"
                                                  >
                                                      <Truck size={12}/> Dispatch Item
+                                                 </button>
+                                             )}
+
+                                             {item.status === 'Returned' && (
+                                                 <button 
+                                                    onClick={() => handlePartnerConfirmReturn(order.id, item.id)}
+                                                    className="bg-purple-600 hover:bg-purple-500 text-white px-3 py-1 text-xs rounded transition-colors font-bold flex items-center gap-1"
+                                                 >
+                                                     <Check size={12}/> Confirm Return
                                                  </button>
                                              )}
                                          </div>
@@ -968,9 +1018,12 @@ Do you wish to proceed with rejection?`;
                                                         <div className="flex-grow">
                                                             <div className="flex justify-between">
                                                                 <p className="text-sm text-cream font-bold">{i.product.name}</p>
-                                                                <span className={`text-[10px] uppercase font-bold ${i.status === 'Accepted' || i.status === 'Shipped' ? 'text-green-400' : i.status === 'Rejected' ? 'text-red-400' : 'text-yellow-400'}`}>{i.status}</span>
+                                                                <span className={`text-[10px] uppercase font-bold ${i.status === 'Accepted' || i.status === 'Shipped' || i.status === 'Delivered' ? 'text-green-400' : i.status === 'Rejected' ? 'text-red-400' : 'text-yellow-400'}`}>{i.status}</span>
                                                             </div>
                                                             <p className="text-xs text-golden-orange">{i.type === 'buy' ? 'Purchase' : `Rent (${i.duration} Days)`}</p>
+                                                            
+                                                            <OrderTimeline status={i.status} type={i.type} />
+
                                                             {i.type === 'rent' && i.endDate && (
                                                                 <p className="text-[10px] text-cream/50 flex items-center gap-1 mt-1"><Clock size={10}/> Return by: {i.endDate}</p>
                                                             )}
@@ -981,9 +1034,9 @@ Do you wish to proceed with rejection?`;
                                                     {i.delivery && (
                                                         <div className="bg-[#1f0c05] border border-white/10 p-3 rounded w-full md:w-64 text-xs">
                                                             <div className="flex items-center gap-2 text-golden-orange font-bold mb-1 uppercase tracking-wider">
-                                                                <Truck size={12}/> In Transit
+                                                                <Truck size={12}/> Tracking Updates
                                                             </div>
-                                                            <div className="space-y-1 text-cream/70">
+                                                            <div className="space-y-1 text-cream/70 mb-2">
                                                                 <p>Courier: <span className="text-white">{i.delivery.courier}</span></p>
                                                                 <p>Rider: {i.delivery.riderName}</p>
                                                                 <p className="flex items-center gap-1"><Phone size={10}/> {i.delivery.riderPhone}</p>
@@ -991,10 +1044,19 @@ Do you wish to proceed with rejection?`;
                                                             
                                                             {i.status === 'Shipped' && (
                                                                 <button 
-                                                                    onClick={() => handleUserReceiveItem(o.id, i.id)}
-                                                                    className="w-full mt-2 bg-green-600 hover:bg-green-500 text-white py-1 rounded font-bold uppercase tracking-wider transition-colors"
+                                                                    onClick={() => handleUserReceiveItem(o.id, i.id, i.type)}
+                                                                    className="w-full mt-1 bg-green-600 hover:bg-green-500 text-white py-2 rounded font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1"
                                                                 >
-                                                                    Confirm Receipt
+                                                                    <Check size={12}/> Confirm Receipt
+                                                                </button>
+                                                            )}
+
+                                                            {i.status === 'Delivered' && i.type === 'rent' && (
+                                                                <button 
+                                                                    onClick={() => handleReturnItem(o.id, i.id)}
+                                                                    className="w-full mt-1 bg-purple-600 hover:bg-purple-500 text-white py-2 rounded font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1"
+                                                                >
+                                                                    <RotateCcw size={12}/> Return Item
                                                                 </button>
                                                             )}
                                                         </div>
