@@ -7,6 +7,7 @@ interface ProductContextType {
   addProduct: (product: Product) => void;
   removeProduct: (productId: string) => void;
   incrementRentalCount: (productId: string) => void;
+  toggleProductAvailability: (productId: string) => void;
 }
 
 const ProductContext = createContext<ProductContextType>({
@@ -14,20 +15,28 @@ const ProductContext = createContext<ProductContextType>({
   addProduct: () => {},
   removeProduct: () => {},
   incrementRentalCount: () => {},
+  toggleProductAvailability: () => {},
 });
 
 export const useProduct = () => useContext(ProductContext);
 
 export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
+  const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS.map(p => ({...p, isAvailable: true}))); // Ensure default true
 
   const addProduct = (newProduct: Product) => {
     // Add new product to the beginning of the list
-    setProducts((prev) => [newProduct, ...prev]);
+    const productWithDefaults = { ...newProduct, isAvailable: true };
+    setProducts((prev) => [productWithDefaults, ...prev]);
   };
 
   const removeProduct = (productId: string) => {
     setProducts((prev) => prev.filter(p => p.id !== productId));
+  };
+
+  const toggleProductAvailability = (productId: string) => {
+    setProducts((prev) => prev.map(p => 
+      p.id === productId ? { ...p, isAvailable: !p.isAvailable } : p
+    ));
   };
 
   const incrementRentalCount = (productId: string) => {
@@ -58,7 +67,7 @@ export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   return (
-    <ProductContext.Provider value={{ products, addProduct, removeProduct, incrementRentalCount }}>
+    <ProductContext.Provider value={{ products, addProduct, removeProduct, incrementRentalCount, toggleProductAvailability }}>
       {children}
     </ProductContext.Provider>
   );

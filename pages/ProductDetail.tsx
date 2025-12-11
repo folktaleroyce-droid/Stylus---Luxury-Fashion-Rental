@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../components/Button';
-import { Shield, Clock, Calendar as CalendarIcon, Check, ArrowLeft, Ruler, Star, Truck, AlertTriangle, X, Heart, ShoppingBag, Lock, DollarSign, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Info, ZoomIn, Maximize2 } from 'lucide-react';
+import { Shield, Clock, Calendar as CalendarIcon, Check, ArrowLeft, Ruler, Star, Truck, AlertTriangle, X, Heart, ShoppingBag, Lock, DollarSign, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Info, ZoomIn, Maximize2, AlertCircle } from 'lucide-react';
 import { useProduct } from '../context/ProductContext';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -68,6 +68,7 @@ export const ProductDetail: React.FC = () => {
   const isWishlisted = isInWishlist(product.id);
   const currentRentalPrice = selectedDuration === 4 ? product.rentalPrice : selectedDuration === 8 ? Math.round(product.rentalPrice * 1.75) : Math.round(product.rentalPrice * 2.4);
   const isRentable = !product.rentalCount || product.rentalCount < 5;
+  const isAvailable = product.isAvailable !== false; // Default true if undefined
 
   // --- Calendar Helpers ---
   const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
@@ -97,7 +98,8 @@ export const ProductDetail: React.FC = () => {
   const getEndDate = () => {
       if (!startDate) return null;
       const end = new Date(startDate);
-      end.setDate(startDate.getDate() + selectedDuration);
+      // Duration includes the start date, so add duration - 1
+      end.setDate(startDate.getDate() + selectedDuration - 1);
       return end;
   };
 
@@ -357,8 +359,19 @@ export const ProductDetail: React.FC = () => {
                          )}
                      </div>
 
+                     {/* Availability Warning */}
+                     {!isAvailable && (
+                         <div className="mb-6 p-4 bg-red-900/10 border border-red-500/20 rounded-sm flex items-start gap-3">
+                             <AlertCircle className="text-red-500 shrink-0 mt-0.5" size={18} />
+                             <div>
+                                 <p className="text-red-400 font-bold uppercase text-xs">Temporarily Unavailable</p>
+                                 <p className="text-cream/70 text-sm mt-1">This item is currently out of order or under maintenance. Please check back later.</p>
+                             </div>
+                         </div>
+                     )}
+
                      {/* Main Booking Interface */}
-                     <div className="bg-[#1f0c05] p-8 border border-white/10 mb-8 shadow-xl rounded-sm">
+                     <div className={`bg-[#1f0c05] p-8 border border-white/10 mb-8 shadow-xl rounded-sm transition-opacity ${!isAvailable ? 'opacity-50 pointer-events-none' : ''}`}>
                          <div className="mb-6">
                              <div className="flex justify-between items-center mb-3">
                                 <p className="text-xs uppercase text-cream/60 tracking-widest font-bold">Select Size</p>
@@ -382,16 +395,19 @@ export const ProductDetail: React.FC = () => {
                                         </div>
                                         
                                         {/* Duration Selector */}
-                                        <div className="flex bg-white/5 rounded p-1">
-                                            {[4, 8, 12].map(d => (
-                                                <button 
-                                                    key={d}
-                                                    onClick={() => setSelectedDuration(d as any)}
-                                                    className={`px-3 py-1 text-[10px] uppercase font-bold rounded transition-colors ${selectedDuration === d ? 'bg-golden-orange text-espresso' : 'text-cream/50 hover:text-white'}`}
-                                                >
-                                                    {d} Days
-                                                </button>
-                                            ))}
+                                        <div className="flex flex-col items-end">
+                                            <div className="flex bg-white/5 rounded p-1">
+                                                {[4, 8, 12].map(d => (
+                                                    <button 
+                                                        key={d}
+                                                        onClick={() => setSelectedDuration(d as any)}
+                                                        className={`px-3 py-1 text-[10px] uppercase font-bold rounded transition-colors ${selectedDuration === d ? 'bg-golden-orange text-espresso' : 'text-cream/50 hover:text-white'}`}
+                                                    >
+                                                        {d} Days
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <p className="text-[10px] text-cream/30 mt-1 uppercase tracking-wider">*Fixed rental periods only</p>
                                         </div>
                                     </div>
 
@@ -450,17 +466,17 @@ export const ProductDetail: React.FC = () => {
                              <Button 
                                 fullWidth 
                                 onClick={() => handleTransaction('rent')} 
-                                disabled={!isRentable || !isAuthenticated || currentUser?.verificationStatus !== 'Verified'} 
+                                disabled={!isRentable || !isAuthenticated || currentUser?.verificationStatus !== 'Verified' || !isAvailable} 
                                 className="flex-1 py-4 text-base font-bold tracking-widest shadow-[0_0_20px_rgba(225,175,77,0.2)] disabled:opacity-50 disabled:cursor-not-allowed"
                              >
-                                 RENT NOW
+                                 {isAvailable ? "ADD TO BAG - RENT" : "UNAVAILABLE"}
                              </Button>
                              {(product.isForSale || !isRentable) && (
                                  <Button 
                                     fullWidth 
                                     variant="secondary" 
                                     onClick={() => handleTransaction('buy')} 
-                                    disabled={!isAuthenticated || currentUser?.verificationStatus !== 'Verified'}
+                                    disabled={!isAuthenticated || currentUser?.verificationStatus !== 'Verified' || !isAvailable}
                                     className="flex-1 py-4 text-base font-bold tracking-widest"
                                 >
                                      BUY NOW (${product.buyPrice})

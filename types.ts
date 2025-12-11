@@ -11,7 +11,7 @@ export enum Category {
 export type SortOption = 'newest' | 'price_asc' | 'price_desc';
 export type Role = 'User' | 'Partner' | 'Admin';
 export type VerificationStatus = 'Unverified' | 'Pending' | 'Verified' | 'Rejected';
-export type OrderStatus = 'Processing' | 'Pending Approval' | 'Accepted' | 'Shipped' | 'Completed' | 'Returned' | 'Cancelled' | 'Rejected';
+export type OrderStatus = 'Processing' | 'Pending Approval' | 'Accepted' | 'Shipped' | 'Delivered' | 'Completed' | 'Returned' | 'Cancelled' | 'Rejected';
 
 export interface Review {
   id: string;
@@ -19,6 +19,15 @@ export interface Review {
   rating: number;
   comment: string;
   date: string;
+}
+
+export interface DeliveryDetails {
+  courier: string; // e.g., 'Uber Package', 'Bolt Send', 'Gokada', 'DHL', 'Private Rider'
+  riderName?: string;
+  riderPhone?: string;
+  trackingNumber?: string; // or Tracking Link
+  dispatchTime: string;
+  estimatedArrival?: string;
 }
 
 export interface Product {
@@ -30,6 +39,7 @@ export interface Product {
   retailPrice: number;
   buyPrice?: number;
   isForSale?: boolean;
+  isAvailable?: boolean; // New flag for "Out of Order"
   ownerId?: string;
   images: string[];
   description: string;

@@ -1,11 +1,11 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem } from './CartContext';
-import { OrderStatus } from '../types';
+import { OrderStatus, DeliveryDetails } from '../types';
 
 // Extended Item interface for Orders to track status per item
 export interface OrderItem extends CartItem {
   status: OrderStatus;
+  delivery?: DeliveryDetails; // Added delivery tracking info
 }
 
 export interface Order {
@@ -24,6 +24,7 @@ interface OrderContextType {
   addOrder: (items: CartItem[], total: number, userId: string, userName: string) => void;
   updateOrderStatus: (orderId: string, status: OrderStatus) => void; // Legacy/Global
   updateOrderItemStatus: (orderId: string, itemId: string, status: OrderStatus) => void; // New granular control
+  assignLogistics: (orderId: string, itemId: string, details: DeliveryDetails) => void;
 }
 
 const OrderContext = createContext<OrderContextType>({
@@ -31,6 +32,7 @@ const OrderContext = createContext<OrderContextType>({
   addOrder: () => {},
   updateOrderStatus: () => {},
   updateOrderItemStatus: () => {},
+  assignLogistics: () => {},
 });
 
 export const useOrders = () => useContext(OrderContext);
@@ -96,8 +98,18 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }));
   };
 
+  const assignLogistics = (orderId: string, itemId: string, details: DeliveryDetails) => {
+    setOrders(prev => prev.map(order => {
+        if (order.id !== orderId) return order;
+        const updatedItems = order.items.map(item => 
+            item.id === itemId ? { ...item, status: 'Shipped', delivery: details } : item
+        );
+        return { ...order, items: updatedItems };
+    }));
+  };
+
   return (
-    <OrderContext.Provider value={{ orders, addOrder, updateOrderStatus, updateOrderItemStatus }}>
+    <OrderContext.Provider value={{ orders, addOrder, updateOrderStatus, updateOrderItemStatus, assignLogistics }}>
       {children}
     </OrderContext.Provider>
   );

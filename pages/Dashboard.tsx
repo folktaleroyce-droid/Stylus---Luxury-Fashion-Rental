@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock, X, Check, Heart, Eye, Search, Filter, History, ChevronRight, Briefcase, DollarSign, ShieldAlert, FileText, Ban, Trash2, ShoppingBag, Truck, Wallet, ShieldCheck, Banknote, ArrowUpRight, ArrowDownLeft, AlertCircle, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Package, Calendar, CreditCard, Settings, LogOut, Diamond, Plus, Upload, Tag, Clock, X, Check, Heart, Eye, Search, Filter, History, ChevronRight, Briefcase, DollarSign, ShieldAlert, FileText, Ban, Trash2, ShoppingBag, Truck, Wallet, ShieldCheck, Banknote, ArrowUpRight, ArrowDownLeft, AlertCircle, Image as ImageIcon, Loader2, Bike, Car, MapPin, Phone, User, Power, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useProduct } from '../context/ProductContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useOrders } from '../context/OrderContext';
-import { Category, Product, VerificationStatus, OrderStatus } from '../types';
+import { Category, Product, VerificationStatus, OrderStatus, DeliveryDetails } from '../types';
 import { Button } from '../components/Button';
 import { UserVerificationForm } from '../components/UserVerificationForm';
 import { PartnerVerificationForm } from '../components/PartnerVerificationForm';
@@ -14,9 +14,9 @@ import { checkRentalThreshold } from '../services/geminiService';
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { logout, currentUser, submitVerification, updateWallet, requestWithdrawal, transactions } = useAuth();
-  const { products, addProduct, removeProduct, incrementRentalCount } = useProduct();
+  const { products, addProduct, removeProduct, incrementRentalCount, toggleProductAvailability } = useProduct();
   const { wishlist } = useWishlist();
-  const { orders, updateOrderItemStatus } = useOrders();
+  const { orders, updateOrderItemStatus, assignLogistics } = useOrders();
   
   const [currentView, setCurrentView] = useState('overview');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -29,6 +29,11 @@ export const Dashboard: React.FC = () => {
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [bankDetails, setBankDetails] = useState({ bankName: '', accountNumber: '', accountName: '' });
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+  // Dispatch / Logistics Modal State
+  const [dispatchModal, setDispatchModal] = useState(false);
+  const [dispatchItem, setDispatchItem] = useState<{orderId: string, itemId: string, productName: string} | null>(null);
+  const [logisticsData, setLogisticsData] = useState<Partial<DeliveryDetails>>({ courier: 'Uber Connect', riderName: '', riderPhone: '', trackingNumber: '' });
 
   // Filter products for Partner
   const myListings = products.filter(p => p.ownerId === currentUser?.id);
@@ -43,7 +48,7 @@ export const Dashboard: React.FC = () => {
   const userTransactions = transactions.filter(t => t.userId === currentUser?.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   // Split Active vs History based on items (if any item is active, show order in active)
-  const activeStatuses: OrderStatus[] = ['Processing', 'Pending Approval', 'Accepted', 'Shipped'];
+  const activeStatuses: OrderStatus[] = ['Processing', 'Pending Approval', 'Accepted', 'Shipped', 'Delivered'];
   
   const activeOrders = userOrders.filter(o => o.items.some(i => activeStatuses.includes(i.status)));
   const pastOrders = userOrders.filter(o => !activeOrders.includes(o));
@@ -127,7 +132,32 @@ Proceed with this transaction?`;
           updateWallet(currentUser.id, price, `Rental Earnings: Order #${orderId}`, 'Credit');
       }
       
-      alert("Item accepted. Funds credited to wallet.");
+      alert("Item accepted. Ready for Dispatch.");
+  };
+
+  const openDispatchModal = (orderId: string, itemId: string, productName: string) => {
+      setDispatchItem({ orderId, itemId, productName });
+      setLogisticsData({ courier: 'Uber Connect', riderName: '', riderPhone: '', trackingNumber: '' });
+      setDispatchModal(true);
+  };
+
+  const submitDispatch = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!dispatchItem) return;
+
+      const details: DeliveryDetails = {
+          courier: logisticsData.courier || 'Private Rider',
+          riderName: logisticsData.riderName,
+          riderPhone: logisticsData.riderPhone,
+          trackingNumber: logisticsData.trackingNumber,
+          dispatchTime: new Date().toLocaleString(),
+          estimatedArrival: 'In 2-4 Hours'
+      };
+
+      assignLogistics(dispatchItem.orderId, dispatchItem.itemId, details);
+      setDispatchModal(false);
+      setDispatchItem(null);
+      alert("Dispatch Assigned. User has been notified.");
   };
 
   const handleRejectItem = (orderId: string, itemId: string) => {
@@ -141,13 +171,37 @@ Proceed with this transaction?`;
       
       if (!order || !item) return;
 
-      if (confirm(`Are you sure you want to DECLINE this request for ${item.product.name}?\n\nThis will trigger an immediate full refund of $${item.price} to the customer.`)) {
+      const penaltyAmount = Math.round(item.price * 0.15); // 15% Penalty
+      const confirmMessage = 
+`IMPORTANT: REJECTION PENALTY
+
+Rejecting a confirmed request indicates a failure to fulfill inventory.
+
+1. The customer will be fully refunded ($${item.price}).
+2. You will be charged a Non-Fulfillment Penalty of $${penaltyAmount} (15%).
+
+To avoid this in the future, please mark items as "Out of Order" in your listings if they are unavailable.
+
+Do you wish to proceed with rejection?`;
+
+      if (confirm(confirmMessage)) {
         updateOrderItemStatus(orderId, itemId, 'Rejected');
         
-        // Refund Logic: Credit back the user who placed the order
+        // 1. Refund the User
         updateWallet(order.userId, item.price, `Refund: Request Declined for ${item.product.name}`, 'Credit');
         
-        alert("Item rejected. Customer has been refunded.");
+        // 2. Penalize the Partner
+        if (currentUser) {
+            updateWallet(currentUser.id, -penaltyAmount, `Penalty: Order Rejection (${item.product.name})`, 'Fee');
+        }
+        
+        alert(`Item rejected. Customer refunded. Penalty of $${penaltyAmount} charged.`);
+      }
+  };
+
+  const handleUserReceiveItem = (orderId: string, itemId: string) => {
+      if (confirm("Confirm that you have physically received this item? This will mark the transaction as completed.")) {
+          updateOrderItemStatus(orderId, itemId, 'Completed');
       }
   };
 
@@ -177,6 +231,7 @@ Proceed with this transaction?`;
             retailPrice: Number(newItem.retailPrice),
             buyPrice: Number(newItem.buyPrice),
             isForSale: newItem.isForSale,
+            isAvailable: true, // Default available
             autoSellAfterRentals: 5, // Default to 5 max rentals per updated rules
             ownerId: currentUser.id,
             description: newItem.description || '',
@@ -197,6 +252,10 @@ Proceed with this transaction?`;
     if(confirm("Are you sure you want to remove this item from your store? This cannot be undone.")) {
       removeProduct(id);
     }
+  };
+
+  const handleToggleAvailability = (product: Product) => {
+      toggleProductAvailability(product.id);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -256,6 +315,80 @@ Proceed with this transaction?`;
                   ) : (
                       <PartnerVerificationForm onSubmit={handleVerificationSubmit} />
                   )}
+              </div>
+          </div>
+      )}
+
+      {/* Dispatch Logistics Modal */}
+      {dispatchModal && dispatchItem && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+              <div className="bg-[#1f0c05] border border-golden-orange w-full max-w-md p-8 relative shadow-2xl rounded-sm">
+                  <button onClick={() => setDispatchModal(false)} className="absolute top-4 right-4 text-cream/50 hover:text-golden-orange"><X size={24}/></button>
+                  <h2 className="font-serif text-2xl text-cream mb-2">Assign Dispatch Rider</h2>
+                  <p className="text-xs text-cream/50 mb-6 uppercase tracking-widest">For Item: {dispatchItem.productName}</p>
+                  
+                  <form onSubmit={submitDispatch} className="space-y-5">
+                      <div>
+                          <label className="text-xs text-cream/50 mb-1 block uppercase">Logistics Provider</label>
+                          <div className="relative">
+                            <select 
+                                value={logisticsData.courier} 
+                                onChange={e => setLogisticsData({...logisticsData, courier: e.target.value})}
+                                className="w-full bg-black/20 border border-white/10 p-3 text-cream focus:border-golden-orange outline-none appearance-none cursor-pointer"
+                            >
+                                <option value="Uber Connect">Uber Connect</option>
+                                <option value="Bolt Send">Bolt Send</option>
+                                <option value="Gokada">Gokada</option>
+                                <option value="DHL Express">DHL Express</option>
+                                <option value="Private Rider">Private Rider</option>
+                            </select>
+                            <Bike size={16} className="absolute right-3 top-3 text-cream/30 pointer-events-none" />
+                          </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                          <div>
+                              <label className="text-xs text-cream/50 mb-1 block uppercase">Rider Name</label>
+                              <input 
+                                required 
+                                type="text" 
+                                placeholder="e.g. John Doe"
+                                value={logisticsData.riderName}
+                                onChange={e => setLogisticsData({...logisticsData, riderName: e.target.value})}
+                                className="w-full bg-black/20 border border-white/10 p-3 text-cream focus:border-golden-orange outline-none" 
+                              />
+                          </div>
+                          <div>
+                              <label className="text-xs text-cream/50 mb-1 block uppercase">Rider Phone</label>
+                              <input 
+                                required 
+                                type="text" 
+                                placeholder="+234..."
+                                value={logisticsData.riderPhone}
+                                onChange={e => setLogisticsData({...logisticsData, riderPhone: e.target.value})}
+                                className="w-full bg-black/20 border border-white/10 p-3 text-cream focus:border-golden-orange outline-none" 
+                              />
+                          </div>
+                      </div>
+
+                      <div>
+                          <label className="text-xs text-cream/50 mb-1 block uppercase">Tracking No. / Link (Optional)</label>
+                          <input 
+                            type="text" 
+                            placeholder="Share tracking link here"
+                            value={logisticsData.trackingNumber}
+                            onChange={e => setLogisticsData({...logisticsData, trackingNumber: e.target.value})}
+                            className="w-full bg-black/20 border border-white/10 p-3 text-cream focus:border-golden-orange outline-none" 
+                          />
+                      </div>
+
+                      <div className="bg-golden-orange/10 border border-golden-orange/30 p-3 rounded flex items-start gap-2">
+                          <AlertCircle size={16} className="text-golden-orange shrink-0 mt-0.5"/>
+                          <p className="text-xs text-golden-orange/80">Updating this status to "Shipped" will notify the customer. Ensure the rider has picked up the item.</p>
+                      </div>
+
+                      <Button fullWidth className="mt-2">Confirm Dispatch</Button>
+                  </form>
               </div>
           </div>
       )}
@@ -596,7 +729,7 @@ Proceed with this transaction?`;
                                 <div className="border-2 border-dashed border-white/10 p-8 text-center cursor-pointer relative hover:border-golden-orange/50 hover:bg-white/5 transition-all group rounded-sm">
                                     <input type="file" multiple accept="image/*" onChange={handleImageUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" id="img-upload" />
                                     <div className="pointer-events-none flex flex-col items-center">
-                                        <div className="bg-black/40 p-3 rounded-full mb-3 group-hover:scale-110 transition-transform">
+                                        <div className="bg-black/40 p-3 rounded-full mb-3 group-hover:scale-105 transition-transform">
                                             <ImageIcon className="text-cream/50" size={24} />
                                         </div>
                                         <p className="text-cream text-sm font-bold mb-1">Click to Upload Images</p>
@@ -638,7 +771,20 @@ Proceed with this transaction?`;
                          <div key={item.id} className="bg-white/5 p-4 flex gap-4 border border-white/10 rounded-sm">
                              <img src={item.images[0]} className="w-24 h-32 object-cover rounded-sm" />
                              <div className="flex-grow">
-                                 <h4 className="text-cream font-bold text-lg">{item.name}</h4>
+                                 <div className="flex justify-between items-start">
+                                     <div>
+                                        <h4 className="text-cream font-bold text-lg">{item.name}</h4>
+                                        <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ml-2 ${item.isAvailable !== false ? 'border-green-500/30 text-green-400 bg-green-500/10' : 'border-red-500/30 text-red-400 bg-red-500/10'}`}>
+                                            {item.isAvailable !== false ? 'Available' : 'Out of Order'}
+                                        </span>
+                                     </div>
+                                     <button 
+                                        onClick={() => handleToggleAvailability(item)}
+                                        className={`text-xs px-3 py-1 rounded transition-colors ${item.isAvailable !== false ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'}`}
+                                     >
+                                         {item.isAvailable !== false ? 'Mark Out of Order' : 'Mark Available'}
+                                     </button>
+                                 </div>
                                  <div className="flex flex-wrap gap-4 text-sm text-cream/70 mt-1">
                                      <span>Rent: ${item.rentalPrice}</span>
                                      {item.isForSale && <span>Buy: ${item.buyPrice}</span>}
@@ -687,10 +833,20 @@ Proceed with this transaction?`;
                                                  {item.duration && <span>Duration: {item.duration} Days</span>}
                                              </div>
                                              <p className="text-lg font-serif text-golden-orange mt-2">${item.price}</p>
+                                             
+                                             {/* Logistics Details View for Partner */}
+                                             {item.delivery && (
+                                                <div className="mt-3 bg-white/5 p-2 rounded text-xs border-l-2 border-golden-orange">
+                                                    <p className="text-golden-orange font-bold uppercase mb-1">Logistics Assigned</p>
+                                                    <p className="text-cream/70">Provider: {item.delivery.courier}</p>
+                                                    <p className="text-cream/70">Rider: {item.delivery.riderName} ({item.delivery.riderPhone})</p>
+                                                    <p className="text-cream/50 italic mt-1">Status: En Route to Customer</p>
+                                                </div>
+                                             )}
                                          </div>
                                          <div className="flex flex-col items-end justify-center min-w-[150px]">
                                              <div className="mb-2">
-                                                 <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${item.status === 'Pending Approval' ? 'bg-yellow-500/10 text-yellow-500' : item.status === 'Accepted' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                                                 <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${item.status === 'Pending Approval' ? 'bg-yellow-500/10 text-yellow-500' : item.status === 'Accepted' || item.status === 'Shipped' ? 'bg-green-500/10 text-green-500' : item.status === 'Completed' ? 'bg-blue-500/10 text-blue-400' : 'bg-red-500/10 text-red-500'}`}>
                                                      {item.status}
                                                  </span>
                                              </div>
@@ -700,6 +856,15 @@ Proceed with this transaction?`;
                                                      <button onClick={() => handleAcceptItem(order.id, item.id, item.product.id, item.price)} className="bg-green-600 hover:bg-green-500 text-white px-3 py-1 text-xs rounded transition-colors">Accept & Credit</button>
                                                      <button onClick={() => handleRejectItem(order.id, item.id)} className="bg-red-600 hover:bg-red-500 text-white px-3 py-1 text-xs rounded transition-colors">Decline</button>
                                                  </div>
+                                             )}
+
+                                             {item.status === 'Accepted' && (
+                                                 <button 
+                                                    onClick={() => openDispatchModal(order.id, item.id, item.product.name)}
+                                                    className="bg-golden-orange hover:bg-white text-espresso px-3 py-1 text-xs rounded transition-colors font-bold flex items-center gap-1"
+                                                 >
+                                                     <Truck size={12}/> Dispatch Item
+                                                 </button>
                                              )}
                                          </div>
                                      </div>
@@ -796,19 +961,44 @@ Proceed with this transaction?`;
                                         
                                         <div className="space-y-3">
                                             {o.items.map(i => (
-                                                <div key={i.id} className="flex gap-3 bg-black/20 p-2 rounded relative overflow-hidden">
-                                                    <div className={`absolute left-0 top-0 bottom-0 w-1 ${i.status === 'Accepted' || i.status === 'Shipped' ? 'bg-green-500' : i.status === 'Rejected' ? 'bg-red-500' : 'bg-yellow-500'}`}></div>
-                                                    <img src={i.product.images[0]} className="w-12 h-16 object-cover ml-2 rounded-sm" />
-                                                    <div className="flex-grow">
-                                                        <div className="flex justify-between">
-                                                            <p className="text-sm text-cream font-bold">{i.product.name}</p>
-                                                            <span className={`text-[10px] uppercase font-bold ${i.status === 'Accepted' || i.status === 'Shipped' ? 'text-green-400' : i.status === 'Rejected' ? 'text-red-400' : 'text-yellow-400'}`}>{i.status}</span>
+                                                <div key={i.id} className="flex gap-3 bg-black/20 p-2 rounded relative overflow-hidden flex-col md:flex-row">
+                                                    <div className="flex gap-3 flex-1">
+                                                        <div className={`absolute left-0 top-0 bottom-0 w-1 ${i.status === 'Accepted' || i.status === 'Shipped' || i.status === 'Delivered' ? 'bg-green-500' : i.status === 'Rejected' ? 'bg-red-500' : 'bg-yellow-500'}`}></div>
+                                                        <img src={i.product.images[0]} className="w-12 h-16 object-cover ml-2 rounded-sm" />
+                                                        <div className="flex-grow">
+                                                            <div className="flex justify-between">
+                                                                <p className="text-sm text-cream font-bold">{i.product.name}</p>
+                                                                <span className={`text-[10px] uppercase font-bold ${i.status === 'Accepted' || i.status === 'Shipped' ? 'text-green-400' : i.status === 'Rejected' ? 'text-red-400' : 'text-yellow-400'}`}>{i.status}</span>
+                                                            </div>
+                                                            <p className="text-xs text-golden-orange">{i.type === 'buy' ? 'Purchase' : `Rent (${i.duration} Days)`}</p>
+                                                            {i.type === 'rent' && i.endDate && (
+                                                                <p className="text-[10px] text-cream/50 flex items-center gap-1 mt-1"><Clock size={10}/> Return by: {i.endDate}</p>
+                                                            )}
                                                         </div>
-                                                        <p className="text-xs text-golden-orange">{i.type === 'buy' ? 'Purchase' : `Rent (${i.duration} Days)`}</p>
-                                                        {i.type === 'rent' && i.endDate && (
-                                                            <p className="text-[10px] text-cream/50 flex items-center gap-1 mt-1"><Clock size={10}/> Return by: {i.endDate}</p>
-                                                        )}
                                                     </div>
+                                                    
+                                                    {/* Tracking Info for User */}
+                                                    {i.delivery && (
+                                                        <div className="bg-[#1f0c05] border border-white/10 p-3 rounded w-full md:w-64 text-xs">
+                                                            <div className="flex items-center gap-2 text-golden-orange font-bold mb-1 uppercase tracking-wider">
+                                                                <Truck size={12}/> In Transit
+                                                            </div>
+                                                            <div className="space-y-1 text-cream/70">
+                                                                <p>Courier: <span className="text-white">{i.delivery.courier}</span></p>
+                                                                <p>Rider: {i.delivery.riderName}</p>
+                                                                <p className="flex items-center gap-1"><Phone size={10}/> {i.delivery.riderPhone}</p>
+                                                            </div>
+                                                            
+                                                            {i.status === 'Shipped' && (
+                                                                <button 
+                                                                    onClick={() => handleUserReceiveItem(o.id, i.id)}
+                                                                    className="w-full mt-2 bg-green-600 hover:bg-green-500 text-white py-1 rounded font-bold uppercase tracking-wider transition-colors"
+                                                                >
+                                                                    Confirm Receipt
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ))}
                                         </div>
