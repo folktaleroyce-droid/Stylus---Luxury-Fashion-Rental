@@ -435,7 +435,7 @@ export const ProductDetail: React.FC = () => {
                                 
                                 <div className="flex items-center gap-2 mb-6">
                                     <input type="checkbox" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)} className="accent-golden-orange w-4 h-4 cursor-pointer" />
-                                    <span className="text-xs text-cream/70">I agree to the <span className="underline cursor-pointer hover:text-white">Rental Policy</span> & coverage terms.</span>
+                                    <span className="text-xs text-cream/70">I agree to the <Link to="/terms" className="underline cursor-pointer hover:text-white">Rental Policy</Link> & coverage terms.</span>
                                 </div>
                             </>
                          ) : (
