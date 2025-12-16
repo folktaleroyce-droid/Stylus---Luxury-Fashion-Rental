@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { Button } from './Button';
 import { FileText, Upload, Building2, Check, User, CreditCard, ChevronDown } from 'lucide-react';
@@ -12,6 +13,8 @@ export const PartnerVerificationForm: React.FC<PartnerVerificationFormProps> = (
     const [bizName, setBizName] = useState('');
     const [bvn, setBvn] = useState('');
     const [idType, setIdType] = useState('NIN');
+    const [state, setState] = useState('New York');
+    const [city, setCity] = useState('');
     const [certFile, setCertFile] = useState<File | null>(null);
     const [idFile, setIdFile] = useState<File | null>(null);
 
@@ -21,7 +24,6 @@ export const PartnerVerificationForm: React.FC<PartnerVerificationFormProps> = (
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        // Create mock URLs for the files for the demo
         const cacCertUrl = certFile ? URL.createObjectURL(certFile) : 'https://images.unsplash.com/photo-1555601568-c9e61309063d?q=80&w=1000&auto=format&fit=crop';
         const govIdUrl = idFile ? URL.createObjectURL(idFile) : 'https://images.unsplash.com/photo-1633265486064-084b2195299b?q=80&w=1000&auto=format&fit=crop';
         
@@ -31,7 +33,9 @@ export const PartnerVerificationForm: React.FC<PartnerVerificationFormProps> = (
             bvn, 
             idType,
             cacCertUrl,
-            govIdUrl
+            govIdUrl,
+            state,
+            city
         });
     };
     
@@ -39,7 +43,7 @@ export const PartnerVerificationForm: React.FC<PartnerVerificationFormProps> = (
         <div className="bg-[#1f0c05] p-8 border border-golden-orange shadow-2xl rounded-sm max-h-[80vh] overflow-y-auto custom-scrollbar">
             <h3 className="font-serif text-2xl text-cream mb-2">Partner Registration</h3>
             <p className="text-sm text-cream/60 mb-6 border-b border-white/10 pb-4">
-                Strict verification required to list inventory. Please provide Business & Director details.
+                Strict verification required to list inventory.
             </p>
             
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -57,6 +61,24 @@ export const PartnerVerificationForm: React.FC<PartnerVerificationFormProps> = (
                         <div>
                             <label className="text-[10px] uppercase text-cream/50 mb-1 block">CAC Registration Number</label>
                             <input required placeholder="RC-000000" value={cac} onChange={e => setCac(e.target.value)} className="w-full bg-black/20 border border-white/10 text-cream p-3 focus:border-golden-orange outline-none" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                             <div>
+                                <label className="text-[10px] uppercase text-cream/50 mb-1 block">State / Region</label>
+                                <div className="relative">
+                                    <select value={state} onChange={e => setState(e.target.value)} className="w-full bg-black/20 border border-white/10 text-cream p-3 appearance-none focus:border-golden-orange outline-none">
+                                        <option value="New York">New York</option>
+                                        <option value="London">London</option>
+                                        <option value="California">California</option>
+                                        <option value="Lagos">Lagos</option>
+                                    </select>
+                                    <ChevronDown className="absolute right-3 top-3 text-cream/30 pointer-events-none" size={14}/>
+                                </div>
+                             </div>
+                             <div>
+                                <label className="text-[10px] uppercase text-cream/50 mb-1 block">City</label>
+                                <input required placeholder="e.g. Manhattan" value={city} onChange={e => setCity(e.target.value)} className="w-full bg-black/20 border border-white/10 text-cream p-3 focus:border-golden-orange outline-none" />
+                             </div>
                         </div>
                         
                         <div className="border-2 border-dashed border-white/10 p-4 text-center cursor-pointer hover:border-golden-orange/50 transition-colors bg-white/5 relative">
@@ -116,12 +138,7 @@ export const PartnerVerificationForm: React.FC<PartnerVerificationFormProps> = (
                     </p>
                     <div className="flex justify-center items-baseline gap-2">
                         <p className="text-3xl font-serif text-cream">₦20,000</p>
-                        <span className="text-sm text-cream/50">or</span>
-                        <p className="text-3xl font-serif text-cream">$15</p>
                     </div>
-                    <p className="text-[10px] text-cream/50 mt-2">
-                        Secure payment required to process verification and unlock seller dashboard.
-                    </p>
                 </div>
 
                 <Button fullWidth>Pay Fee & Submit Application</Button>

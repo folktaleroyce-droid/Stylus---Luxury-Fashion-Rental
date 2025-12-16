@@ -151,6 +151,6 @@ export const MOCK_PRODUCTS: Product[] = [
 export const MOCK_USER: UserProfile = {
   name: "Victoria Sterling",
   memberSince: "Oct 2023",
-  subscriptionTier: "Diamond",
+  subscriptionTier: "Premium",
   activeRentals: 2
 };

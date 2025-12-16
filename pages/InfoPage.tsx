@@ -1,6 +1,7 @@
 
+
 import React, { useState } from 'react';
-import { ShieldCheck, FileText, Sparkles, Lock, ShoppingBag, Trash2, ArrowRight, Wallet, AlertTriangle } from 'lucide-react';
+import { ShieldCheck, FileText, Sparkles, Lock, ShoppingBag, Trash2, ArrowRight, Wallet, AlertTriangle, Crown } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { useCart } from '../context/CartContext';
@@ -18,11 +19,13 @@ export const InfoPage: React.FC<InfoPageProps> = ({ type }) => {
   const { currentUser, updateWallet, transferFunds, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-
-  // Determine payment required (Cart Total - Wallet Balance if insufficient)
-  // For this logic: if wallet balance covers it, direct debit. If not, use payment gateway for full amount (simplified) 
-  // or top-up logic. Here we will use gateway for simplicity if user chooses "Secure Checkout" without sufficient funds.
   
+  // Calculate Totals with Premium Discount
+  const isPremium = currentUser?.subscriptionStatus === 'Premium';
+  const discountRate = isPremium ? 0.05 : 0;
+  const discountAmount = cartTotal * discountRate;
+  const finalTotal = cartTotal - discountAmount;
+
   const handleCheckoutClick = () => {
     if (!isAuthenticated || !currentUser) {
         navigate('/login', { state: { from: { pathname: '/bag' } } });
@@ -34,13 +37,11 @@ export const InfoPage: React.FC<InfoPageProps> = ({ type }) => {
         return;
     }
 
-    if (currentUser.walletBalance >= cartTotal) {
-        // Sufficient funds logic (Internal Wallet)
-        if(confirm(`Pay $${cartTotal.toFixed(2)} using your wallet balance?`)) {
+    if (currentUser.walletBalance >= finalTotal) {
+        if(confirm(`Pay $${finalTotal.toFixed(2)} using your wallet balance?`)) {
             processSuccessfulOrder('WALLET');
         }
     } else {
-        // Insufficient funds -> Open Payment Gateway
         setShowPaymentModal(true);
     }
   };
@@ -48,44 +49,30 @@ export const InfoPage: React.FC<InfoPageProps> = ({ type }) => {
   const processSuccessfulOrder = (method: string) => {
       if (!currentUser) return;
 
-      // 1. Process Wallet Deduction only if method is WALLET (Gateway already charged card)
       if (method === 'WALLET') {
-          cart.forEach(item => {
-             // Logic simplified: Deduct total from user
-             // In real app, we distribute to partners here
-          });
-          updateWallet(currentUser.id, -cartTotal, `Order Payment (Wallet)`, 'Debit');
+          updateWallet(currentUser.id, -finalTotal, `Order Payment (Wallet)`, 'Debit');
       } 
-      // If Gateway, we assume money is "In System", so we might Credit the user's wallet then debit it, 
-      // or just handle the order logic directly. Let's just handle order logic.
-
-      // 2. Distribute Funds to Partners (Mock Logic)
+      
       cart.forEach(item => {
            const ownerId = item.product.ownerId;
-           if (item.type === 'buy' && ownerId && ownerId !== 'stylus-official') {
+           if (ownerId && ownerId !== 'stylus-official') {
                transferFunds(currentUser.id, ownerId, item.price, `Sale Earnings: ${item.product.name}`);
            }
       });
       
-      // 3. Create Order Record
-      addOrder(cart, cartTotal, currentUser.id, currentUser.name);
-      
-      // 4. Cleanup
+      addOrder(cart, finalTotal, currentUser.id, currentUser.name);
       clearCart();
       setShowPaymentModal(false);
       navigate('/dashboard');
   };
 
   const handlePaymentSuccess = (transactionId: string) => {
-      // Payment Gateway succeeded.
-      // We can record this transaction in history
       if (currentUser) {
-          updateWallet(currentUser.id, 0, `External Payment ${transactionId}`, 'Credit'); // Just log it, 0 amount as it was direct payment
+          updateWallet(currentUser.id, 0, `External Payment ${transactionId}`, 'Credit'); 
       }
       processSuccessfulOrder('GATEWAY');
   };
   
-  // Content definitions...
   const content = {
     privacy: {
       title: 'Privacy Policy',
@@ -193,10 +180,7 @@ export const InfoPage: React.FC<InfoPageProps> = ({ type }) => {
                           </div>
 
                           <div className="mt-4 flex justify-end">
-                             <button 
-                                onClick={() => removeFromCart(item.id)}
-                                className="text-xs uppercase text-cream/40 hover:text-red-400 flex items-center transition-colors"
-                             >
+                             <button onClick={() => removeFromCart(item.id)} className="text-xs uppercase text-cream/40 hover:text-red-400 flex items-center transition-colors">
                                 <Trash2 size={14} className="mr-1" /> Remove
                              </button>
                           </div>
@@ -206,18 +190,30 @@ export const InfoPage: React.FC<InfoPageProps> = ({ type }) => {
                 </div>
                 
                 <div className="border-t-2 border-golden-orange pt-6 mb-8">
-                   <div className="flex justify-between items-center mb-2">
-                      <span className="font-serif text-xl text-cream">Subtotal</span>
-                      <span className="font-serif text-3xl text-golden-orange">${cartTotal}</span>
+                   <div className="space-y-2 mb-6">
+                       <div className="flex justify-between items-center text-cream/60 text-sm">
+                          <span>Subtotal</span>
+                          <span>${cartTotal.toFixed(2)}</span>
+                       </div>
+                       {isPremium && (
+                           <div className="flex justify-between items-center text-golden-orange text-sm">
+                               <span className="flex items-center gap-1"><Crown size={14}/> Premium Discount (5%)</span>
+                               <span>-${discountAmount.toFixed(2)}</span>
+                           </div>
+                       )}
+                       <div className="flex justify-between items-center text-xl font-serif text-cream pt-2 border-t border-white/5">
+                          <span>Total</span>
+                          <span className="text-golden-orange">${finalTotal.toFixed(2)}</span>
+                       </div>
                    </div>
                    
                    {isAuthenticated && currentUser && (
-                       <div className={`flex justify-between items-center mb-6 p-4 rounded-sm border ${currentUser.walletBalance >= cartTotal ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+                       <div className={`flex justify-between items-center mb-6 p-4 rounded-sm border ${currentUser.walletBalance >= finalTotal ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
                            <div className="flex items-center gap-2">
-                               <Wallet size={16} className={currentUser.walletBalance >= cartTotal ? 'text-green-400' : 'text-red-400'}/>
+                               <Wallet size={16} className={currentUser.walletBalance >= finalTotal ? 'text-green-400' : 'text-red-400'}/>
                                <span className="text-sm text-cream">Wallet Balance: <span className="font-bold">${currentUser.walletBalance.toFixed(2)}</span></span>
                            </div>
-                           {currentUser.walletBalance < cartTotal && (
+                           {currentUser.walletBalance < finalTotal && (
                                <Link to="/dashboard" className="text-xs underline text-golden-orange hover:text-white">Fund Wallet</Link>
                            )}
                        </div>
@@ -225,7 +221,7 @@ export const InfoPage: React.FC<InfoPageProps> = ({ type }) => {
 
                    <div className="flex flex-col gap-4">
                      <Button fullWidth onClick={handleCheckoutClick} className="flex justify-center items-center">
-                        {isAuthenticated && currentUser && currentUser.walletBalance >= cartTotal ? "Pay with Wallet" : "Secure Checkout"} <ArrowRight size={16} className="ml-2" />
+                        {isAuthenticated && currentUser && currentUser.walletBalance >= finalTotal ? "Pay with Wallet" : "Secure Checkout"} <ArrowRight size={16} className="ml-2" />
                      </Button>
                      <Link to="/catalog">
                         <Button fullWidth variant="outline">Continue Shopping</Button>
@@ -245,7 +241,7 @@ export const InfoPage: React.FC<InfoPageProps> = ({ type }) => {
     <div className="min-h-screen bg-espresso pt-20 pb-20 animate-fade-in">
       {showPaymentModal && currentUser && (
           <PaymentModal 
-            amount={cartTotal} 
+            amount={finalTotal} 
             description={`Order Checkout (${cart.length} items)`}
             userId={currentUser.id}
             onSuccess={handlePaymentSuccess}

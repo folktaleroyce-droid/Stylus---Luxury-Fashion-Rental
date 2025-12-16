@@ -21,6 +21,17 @@ export interface Review {
   date: string;
 }
 
+export interface PartnerReview {
+  id: string;
+  authorId: string;
+  authorName: string;
+  rating: number;
+  comment: string;
+  date: string;
+  orderId: string;
+  itemId: string;
+}
+
 export interface DeliveryDetails {
   courier: string; // e.g., 'Uber Package', 'Bolt Send', 'Gokada', 'DHL', 'Private Rider'
   riderName?: string;
@@ -61,6 +72,9 @@ export interface ProductFilter {
   occasion: string;
   maxPrice: number;
   sortBy: SortOption;
+  duration: string;
+  state: string; // New
+  city: string; // New
 }
 
 export interface ChatMessage {
@@ -84,6 +98,6 @@ export interface Transaction {
 export interface UserProfile {
   name: string;
   memberSince: string;
-  subscriptionTier: 'Gold' | 'Platinum' | 'Diamond';
+  subscriptionTier: 'Ordinary' | 'Premium'; // Updated
   activeRentals: number;
 }

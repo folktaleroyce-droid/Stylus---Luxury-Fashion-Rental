@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Category, Product, ProductFilter, SortOption } from '../types';
-import { Filter, Search, X, Eye, ArrowUpDown, Heart, ShoppingBag, SlidersHorizontal, ChevronDown, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Filter, Search, X, Eye, ArrowUpDown, Heart, ShoppingBag, SlidersHorizontal, ChevronDown, Sparkles, ChevronLeft, ChevronRight, Clock, MapPin } from 'lucide-react';
 import { useProduct } from '../context/ProductContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useCart } from '../context/CartContext';
@@ -11,7 +11,7 @@ import { getRecommendations } from '../services/geminiService';
 
 export const Catalog: React.FC = () => {
   const { products } = useProduct();
-  const { addToSearchHistory, currentUser } = useAuth();
+  const { addToSearchHistory, currentUser, registeredUsers } = useAuth();
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   const [quickViewIndex, setQuickViewIndex] = useState(0);
   
@@ -26,16 +26,17 @@ export const Catalog: React.FC = () => {
     size: 'All',
     occasion: 'All',
     maxPrice: 5000,
-    sortBy: 'newest'
+    sortBy: 'newest',
+    duration: 'All',
+    state: 'All',
+    city: 'All'
   });
 
   useEffect(() => {
-      // Reset index when product changes
       setQuickViewIndex(0);
   }, [quickViewProduct]);
 
   useEffect(() => {
-      // Fetch AI recommendations if user has history
       const fetchRecs = async () => {
           if (currentUser?.searchHistory && currentUser.searchHistory.length > 0) {
               const recs = await getRecommendations(currentUser.searchHistory, "Browsing Full Catalog");
@@ -45,7 +46,6 @@ export const Catalog: React.FC = () => {
       fetchRecs();
   }, [currentUser]);
 
-  // Debounced Search Tracking
   useEffect(() => {
       const timer = setTimeout(() => {
           if (filters.searchQuery.length > 3) {
@@ -58,8 +58,18 @@ export const Catalog: React.FC = () => {
   const colors = ['All', ...Array.from(new Set(products.map(p => p.color).filter(Boolean)))];
   const occasions = ['All', ...Array.from(new Set(products.map(p => p.occasion).filter(Boolean)))];
   const sizes = ['All', ...Array.from(new Set(products.flatMap(p => p.availableSizes).filter(Boolean))).sort()];
+  
+  // Extract Locations from Partners
+  const partners = registeredUsers.filter(u => u.role === 'Partner');
+  const availableStates = ['All', ...Array.from(new Set(partners.map(p => p.state).filter(Boolean)))];
+  const availableCities = ['All', ...Array.from(new Set(partners.filter(p => filters.state === 'All' || p.state === filters.state).map(p => p.city).filter(Boolean)))];
 
   const filteredProducts = products.filter(p => {
+    // Determine product owner location
+    const owner = registeredUsers.find(u => u.id === p.ownerId);
+    const ownerState = owner?.state || 'New York'; // Default fallback
+    const ownerCity = owner?.city || 'New York';
+
     const matchCategory = filters.category === 'All' || p.category === filters.category;
     const matchSearch = p.name.toLowerCase().includes(filters.searchQuery.toLowerCase()) || 
                         p.brand.toLowerCase().includes(filters.searchQuery.toLowerCase());
@@ -67,8 +77,15 @@ export const Catalog: React.FC = () => {
     const matchOccasion = filters.occasion === 'All' || p.occasion === filters.occasion;
     const matchSize = filters.size === 'All' || p.availableSizes.includes(filters.size);
     const matchPrice = p.rentalPrice <= filters.maxPrice;
+    
+    const matchDuration = filters.duration === 'All' || 
+                          !p.rentalDuration || 
+                          p.rentalDuration === Number(filters.duration);
+    
+    const matchState = filters.state === 'All' || ownerState === filters.state;
+    const matchCity = filters.city === 'All' || ownerCity === filters.city;
 
-    return matchCategory && matchSearch && matchColor && matchOccasion && matchSize && matchPrice;
+    return matchCategory && matchSearch && matchColor && matchOccasion && matchSize && matchPrice && matchDuration && matchState && matchCity;
   }).sort((a, b) => {
     if (filters.sortBy === 'price_asc') {
       return a.rentalPrice - b.rentalPrice;
@@ -86,7 +103,10 @@ export const Catalog: React.FC = () => {
       size: 'All',
       occasion: 'All',
       maxPrice: 5000,
-      sortBy: 'newest'
+      sortBy: 'newest',
+      duration: 'All',
+      state: 'All',
+      city: 'All'
     });
   };
 
@@ -121,7 +141,6 @@ export const Catalog: React.FC = () => {
                 <div className="w-full md:w-1/2 h-64 md:h-[500px] bg-white/5 relative group">
                     <img src={quickViewProduct.images[quickViewIndex]} alt={quickViewProduct.name} className="w-full h-full object-cover" />
                     
-                    {/* Navigation Arrows for Quick View */}
                     {quickViewProduct.images.length > 1 && (
                         <>
                             <button 
@@ -136,7 +155,6 @@ export const Catalog: React.FC = () => {
                             >
                                 <ChevronRight size={24} />
                             </button>
-                            {/* Dots */}
                             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
                                 {quickViewProduct.images.map((_, idx) => (
                                     <div key={idx} className={`w-1.5 h-1.5 rounded-full transition-all ${quickViewIndex === idx ? 'bg-golden-orange scale-125' : 'bg-white/50'}`} />
@@ -180,7 +198,7 @@ export const Catalog: React.FC = () => {
         </div>
       )}
 
-      {/* Hero & Prominent Search */}
+      {/* Hero & Search */}
       <div className="bg-[#1a0a04] pt-12 pb-12 px-4 border-b border-white/5 shadow-xl relative overflow-hidden">
         <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#e1af4d 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>
         <div className="max-w-7xl mx-auto text-center relative z-10">
@@ -201,8 +219,6 @@ export const Catalog: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
-        
-        {/* AI Recommendations */}
         {currentUser && aiRecs && (
             <div className="mb-10 bg-gradient-to-r from-[#1f0c05] to-[#2a1208] border border-golden-orange/30 p-6 rounded-sm relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-4 text-golden-orange/10"><Sparkles size={80}/></div>
@@ -224,7 +240,7 @@ export const Catalog: React.FC = () => {
                 </button>
             </div>
           
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-6">
                 <div className="w-full">
                     <label className="text-[10px] text-cream/50 uppercase tracking-widest mb-2 block font-bold">Category</label>
                     <div className="relative">
@@ -239,6 +255,35 @@ export const Catalog: React.FC = () => {
                         <ChevronDown size={12} className="absolute right-3 top-3 text-cream/30 pointer-events-none"/>
                     </div>
                 </div>
+
+                <div className="w-full">
+                    <label className="text-[10px] text-cream/50 uppercase tracking-widest mb-2 block font-bold">State</label>
+                    <div className="relative">
+                        <select 
+                            value={filters.state}
+                            onChange={(e) => updateFilter('state', e.target.value)}
+                            className="w-full bg-[#1a0a04] border border-white/10 text-cream px-3 py-2.5 text-sm focus:border-golden-orange outline-none appearance-none rounded-sm cursor-pointer"
+                        >
+                            {availableStates.map(s => <option key={s} value={s} className="bg-[#1f0c05] text-cream">{s}</option>)}
+                        </select>
+                        <ChevronDown size={12} className="absolute right-3 top-3 text-cream/30 pointer-events-none"/>
+                    </div>
+                </div>
+
+                <div className="w-full">
+                    <label className="text-[10px] text-cream/50 uppercase tracking-widest mb-2 block font-bold">City</label>
+                    <div className="relative">
+                        <select 
+                            value={filters.city}
+                            onChange={(e) => updateFilter('city', e.target.value)}
+                            className="w-full bg-[#1a0a04] border border-white/10 text-cream px-3 py-2.5 text-sm focus:border-golden-orange outline-none appearance-none rounded-sm cursor-pointer"
+                            disabled={filters.state === 'All'}
+                        >
+                             {availableCities.map(c => <option key={c} value={c} className="bg-[#1f0c05] text-cream">{c}</option>)}
+                        </select>
+                        <ChevronDown size={12} className="absolute right-3 top-3 text-cream/30 pointer-events-none"/>
+                    </div>
+                </div>
                 
                 <div className="w-full">
                     <label className="text-[10px] text-cream/50 uppercase tracking-widest mb-2 block font-bold">Size</label>
@@ -249,20 +294,6 @@ export const Catalog: React.FC = () => {
                             className="w-full bg-[#1a0a04] border border-white/10 text-cream px-3 py-2.5 text-sm focus:border-golden-orange outline-none appearance-none rounded-sm cursor-pointer"
                         >
                             {sizes.map(s => <option key={s} value={s} className="bg-[#1f0c05] text-cream">{s}</option>)}
-                        </select>
-                        <ChevronDown size={12} className="absolute right-3 top-3 text-cream/30 pointer-events-none"/>
-                    </div>
-                </div>
-
-                <div className="w-full">
-                    <label className="text-[10px] text-cream/50 uppercase tracking-widest mb-2 block font-bold">Color</label>
-                    <div className="relative">
-                        <select 
-                            value={filters.color}
-                            onChange={(e) => updateFilter('color', e.target.value)}
-                            className="w-full bg-[#1a0a04] border border-white/10 text-cream px-3 py-2.5 text-sm focus:border-golden-orange outline-none appearance-none rounded-sm cursor-pointer"
-                        >
-                            {colors.map(c => <option key={c} value={c} className="bg-[#1f0c05] text-cream">{c}</option>)}
                         </select>
                         <ChevronDown size={12} className="absolute right-3 top-3 text-cream/30 pointer-events-none"/>
                     </div>
@@ -319,9 +350,30 @@ export const Catalog: React.FC = () => {
 
         {/* Product Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
-          {filteredProducts.map((product) => (
-            <ProductCard key={product.id} product={product} onQuickView={setQuickViewProduct} />
-          ))}
+          {filteredProducts.map((product) => {
+             const owner = registeredUsers.find(u => u.id === product.ownerId);
+             const rating = owner?.averageRating;
+
+             return (
+                 <div key={product.id} className="relative">
+                    <ProductCard product={product} onQuickView={setQuickViewProduct} />
+                    {/* Partner Info Overlay on Card */}
+                    <div className="absolute top-4 left-4 z-10 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 flex items-center gap-2">
+                        <MapPin size={10} className="text-golden-orange" />
+                        <span className="text-[10px] text-cream uppercase font-bold">{owner?.state || 'NY'}, {owner?.city || 'NYC'}</span>
+                        {rating && rating > 0 && (
+                            <>
+                                <div className="h-3 w-px bg-white/20 mx-1"></div>
+                                <div className="flex items-center gap-1">
+                                    <span className="text-golden-orange font-bold text-[10px]">{rating.toFixed(1)}</span>
+                                    <Heart size={10} className="fill-golden-orange text-golden-orange"/>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                 </div>
+             );
+          })}
           {filteredProducts.length === 0 && (
             <div className="col-span-full text-center py-20 text-cream/50 bg-white/5 rounded-sm border border-white/5 border-dashed">
               <Search size={48} className="mx-auto mb-4 opacity-20"/>
@@ -368,7 +420,6 @@ const ProductCard: React.FC<{ product: Product; onQuickView: (p: Product) => voi
            <img src={product.images[1]} alt={product.name} className="absolute inset-0 h-full w-full object-cover object-center opacity-0 group-hover:opacity-100 transition-opacity duration-700 ease-in-out" />
         )}
         
-        {/* Hover Actions */}
         <div className="absolute top-4 right-4 z-20 flex flex-col gap-2 translate-x-12 group-hover:translate-x-0 transition-transform duration-300">
             <button onClick={handleQuickAdd} className="p-3 rounded-full bg-espresso/80 text-cream hover:bg-golden-orange hover:text-espresso transition-all shadow-lg border border-white/10" title="Quick Add">
                 <ShoppingBag size={18} />

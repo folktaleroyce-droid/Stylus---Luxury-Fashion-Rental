@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Role, VerificationStatus, Transaction } from '../types';
+import { Role, VerificationStatus, Transaction, PartnerReview } from '../types';
 
 // Extended User Interface
 export interface RegisteredUser {
@@ -8,13 +8,15 @@ export interface RegisteredUser {
   email: string;
   phone: string;
   address: string;
+  state?: string; // New
+  city?: string; // New
   tier: string;
   role: Role;
   status: 'Active' | 'Suspended';
   verificationStatus: VerificationStatus;
   verificationDocs?: {
     bvn?: string;
-    idType?: string; // Added idType
+    idType?: string; 
     govIdUrl?: string; 
     state?: string;
     lga?: string;
@@ -29,14 +31,17 @@ export interface RegisteredUser {
   lastActive: string;
   avgSpend: string;
   rentalHistoryCount: number;
-  searchHistory: string[]; // Added search history
-  location?: string; // Added location for delivery calc
+  searchHistory: string[];
+  location?: string;
+  subscriptionStatus: 'Ordinary' | 'Premium'; // New
+  partnerReviews?: PartnerReview[]; // New for Partners
+  averageRating?: number; // New for Partners
 }
 
 interface AuthContextType {
   isAuthenticated: boolean;
   isAdmin: boolean;
-  isLoading: boolean; // Added isLoading
+  isLoading: boolean;
   currentUser: RegisteredUser | null;
   registeredUsers: RegisteredUser[];
   transactions: Transaction[];
@@ -55,12 +60,14 @@ interface AuthContextType {
   processWithdrawal: (transactionId: string) => void;
   deleteUser: (id: string) => void;
   addToSearchHistory: (query: string) => void;
+  upgradeSubscription: (id: string) => void; // New
+  submitPartnerReview: (partnerId: string, review: PartnerReview) => void; // New
 }
 
 const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   isAdmin: false,
-  isLoading: true, // Default to true
+  isLoading: true,
   currentUser: null,
   registeredUsers: [],
   transactions: [],
@@ -79,6 +86,8 @@ const AuthContext = createContext<AuthContextType>({
   processWithdrawal: () => {},
   deleteUser: () => {},
   addToSearchHistory: () => {},
+  upgradeSubscription: () => {},
+  submitPartnerReview: () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -91,6 +100,8 @@ const MOCK_USERS_DB: RegisteredUser[] = [
     email: 'partner@stylus.com', 
     phone: '+44 20 7946 0958', 
     address: '85 Albert Embankment, London', 
+    state: 'London',
+    city: 'Lambeth',
     tier: 'Platinum', 
     role: 'Partner', 
     status: 'Active', 
@@ -102,11 +113,14 @@ const MOCK_USERS_DB: RegisteredUser[] = [
     walletBalance: 5200, 
     location: 'London, UK',
     searchHistory: [],
+    subscriptionStatus: 'Ordinary',
     verificationDocs: { 
         businessName: 'Luxe Attire Ltd', 
         cacNumber: 'RC-998877',
-        cacCertUrl: 'https://images.unsplash.com/photo-1555601568-c9e61309063d?q=80&w=1000&auto=format&fit=crop' // Mock Cert
-    } 
+        cacCertUrl: 'https://images.unsplash.com/photo-1555601568-c9e61309063d?q=80&w=1000&auto=format&fit=crop' 
+    },
+    partnerReviews: [],
+    averageRating: 5.0
   },
   { 
     id: '2', 
@@ -114,6 +128,8 @@ const MOCK_USERS_DB: RegisteredUser[] = [
     email: 'user@stylus.com', 
     phone: '+1 (555) 019-2834', 
     address: '1984 Cyberdyne Ln, LA', 
+    state: 'California',
+    city: 'Los Angeles',
     tier: 'Gold', 
     role: 'User', 
     status: 'Active', 
@@ -124,7 +140,8 @@ const MOCK_USERS_DB: RegisteredUser[] = [
     rentalHistoryCount: 1, 
     walletBalance: 200,
     location: 'Los Angeles, USA',
-    searchHistory: ['Cocktail Dresses', 'Gucci Bags']
+    searchHistory: ['Cocktail Dresses', 'Gucci Bags'],
+    subscriptionStatus: 'Ordinary'
   },
   { 
     id: '3', 
@@ -132,6 +149,8 @@ const MOCK_USERS_DB: RegisteredUser[] = [
     email: 'e.ripley@example.com', 
     phone: '+1 (555) 011-3344', 
     address: 'Nostromo Station', 
+    state: 'New York',
+    city: 'New York',
     tier: 'Diamond', 
     role: 'Admin', 
     status: 'Active', 
@@ -142,7 +161,8 @@ const MOCK_USERS_DB: RegisteredUser[] = [
     rentalHistoryCount: 8, 
     walletBalance: 0,
     location: 'New York, USA',
-    searchHistory: []
+    searchHistory: [],
+    subscriptionStatus: 'Premium'
   },
   { 
     id: '4', 
@@ -150,6 +170,8 @@ const MOCK_USERS_DB: RegisteredUser[] = [
     email: 'v.sterling@example.com', 
     phone: '+1 (555) 010-9988', 
     address: '125 Park Ave, NYC', 
+    state: 'New York',
+    city: 'Manhattan',
     tier: 'Diamond', 
     role: 'User', 
     status: 'Active', 
@@ -167,7 +189,31 @@ const MOCK_USERS_DB: RegisteredUser[] = [
         state: 'New York',
         lga: 'Manhattan',
         govIdUrl: 'https://images.unsplash.com/photo-1633265486064-084b2195299b?q=80&w=1000&auto=format&fit=crop'
-    }
+    },
+    subscriptionStatus: 'Premium'
+  },
+  { 
+    id: 'stylus-official', 
+    name: 'Stylus Official', 
+    email: 'concierge@stylus.com', 
+    phone: '', 
+    address: 'HQ', 
+    state: 'New York',
+    city: 'New York',
+    tier: 'Diamond', 
+    role: 'Partner', 
+    status: 'Active', 
+    verificationStatus: 'Verified', 
+    joined: 'Jan 01, 2023', 
+    lastActive: 'Now', 
+    avgSpend: '', 
+    rentalHistoryCount: 0, 
+    walletBalance: 0, 
+    location: 'New York, USA',
+    searchHistory: [],
+    subscriptionStatus: 'Premium',
+    partnerReviews: [],
+    averageRating: 5.0
   },
 ];
 
@@ -181,7 +227,7 @@ const MOCK_TRANSACTIONS: Transaction[] = [
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); // Initial loading state
+  const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<RegisteredUser | null>(null);
   const [registeredUsers, setRegisteredUsers] = useState<RegisteredUser[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -226,23 +272,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
     
-    // Auth check complete
     setIsLoading(false);
   }, []);
 
-  // CROSS-TAB SYNC: Listen for storage changes to update state in other tabs
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
         if (e.key === 'stylus_users_db') {
             const newUsers = e.newValue ? JSON.parse(e.newValue) : [];
             setRegisteredUsers(newUsers);
-            
-            // If the currently logged in user was updated, reflect changes immediately
             if (currentUser) {
                 const updatedMe = newUsers.find((u: RegisteredUser) => u.id === currentUser.id);
                 if (updatedMe) {
                     setCurrentUser(updatedMe);
-                    // Also update admin status if role changed
                     setIsAdmin(updatedMe.role === 'Admin');
                 }
             }
@@ -257,7 +298,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [currentUser]);
 
-  // Save DB changes
   useEffect(() => {
     if (registeredUsers.length > 0) {
       localStorage.setItem('stylus_users_db', JSON.stringify(registeredUsers));
@@ -269,7 +309,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [transactions]);
 
   const login = (emailOrName: string, password?: string) => {
-    // 1. Check for SPECIAL Credentials logic as requested
     if (emailOrName === 'Stylus') {
       if (password === 'Sty!usAdm1n#29XQ') {
         const adminUser = registeredUsers.find(u => u.role === 'Admin') || MOCK_USERS_DB[2];
@@ -316,9 +355,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       lastActive: 'Just now',
       avgSpend: '$0',
       rentalHistoryCount: 0,
-      walletBalance: role === 'Partner' ? 0 : 500, // Sign up bonus for demo
+      walletBalance: role === 'Partner' ? 0 : 500, 
       location: 'New York, USA',
-      searchHistory: []
+      searchHistory: [],
+      subscriptionStatus: 'Ordinary'
     };
     
     setRegisteredUsers(prev => {
@@ -349,16 +389,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const submitVerification = (id: string, docs: Partial<RegisteredUser['verificationDocs']>) => {
-    // 1. Calculate new state first
     const updatedUsers = registeredUsers.map(u => 
        u.id === id ? { ...u, verificationStatus: 'Pending' as VerificationStatus, verificationDocs: { ...u.verificationDocs, ...docs } } : u
     );
     setRegisteredUsers(updatedUsers);
-    
-    // 2. Find the user from the UPDATED list to ensure we have the latest data
     const user = updatedUsers.find(u => u.id === id);
 
-    // If it's a partner, log the registration fee transaction
     if (user && user.role === 'Partner') {
         const feeTx: Transaction = {
             id: `tx-fee-${Date.now()}`,
@@ -369,12 +405,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             description: 'One-Time Partnership Verification Fee',
             date: new Date().toLocaleDateString(),
             status: 'Completed',
-            paymentMethod: 'Card ending ****' // Simulated
+            paymentMethod: 'Card ending ****'
         };
         setTransactions(prev => [feeTx, ...prev]);
     }
 
-    // 3. Update currentUser if it matches the modified user
     if (currentUser?.id === id) {
          if (user) setCurrentUser(user);
     }
@@ -383,7 +418,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const approveVerification = (id: string) => {
     const updatedUsers = registeredUsers.map(u => u.id === id ? { ...u, verificationStatus: 'Verified' as VerificationStatus } : u);
     setRegisteredUsers(updatedUsers);
-    // Explicitly update current user if it matches, to trigger immediate UI refresh in single-page context
     if (currentUser?.id === id) setCurrentUser(updatedUsers.find(u => u.id === id) || null);
   };
 
@@ -397,7 +431,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updatedUsers = registeredUsers.map(u => u.id === id ? { ...u, walletBalance: u.walletBalance + amount } : u);
     setRegisteredUsers(updatedUsers);
     
-    // Log Transaction
     const user = registeredUsers.find(u => u.id === id);
     const newTx: Transaction = {
         id: `tx-${Date.now()}`,
@@ -416,20 +449,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
   
   const transferFunds = (fromId: string, toId: string, amount: number, description: string) => {
-      // Deduct from Sender
       updateWallet(fromId, -amount, `Payment Out: ${description}`, 'Debit');
-      // Credit to Receiver
       updateWallet(toId, amount, `Payment In: ${description}`, 'Credit');
   };
 
   const requestWithdrawal = (id: string, amount: number, bankDetails: string) => {
-      // 1. Deduct from wallet balance immediately (Escrow)
       const updatedUsers = registeredUsers.map(u => u.id === id ? { ...u, walletBalance: u.walletBalance - amount } : u);
       setRegisteredUsers(updatedUsers);
       
       const user = registeredUsers.find(u => u.id === id);
-      
-      // 2. Create Pending Transaction
       const withdrawalTx: Transaction = {
           id: `tx-wd-${Date.now()}`,
           userId: id,
@@ -460,11 +488,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addToSearchHistory = (query: string) => {
       if (!currentUser) return;
       const history = currentUser.searchHistory || [];
-      const newHistory = [query, ...history].slice(0, 5); // Keep last 5
+      const newHistory = [query, ...history].slice(0, 5); 
       
       const updatedUsers = registeredUsers.map(u => u.id === currentUser.id ? { ...u, searchHistory: newHistory } : u);
       setRegisteredUsers(updatedUsers);
       setCurrentUser({ ...currentUser, searchHistory: newHistory });
+  };
+
+  const upgradeSubscription = (id: string) => {
+    const updatedUsers = registeredUsers.map(u => u.id === id ? { ...u, subscriptionStatus: 'Premium' as const } : u);
+    setRegisteredUsers(updatedUsers);
+    if (currentUser?.id === id) setCurrentUser(updatedUsers.find(u => u.id === id) || null);
+    
+    // Log Payment
+    updateWallet(id, 0, 'Subscription Upgrade: Premium Plan', 'Debit'); // Assume payment handled by modal
+  };
+
+  const submitPartnerReview = (partnerId: string, review: PartnerReview) => {
+    const updatedUsers = registeredUsers.map(u => {
+        if (u.id === partnerId) {
+            const currentReviews = u.partnerReviews || [];
+            // Check for duplicate
+            if (currentReviews.some(r => r.orderId === review.orderId && r.itemId === review.itemId)) {
+                return u; // Already rated
+            }
+            const newReviews = [review, ...currentReviews];
+            const newAvg = newReviews.reduce((acc, r) => acc + r.rating, 0) / newReviews.length;
+            return { ...u, partnerReviews: newReviews, averageRating: newAvg };
+        }
+        return u;
+    });
+    setRegisteredUsers(updatedUsers);
   };
 
   const logout = () => {
@@ -497,7 +551,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       requestWithdrawal,
       processWithdrawal,
       deleteUser,
-      addToSearchHistory
+      addToSearchHistory,
+      upgradeSubscription,
+      submitPartnerReview
     }}>
       {children}
     </AuthContext.Provider>
