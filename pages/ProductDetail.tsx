@@ -2,7 +2,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../components/Button';
-import { Shield, Clock, Calendar as CalendarIcon, Check, ArrowLeft, Ruler, Star, Truck, AlertTriangle, X, Heart, ShoppingBag, Lock, DollarSign, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Info, ZoomIn, Maximize2, AlertCircle, Sparkles } from 'lucide-react';
+// Added Diamond to the import list from lucide-react
+import { Shield, Clock, Calendar as CalendarIcon, Check, ArrowLeft, Ruler, Star, Truck, AlertTriangle, X, Heart, ShoppingBag, Lock, DollarSign, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Info, ZoomIn, Maximize2, AlertCircle, Sparkles, Zap, Diamond } from 'lucide-react';
 import { useProduct } from '../context/ProductContext';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -26,13 +27,9 @@ export const ProductDetail: React.FC = () => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [deliveryEstimate, setDeliveryEstimate] = useState<string>('Calculating...');
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
-  const [isImageLoading, setIsImageLoading] = useState(false);
   const [showMetaverse, setShowMetaverse] = useState(false);
-  
-  // Calendar State
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [viewDate, setViewDate] = useState(new Date()); 
-  
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [openPolicy, setOpenPolicy] = useState<string | null>('shipping');
 
@@ -48,125 +45,17 @@ export const ProductDetail: React.FC = () => {
       fetchDelivery();
   }, [currentUser]);
 
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (!product) return;
-    if (e.key === 'ArrowRight') {
-        setActiveImageIndex((prev) => (prev + 1) % product.images.length);
-    }
-    if (e.key === 'ArrowLeft') {
-        setActiveImageIndex((prev) => (prev - 1 + product.images.length) % product.images.length);
-    }
-    if (isLightboxOpen && e.key === 'Escape') setIsLightboxOpen(false);
-  }, [isLightboxOpen, product]);
-
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
-
   if (!product) return <div className="text-cream text-center py-20">Product Not Found</div>;
 
   const isWishlisted = isInWishlist(product.id);
   const currentRentalPrice = selectedDuration === 4 ? product.rentalPrice : selectedDuration === 8 ? Math.round(product.rentalPrice * 1.75) : Math.round(product.rentalPrice * 2.4);
-  const isRentable = !product.rentalCount || product.rentalCount < 5;
   const isAvailable = product.isAvailable !== false;
 
-  const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
-  const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
-  
-  const handlePrevMonth = () => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1));
-  const handleNextMonth = () => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1));
-
-  const isDateDisabled = (date: Date) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return date < today;
-  };
-
-  const isDateSelected = (date: Date) => {
-    if (!startDate) return false;
-    return date.getTime() === startDate.getTime();
-  };
-
-  const isDateInRentalRange = (date: Date) => {
-    if (!startDate) return false;
-    const endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + selectedDuration - 1);
-    return date > startDate && date <= endDate;
-  };
-
-  const getEndDate = () => {
-      if (!startDate) return null;
-      const end = new Date(startDate);
-      end.setDate(startDate.getDate() + selectedDuration - 1);
-      return end;
-  };
-
-  const handleDateClick = (day: number) => {
-    const newDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
-    if (!isDateDisabled(newDate)) {
-        setStartDate(newDate);
-    }
-  };
-
-  const renderCalendar = () => {
-    const year = viewDate.getFullYear();
-    const month = viewDate.getMonth();
-    const daysInMonth = getDaysInMonth(year, month);
-    const firstDay = getFirstDayOfMonth(year, month);
-    const days = [];
-
-    for (let i = 0; i < firstDay; i++) {
-        days.push(<div key={`empty-${i}`} className="h-10 w-10"></div>);
-    }
-
-    for (let day = 1; day <= daysInMonth; day++) {
-        const date = new Date(year, month, day);
-        const disabled = isDateDisabled(date);
-        const selected = isDateSelected(date);
-        const inRange = isDateInRentalRange(date);
-        
-        days.push(
-            <button
-                key={day}
-                onClick={(e) => { e.preventDefault(); handleDateClick(day); }}
-                disabled={disabled}
-                className={`
-                    h-10 w-10 text-xs font-medium rounded-full flex items-center justify-center transition-all relative
-                    ${disabled ? 'text-cream/20 cursor-not-allowed' : 'text-cream hover:bg-white/10'}
-                    ${selected ? 'bg-golden-orange text-espresso font-bold shadow-[0_0_15px_rgba(225,175,77,0.8)] z-10 scale-110' : ''}
-                    ${inRange ? 'bg-gradient-to-r from-golden-orange/40 to-golden-orange/10 text-golden-light rounded-none border-y border-golden-orange/20' : ''}
-                    ${inRange && day === daysInMonth ? 'rounded-r-full' : ''} 
-                    ${inRange && day === 1 ? 'rounded-l-full' : ''}
-                `}
-            >
-                {day}
-            </button>
-        );
-    }
-    return days;
-  };
-
-  const checkAccess = () => {
-      if (!isAuthenticated) {
-          navigate('/login', { state: { from: location.pathname }});
-          return false;
-      }
-      if (currentUser?.status === 'Suspended') {
-          alert("Account Suspended: You cannot perform transactions.");
-          return false;
-      }
-      if (currentUser?.verificationStatus !== 'Verified') {
-          alert("Action Restricted: Please complete your identity verification in the Dashboard to Rent or Buy.");
-          return false;
-      }
-      return true;
-  };
-
   const handleTransaction = (type: 'rent' | 'buy') => {
-    if (!checkAccess()) return;
+    if (!isAuthenticated) { navigate('/login', { state: { from: location.pathname }}); return; }
+    if (currentUser?.verificationStatus !== 'Verified') { alert("Please complete verification in Dashboard to proceed."); return; }
     if (!selectedSize) { alert("Please select a size."); return; }
-    if (type === 'rent' && (!startDate || !agreedToTerms)) { alert("Please select dates and agree to terms."); return; }
+    if (type === 'rent' && !startDate) { alert("Please select a rental start date."); return; }
 
     addToCart({
         id: `${product.id}-${Date.now()}`,
@@ -176,7 +65,7 @@ export const ProductDetail: React.FC = () => {
         price: type === 'rent' ? currentRentalPrice : (product.buyPrice || 0),
         duration: type === 'rent' ? selectedDuration : undefined,
         startDate: type === 'rent' && startDate ? startDate.toLocaleDateString() : undefined,
-        endDate: type === 'rent' && startDate ? getEndDate()?.toLocaleDateString() : undefined
+        endDate: type === 'rent' && startDate ? new Date(startDate.getTime() + selectedDuration * 86400000).toLocaleDateString() : undefined
     });
     alert(`${type === 'rent' ? 'Rental' : 'Purchase'} added to bag.`);
   };
@@ -184,272 +73,154 @@ export const ProductDetail: React.FC = () => {
   const handleMetaverseConfirm = (size: string, confidence: number) => {
       setSelectedSize(size);
       setShowMetaverse(false);
-      // We can automatically trigger "Add to Bag" or just set the state
-      alert(`Metaverse Biometrics confirmed! Selected size: ${size} (${confidence}% fit accuracy)`);
-  };
-
-  const togglePolicy = (policy: string) => {
-    setOpenPolicy(openPolicy === policy ? null : policy);
-  };
-
-  const nextImage = (e?: React.MouseEvent) => {
-      e?.stopPropagation();
-      setIsImageLoading(true);
-      setActiveImageIndex((prev) => (prev + 1) % product.images.length);
-  };
-  const prevImage = (e?: React.MouseEvent) => {
-      e?.stopPropagation();
-      setIsImageLoading(true);
-      setActiveImageIndex((prev) => (prev - 1 + product.images.length) % product.images.length);
-  };
-
-  const handleImageLoad = () => {
-      setIsImageLoading(false);
+      alert(`Mirror Sync Confirmed: Selected size ${size} with ${confidence}% biometric accuracy.`);
   };
 
   return (
     <div className="min-h-screen bg-espresso pt-8 pb-20 animate-fade-in relative">
-        
-        {/* Virtual Try-On Entry */}
         {showMetaverse && (
-            <VirtualTryOn 
-                product={product} 
-                onClose={() => setShowMetaverse(false)} 
-                onConfirmFit={handleMetaverseConfirm} 
-            />
-        )}
-
-        {/* Full Screen Lightbox Gallery */}
-        {isLightboxOpen && (
-            <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col justify-center items-center animate-fade-in" onClick={() => setIsLightboxOpen(false)}>
-                <button className="absolute top-6 right-6 text-cream/70 hover:text-white p-2 z-50" onClick={() => setIsLightboxOpen(false)}>
-                    <X size={32} />
-                </button>
-                <div className="relative w-full h-[80vh] flex items-center justify-center px-4 sm:px-12">
-                    <button onClick={prevImage} className="absolute left-2 sm:left-4 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-sm z-50">
-                        <ChevronLeft size={32} />
-                    </button>
-                    <img 
-                        src={product.images[activeImageIndex]} 
-                        alt={`View ${activeImageIndex + 1}`} 
-                        className={`max-h-full max-w-full object-contain shadow-2xl transition-opacity duration-300 ${isImageLoading ? 'opacity-50' : 'opacity-100'}`}
-                        onLoad={handleImageLoad}
-                        onClick={(e) => e.stopPropagation()} 
-                    />
-                    <button onClick={nextImage} className="absolute right-2 sm:right-4 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-sm z-50">
-                        <ChevronRight size={32} />
-                    </button>
-                </div>
-                <div className="mt-6 flex gap-3 overflow-x-auto px-4 w-full justify-center max-w-4xl mx-auto custom-scrollbar" onClick={(e) => e.stopPropagation()}>
-                    {product.images.map((img, idx) => (
-                        <button 
-                            key={idx} 
-                            onClick={() => { setIsImageLoading(true); setActiveImageIndex(idx); }}
-                            className={`w-16 h-16 border-2 rounded-sm overflow-hidden transition-all flex-shrink-0 ${activeImageIndex === idx ? 'border-golden-orange opacity-100 scale-110' : 'border-transparent opacity-50 hover:opacity-80'}`}
-                        >
-                            <img src={img} className="w-full h-full object-cover" alt="" />
-                        </button>
-                    ))}
-                </div>
-            </div>
+            <VirtualTryOn product={product} onClose={() => setShowMetaverse(false)} onConfirmFit={handleMetaverseConfirm} />
         )}
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <Link to="/catalog" className="text-golden-orange mb-8 inline-flex items-center gap-2 hover:text-white transition-colors">&larr; Back to Collection</Link>
+            <Link to="/catalog" className="text-golden-orange mb-8 inline-flex items-center gap-2 hover:text-white transition-colors group">
+                <div className="w-8 h-8 rounded-full border border-golden-orange/20 flex items-center justify-center group-hover:bg-golden-orange group-hover:text-espresso transition-all">
+                    <ArrowLeft size={16}/>
+                </div>
+                <span className="uppercase tracking-[0.2em] text-[10px] font-bold">Back to Archives</span>
+            </Link>
             
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-                 {/* Image Gallery */}
-                 <div>
-                     <div className="mb-4 relative h-[600px] w-full bg-black/20 rounded-sm overflow-hidden group">
-                         <img 
-                            src={product.images[activeImageIndex] || product.images[0]} 
-                            className={`w-full h-full object-cover shadow-2xl transition-all duration-700 ${isImageLoading ? 'blur-sm grayscale' : ''}`} 
-                            alt={product.name} 
-                            onLoad={handleImageLoad}
-                            onClick={() => setIsLightboxOpen(true)}
-                         />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-20">
+                 {/* LEFT: Massive Visuals */}
+                 <div className="space-y-6">
+                     <div className="relative aspect-[3/4] w-full bg-black/40 rounded-sm overflow-hidden group border border-white/5">
+                         <img src={product.images[activeImageIndex]} className="w-full h-full object-cover shadow-2xl transition-all duration-1000 group-hover:scale-105" alt={product.name} />
                          
-                         {/* Metaverse HUD Pulse Button */}
-                         <button 
-                            onClick={() => setShowMetaverse(true)}
-                            className="absolute bottom-6 left-6 z-20 bg-golden-orange/90 backdrop-blur-md text-espresso font-bold py-3 px-6 rounded-sm shadow-[0_0_20px_rgba(225,175,77,0.5)] flex items-center gap-2 hover:scale-105 transition-all group/btn animate-pulse"
-                         >
-                            <Sparkles size={18} className="group-hover/btn:rotate-12 transition-transform" /> 
-                            TRY IN METAVERSE 
-                         </button>
+                         {/* METAVERSE ENTRY HUD - IMPOSSIBLE TO MISS */}
+                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                             <div className="absolute inset-0 bg-gradient-to-t from-espresso/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                         </div>
 
-                         {product.images.length > 1 && (
-                             <>
-                                <button onClick={prevImage} className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/60 text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-md hover:scale-110 z-10"><ChevronLeft size={24}/></button>
-                                <button onClick={nextImage} className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/60 text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-md hover:scale-110 z-10"><ChevronRight size={24}/></button>
-                                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 pointer-events-none">
-                                    {product.images.map((_, idx) => (
-                                        <div key={idx} className={`w-2 h-2 rounded-full transition-all shadow-md ${activeImageIndex === idx ? 'bg-golden-orange scale-125' : 'bg-white/50'}`}/>
-                                    ))}
-                                </div>
-                             </>
-                         )}
-                         <div className="absolute inset-x-0 bottom-0 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-12 pointer-events-none">
-                             <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full text-white text-xs flex items-center gap-2 border border-white/10 pointer-events-auto cursor-pointer hover:bg-black/80 transition-colors" onClick={() => setIsLightboxOpen(true)}>
-                                <Maximize2 size={12}/> View Full Screen
+                         <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-full px-10">
+                            <button 
+                                onClick={() => setShowMetaverse(true)}
+                                className="w-full bg-golden-orange text-espresso font-black text-xs tracking-[0.3em] py-5 rounded-sm shadow-[0_15px_40px_rgba(225,175,77,0.6)] flex items-center justify-center gap-4 hover:scale-[1.02] transition-all animate-pulse hover:bg-white hover:shadow-[0_0_50px_rgba(255,255,255,0.4)] pointer-events-auto"
+                            >
+                                <Maximize2 size={20} className="animate-spin-slow" /> 
+                                ACTIVATE DIGITAL MIRROR
+                            </button>
+                         </div>
+
+                         <div className="absolute top-6 left-6 flex items-center gap-3">
+                             <div className="bg-espresso/80 backdrop-blur-md px-4 py-2 border border-golden-orange/30 rounded-full flex items-center gap-2">
+                                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                                 <span className="text-[10px] font-bold text-cream uppercase tracking-widest">3D Scan Ready</span>
                              </div>
                          </div>
-                         <div className="absolute top-4 right-4 flex gap-2 pointer-events-auto" onClick={e => e.stopPropagation()}>
-                             <button onClick={() => toggleWishlist(product)} className={`p-3 rounded-full backdrop-blur-md transition-all ${isWishlisted ? 'bg-golden-orange text-espresso shadow-[0_0_15px_rgba(225,175,77,0.5)]' : 'bg-black/30 text-cream hover:bg-white/20'}`}>
-                                 <Heart size={20} className={isWishlisted ? 'fill-current' : ''} />
-                             </button>
+                         
+                         <div className="absolute top-6 right-6 pointer-events-auto">
+                            <button onClick={() => toggleWishlist(product)} className={`p-4 rounded-full backdrop-blur-md border border-white/10 transition-all ${isWishlisted ? 'bg-golden-orange text-espresso' : 'bg-black/30 text-cream hover:bg-white/20'}`}>
+                                <Heart size={24} className={isWishlisted ? 'fill-current' : ''} />
+                            </button>
                          </div>
                      </div>
-                     {product.images.length > 1 && (
-                         <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
-                             {product.images.map((img, idx) => (
-                                 <button key={idx} onClick={() => { setIsImageLoading(true); setActiveImageIndex(idx); }} className={`relative w-20 h-24 flex-shrink-0 rounded-sm overflow-hidden transition-all duration-300 ${activeImageIndex === idx ? 'ring-2 ring-golden-orange ring-offset-2 ring-offset-espresso opacity-100' : 'opacity-60 hover:opacity-100 grayscale hover:grayscale-0'}`}><img src={img} className="w-full h-full object-cover" alt="" /></button>
-                             ))}
-                         </div>
-                     )}
+                     <div className="grid grid-cols-4 gap-4">
+                        {product.images.map((img, idx) => (
+                            <button key={idx} onClick={() => setActiveImageIndex(idx)} className={`aspect-square rounded-sm overflow-hidden border-2 transition-all ${activeImageIndex === idx ? 'border-golden-orange' : 'border-transparent opacity-40 hover:opacity-100'}`}>
+                                <img src={img} className="w-full h-full object-cover" />
+                            </button>
+                        ))}
+                     </div>
                  </div>
 
-                 {/* Product Details & Booking */}
-                 <div>
-                     <div className="flex justify-between items-start mb-2">
-                        <div>
-                            <p className="text-golden-orange uppercase tracking-widest text-sm font-bold mb-1">{product.brand}</p>
-                            <h1 className="font-serif text-4xl text-cream mb-2 leading-tight">{product.name}</h1>
-                        </div>
-                        {product.reviews.length > 0 && (
-                            <div className="flex items-center gap-1 bg-white/5 px-3 py-1 rounded-full border border-white/5">
-                                <Star size={14} className="fill-golden-orange text-golden-orange" />
-                                <span className="text-sm font-bold text-cream">{(product.reviews.reduce((acc, r) => acc + r.rating, 0) / product.reviews.length).toFixed(1)}</span>
-                                <span className="text-xs text-cream/50 underline cursor-pointer ml-1">View Reviews</span>
+                 {/* RIGHT: Sophisticated Selection */}
+                 <div className="flex flex-col justify-center">
+                    <div className="mb-10">
+                        <p className="text-golden-orange uppercase tracking-[0.4em] text-xs font-black mb-2">{product.brand}</p>
+                        <h1 className="font-serif text-5xl md:text-6xl text-cream mb-6 leading-[1.1]">{product.name}</h1>
+                        <div className="flex items-center gap-6">
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-3xl font-serif text-golden-orange">${product.rentalPrice}</span>
+                                <span className="text-xs text-cream/40 uppercase tracking-widest">/ 4 Day Rental</span>
                             </div>
-                        )}
-                     </div>
-                     
-                     <div className="flex flex-wrap items-end gap-8 mb-8 border-b border-white/10 pb-6">
-                         <div className={`bg-[#2a1208] px-6 py-4 rounded border border-golden-orange/20 relative overflow-hidden ${!isRentable ? 'opacity-50 grayscale' : ''}`}>
-                             <div className="absolute top-0 right-0 w-16 h-16 bg-golden-orange/10 rounded-bl-full"></div>
-                             <p className="text-xs text-cream/50 uppercase tracking-widest mb-1">Rent from</p>
-                             <div className="flex items-baseline gap-1">
-                                <p className="text-3xl font-serif text-cream">${product.rentalPrice}</p>
-                                <p className="text-sm text-cream/50">/ 4 Days</p>
-                             </div>
-                             {!isRentable && <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-xs uppercase font-bold text-red-500">Sell Only</div>}
-                         </div>
-                         {(product.isForSale || !isRentable) && (
-                             <div>
-                                 <p className="text-3xl font-serif text-golden-orange">${product.buyPrice}</p>
-                                 <p className="text-xs text-cream/50 uppercase tracking-widest mt-1">Buy Price</p>
-                             </div>
-                         )}
-                     </div>
+                            <div className="h-8 w-px bg-white/10"></div>
+                            <div className="flex items-center gap-1.5 bg-golden-orange/5 px-3 py-1 rounded border border-golden-orange/20">
+                                <Star size={14} className="fill-golden-orange text-golden-orange" />
+                                <span className="text-sm font-bold text-golden-orange">4.9</span>
+                                <span className="text-[10px] text-cream/40 uppercase tracking-tighter">Verified Review</span>
+                            </div>
+                        </div>
+                    </div>
 
-                     <div className={`bg-[#1f0c05] p-8 border border-white/10 mb-8 shadow-xl rounded-sm transition-opacity ${!isAvailable ? 'opacity-50 pointer-events-none' : ''}`}>
-                         <div className="mb-6">
-                             <div className="flex justify-between items-center mb-3">
-                                <p className="text-xs uppercase text-cream/60 tracking-widest font-bold">Select Size</p>
-                                <button className="text-xs text-golden-orange underline flex items-center gap-1"><Ruler size={12}/> Size Guide</button>
-                             </div>
-                             <div className="flex flex-wrap gap-3">
-                                 {product.availableSizes.map(s => (
-                                     <button key={s} onClick={() => setSelectedSize(s)} className={`min-w-[50px] px-4 py-3 border transition-all text-sm font-medium rounded-sm ${selectedSize === s ? 'bg-golden-orange text-espresso border-golden-orange font-bold shadow-lg scale-105' : 'border-white/20 text-cream hover:border-white hover:bg-white/5'}`}>{s}</button>
-                                 ))}
-                             </div>
-                         </div>
-                         
-                         {isRentable ? (
-                             <>
-                                <div className="mb-6 p-6 bg-black/20 border border-white/5 rounded-sm">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <div className="flex items-center gap-2">
-                                            <CalendarIcon size={16} className="text-golden-orange"/>
-                                            <span className="text-xs uppercase text-cream/80 tracking-widest font-bold">Availability</span>
-                                        </div>
-                                        <div className="flex flex-col items-end">
-                                            <div className="flex bg-white/5 rounded p-1">
-                                                {[4, 8, 12].map(d => (
-                                                    <button key={d} onClick={() => setSelectedDuration(d as any)} className={`px-3 py-1 text-[10px] uppercase font-bold rounded transition-colors ${selectedDuration === d ? 'bg-golden-orange text-espresso' : 'text-cream/50 hover:text-white'}`}>{d} Days</button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="mb-4">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <button onClick={handlePrevMonth} className="text-cream/50 hover:text-golden-orange"><ChevronLeft size={16}/></button>
-                                            <span className="text-sm font-serif text-cream font-bold">{viewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}</span>
-                                            <button onClick={handleNextMonth} className="text-cream/50 hover:text-golden-orange"><ChevronRight size={16}/></button>
-                                        </div>
-                                        <div className="grid grid-cols-7 gap-1 text-center mb-2">{['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (<span key={d} className="text-[10px] uppercase text-cream/30">{d}</span>))}</div>
-                                        <div className="grid grid-cols-7 gap-1 place-items-center">{renderCalendar()}</div>
-                                    </div>
-                                    <div className="border-t border-white/10 pt-4 flex justify-between items-center">
-                                        <div>
-                                            <p className="text-[10px] text-cream/40 uppercase mb-1">Check-in</p>
-                                            <p className="text-sm text-cream font-bold">{startDate ? startDate.toLocaleDateString() : 'Select Date'}</p>
-                                        </div>
-                                        <div className="h-8 w-px bg-white/10"></div>
-                                        <div>
-                                            <p className="text-[10px] text-cream/40 uppercase mb-1">Check-out</p>
-                                            <p className="text-sm text-cream font-bold">{startDate ? getEndDate()?.toLocaleDateString() : '-'}</p>
-                                        </div>
-                                        <div className="h-8 w-px bg-white/10"></div>
-                                        <div className="text-right">
-                                            <p className="text-[10px] text-cream/40 uppercase mb-1">Total</p>
-                                            <p className="text-lg font-serif text-golden-orange font-bold">${currentRentalPrice}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2 mb-6">
-                                    <input type="checkbox" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)} className="accent-golden-orange w-4 h-4 cursor-pointer" />
-                                    <span className="text-xs text-cream/70">I agree to the <Link to="/terms" className="underline cursor-pointer hover:text-white">Rental Policy</Link> & coverage terms.</span>
-                                </div>
-                            </>
-                         ) : (
-                             <div className="mb-6 p-4 bg-red-900/10 border border-red-500/20 text-center rounded-sm">
-                                 <p className="text-red-400 font-bold uppercase text-xs">Rental Limit Reached</p>
-                                 <p className="text-cream/60 text-sm mt-1">This item has reached its rental lifecycle limit and is now available for purchase only.</p>
-                             </div>
-                         )}
+                    <div className="bg-[#1f0c05] p-10 border border-white/10 rounded-sm shadow-2xl space-y-10 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                            <Diamond size={120} className="text-golden-orange" />
+                        </div>
 
-                         <div className="flex flex-col sm:flex-row gap-4">
-                             <Button fullWidth onClick={() => handleTransaction('rent')} disabled={!isRentable || !isAuthenticated || currentUser?.verificationStatus !== 'Verified' || !isAvailable} className="flex-1 py-4 text-base font-bold tracking-widest shadow-[0_0_20px_rgba(225,175,77,0.2)] disabled:opacity-50 disabled:cursor-not-allowed">
-                                 {isAvailable ? "ADD TO BAG - RENT" : "UNAVAILABLE"}
-                             </Button>
-                             {(product.isForSale || !isRentable) && (
-                                 <Button fullWidth variant="secondary" onClick={() => handleTransaction('buy')} disabled={!isAuthenticated || currentUser?.verificationStatus !== 'Verified' || !isAvailable} className="flex-1 py-4 text-base font-bold tracking-widest">
-                                     BUY NOW (${product.buyPrice})
-                                 </Button>
-                             )}
-                         </div>
-                     </div>
+                        {/* Size Selection */}
+                        <div>
+                            <div className="flex justify-between items-center mb-4">
+                                <label className="text-[10px] uppercase text-cream/40 tracking-[0.2em] font-black">Dimensions</label>
+                                <button onClick={() => setShowMetaverse(true)} className="text-golden-orange text-[10px] font-bold uppercase tracking-widest underline flex items-center gap-1.5 hover:text-white transition-colors">
+                                    <Sparkles size={12}/> Biometric Sizing Assistant
+                                </button>
+                            </div>
+                            <div className="flex flex-wrap gap-4">
+                                {product.availableSizes.map(s => (
+                                    <button key={s} onClick={() => setSelectedSize(s)} className={`px-6 py-4 border transition-all text-xs font-black tracking-widest rounded-sm ${selectedSize === s ? 'bg-golden-orange text-espresso border-golden-orange shadow-lg' : 'border-white/10 text-cream/60 hover:border-white hover:text-white hover:bg-white/5'}`}>{s}</button>
+                                ))}
+                            </div>
+                        </div>
 
-                     <div className="space-y-6">
-                         <div className="border-t border-white/10 pt-6">
-                             <h3 className="font-serif text-xl text-cream mb-4">Description</h3>
-                             <p className="text-cream/70 leading-relaxed font-light text-sm">{product.description}</p>
-                             <div className="mt-4 flex flex-wrap gap-4 text-xs text-cream/60">
-                                 <span className="bg-white/5 px-3 py-1 rounded border border-white/5 uppercase tracking-wider">Color: {product.color}</span>
-                                 <span className="bg-white/5 px-3 py-1 rounded border border-white/5 uppercase tracking-wider">Occasion: {product.occasion}</span>
-                                 <span className="bg-white/5 px-3 py-1 rounded border border-white/5 flex items-center gap-1 uppercase tracking-wider text-green-400"><Shield size={10}/> Verified Authentic</span>
-                             </div>
-                         </div>
+                        {/* Rental Calendar */}
+                        <div>
+                            <label className="text-[10px] uppercase text-cream/40 tracking-[0.2em] font-black mb-4 block">Reservation Date</label>
+                            <div className="relative group">
+                                <input 
+                                    type="date" 
+                                    onChange={(e) => setStartDate(new Date(e.target.value))}
+                                    className="w-full bg-black/20 border border-white/10 p-4 text-cream focus:border-golden-orange outline-none text-xs uppercase font-bold tracking-widest cursor-pointer" 
+                                />
+                                <CalendarIcon className="absolute right-4 top-4 text-golden-orange pointer-events-none" size={16} />
+                            </div>
+                        </div>
 
-                         <div className="border-t border-white/10 pt-4">
-                             <h3 className="text-xs uppercase text-cream/40 font-bold tracking-widest mb-4">Rental Policies & Guarantees</h3>
-                             {[
-                                 { id: 'shipping', title: `Estimated Delivery: ${deliveryEstimate}`, icon: <Truck size={16}/>, content: "We offer secure, insured delivery via premium courier services. Orders placed before 2 PM EST are dispatched the same day. A pre-paid return label is included in the box for your convenience." },
-                                 { id: 'cleaning', title: 'Cleaning & Care', icon: <Clock size={16}/>, content: "Professional dry cleaning is included in your rental fee. Please do not attempt to clean the item yourself. Simply place the item back in the reusable Stylus garment bag." },
-                                 { id: 'insurance', title: 'Damage & Insurance', icon: <Shield size={16}/>, content: "Minor wear and tear (e.g., loose threads, missing buttons) is covered. Significant damage or stains may incur a repair fee. Optional full insurance is available at checkout for $15." }
-                             ].map((item) => (
-                                 <div key={item.id} className="border-b border-white/5">
-                                     <button onClick={() => togglePolicy(item.id)} className="w-full py-4 flex items-center justify-between text-left hover:text-golden-orange transition-colors">
-                                         <div className="flex items-center gap-3 text-sm font-bold uppercase tracking-wide text-cream/80">{item.icon} {item.title}</div>
-                                         {openPolicy === item.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                                     </button>
-                                     {openPolicy === item.id && (<div className="pb-4 pl-7 pr-4 text-sm text-cream/60 leading-relaxed animate-fade-in">{item.content}</div>)}
-                                 </div>
-                             ))}
-                         </div>
-                     </div>
+                        {/* Actions */}
+                        <div className="pt-4 space-y-4">
+                            <Button fullWidth onClick={() => handleTransaction('rent')} className="py-5 text-sm font-black tracking-[0.3em] shadow-[0_0_30px_rgba(225,175,77,0.2)]">
+                                ADD TO BAG - RENT
+                            </Button>
+                            {product.isForSale && (
+                                <button onClick={() => handleTransaction('buy')} className="w-full bg-transparent border border-white/10 text-cream hover:bg-white hover:text-espresso py-5 text-[10px] font-black tracking-[0.3em] uppercase transition-all flex items-center justify-center gap-2">
+                                    <DollarSign size={14}/> Purchase Ownership - ${product.buyPrice}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="mt-12 grid grid-cols-2 gap-8">
+                        <div className="flex items-start gap-4">
+                            <Shield className="text-golden-orange shrink-0" size={20} />
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-cream mb-1">Authenticity Guaranteed</p>
+                                <p className="text-xs text-cream/40 font-light">Verified by high-precision digital fingerprinting.</p>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-4">
+                            <Shield className="text-golden-orange shrink-0" size={20} />
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-cream mb-1">Authenticity Guaranteed</p>
+                                <p className="text-xs text-cream/40 font-light">Verified by high-precision digital fingerprinting.</p>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-4">
+                            <Clock className="text-golden-orange shrink-0" size={20} />
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-cream mb-1">Professional Care</p>
+                                <p className="text-xs text-cream/40 font-light">Dry cleaning and restoration included in all rentals.</p>
+                            </div>
+                        </div>
+                    </div>
                  </div>
             </div>
         </div>

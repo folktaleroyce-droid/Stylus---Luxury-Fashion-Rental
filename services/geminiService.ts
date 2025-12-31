@@ -17,13 +17,10 @@ When advising:
 
 /**
  * Creates a fresh instance of the Gemini API client.
+ * Refactored to use process.env.API_KEY directly as per guidelines.
  */
 const getAi = () => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("API Key is missing from environment variables.");
-  }
-  return new GoogleGenAI({ apiKey });
+  return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
 export const getStylingAdvice = async (userMessage: string): Promise<string> => {
