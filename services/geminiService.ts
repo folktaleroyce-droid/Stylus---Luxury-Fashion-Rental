@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 
 const SYSTEM_INSTRUCTION = `
@@ -14,87 +15,99 @@ When advising:
 4. Do not make up specific item IDs, but describe items that would fit the user's request generally (e.g., "A velvet tuxedo would suit you well").
 `;
 
-// Helper to safely get the API key without crashing if 'process' is undefined
-const getApiKey = () => {
-  try {
-    if (typeof process !== 'undefined' && process.env) {
-        return process.env.API_KEY;
-    }
-    return undefined;
-  } catch (e) {
-    console.warn("API Key environment check failed.");
-    return undefined;
+/**
+ * Creates a fresh instance of the Gemini API client.
+ */
+const getAi = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error("API Key is missing from environment variables.");
   }
-};
-
-let aiInstance: GoogleGenAI | null = null;
-
-const getAiClient = () => {
-  if (!aiInstance) {
-    const apiKey = getApiKey();
-    if (!apiKey) {
-      throw new Error("API Key is missing. Please check your configuration.");
-    }
-    aiInstance = new GoogleGenAI({ apiKey });
-  }
-  return aiInstance;
+  return new GoogleGenAI({ apiKey });
 };
 
 export const getStylingAdvice = async (userMessage: string): Promise<string> => {
   try {
-    const ai = getAiClient();
+    const ai = getAi();
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3-flash-preview",
       contents: userMessage,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         temperature: 0.7,
+        thinkingConfig: { thinkingBudget: 0 }, // Minimize latency
       },
     });
 
     return response.text || "I apologize, I am currently consulting with our head stylists. Please try again in a moment.";
   } catch (error) {
-    console.error("Gemini API Error:", error);
-    return "I am unable to access the styling archives at this moment. Please ensure your concierge connection (API Key) is active.";
+    console.error("Gemini Connection Error:", error);
+    return "I am unable to access the styling archives at this moment. Please ensure your concierge connection is active and try again.";
+  }
+};
+
+export const generateShareCaption = async (productName: string, brand: string): Promise<string> => {
+  try {
+    const ai = getAi();
+    const prompt = `Write a short, sophisticated social media caption (Instagram style) for someone wearing the ${productName} by ${brand}. 
+    The brand vibe is 'Wear Royalty Without Cost'. Use elegant language and 2-3 luxury-themed hashtags. Return ONLY the caption text.`;
+    
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+      config: { 
+        temperature: 0.8,
+        thinkingConfig: { thinkingBudget: 0 }, // Minimize latency
+      }
+    });
+    return response.text?.trim() || `Adorning myself in ${brand} elegance. Wear Royalty Without Cost. #StylusLuxury #VirtualTryOn #Royalty`;
+  } catch (e) {
+    console.error("Caption Generation Error:", e);
+    return `Adorning myself in ${brand} elegance. Wear Royalty Without Cost. #StylusLuxury #VirtualTryOn #Royalty`;
   }
 };
 
 export const getRecommendations = async (searchHistory: string[], browsingContext: string): Promise<string> => {
-    try {
-        const ai = getAiClient();
-        const prompt = `
-            User Search History: ${searchHistory.join(', ')}
-            Current Context: ${browsingContext}
-            
-            Based on the user's search history and luxury fashion trends, suggest 3 specific types of items (e.g., "Vintage Chanel Clutch", "Velvet Tuxedo") they might like. 
-            Format as a concise, elegant list. Do not explain, just list.
-        `;
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: prompt,
-            config: { temperature: 0.5 }
-        });
-        return response.text || "Curated selections just for you.";
-    } catch (e) {
-        return "Timeless classics selected for your taste.";
-    }
+  try {
+    const ai = getAi();
+    const prompt = `
+        User Search History: ${searchHistory.join(', ')}
+        Current Context: ${browsingContext}
+        
+        Based on the user's search history and luxury fashion trends, suggest 3 specific types of items (e.g., "Vintage Chanel Clutch", "Velvet Tuxedo") they might like. 
+        Format as a concise, elegant list. Do not explain, just list.
+    `;
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+      config: { 
+        temperature: 0.5,
+        thinkingConfig: { thinkingBudget: 0 }, // Minimize latency
+      }
+    });
+    return response.text || "Curated selections just for you.";
+  } catch (e) {
+    return "Timeless classics selected for your taste.";
+  }
 };
 
 export const getDeliveryEstimate = async (userLocation: string, productLocation: string): Promise<string> => {
-    try {
-        const ai = getAiClient();
-        const prompt = `Estimate delivery time from ${productLocation} to ${userLocation} for a premium courier. Return ONLY the range (e.g. "1-2 Business Days").`;
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: prompt,
-        });
-        return response.text?.trim() || "2-3 Business Days";
-    } catch (e) {
-        return "2-3 Business Days";
-    }
+  try {
+    const ai = getAi();
+    const prompt = `Estimate delivery time from ${productLocation} to ${userLocation} for a premium courier. Return ONLY the range (e.g. "1-2 Business Days").`;
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+      config: {
+        thinkingConfig: { thinkingBudget: 0 }, // Minimize latency
+      }
+    });
+    return response.text?.trim() || "2-3 Business Days";
+  } catch (e) {
+    return "2-3 Business Days";
+  }
 };
 
 export const checkRentalThreshold = (rentalCount: number): boolean => {
-    // AI Monitoring logic rule
-    return rentalCount >= 5;
+  return rentalCount >= 5;
 };

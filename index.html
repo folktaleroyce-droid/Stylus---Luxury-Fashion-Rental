@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -34,6 +35,11 @@
         }
       }
     </script>
+    <!-- MediaPipe and Three.js for Virtual Try-On -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
+    
     <style>
       /* Custom Scrollbar for Webkit */
       ::-webkit-scrollbar {
@@ -52,7 +58,6 @@
       body {
         background-color: #260f06;
         color: #f9edd2;
-        /* Disable text selection to prevent blinking cursor on clicks */
         user-select: none;
         -webkit-user-select: none;
         -moz-user-select: none;
@@ -60,16 +65,29 @@
         cursor: default;
       }
       
-      /* Re-enable selection for inputs, textareas, and specific selectable areas */
       input, textarea, select, [contenteditable="true"], .allow-select {
         user-select: text;
         -webkit-user-select: text;
         cursor: text;
       }
       
-      /* Ensure links and buttons still have the pointer cursor */
       a, button, [role="button"] {
         cursor: pointer;
+      }
+
+      /* Virtual Try-On HUD Animations */
+      @keyframes holographic-scan {
+        0% { top: 0%; opacity: 0; }
+        50% { opacity: 0.5; }
+        100% { top: 100%; opacity: 0; }
+      }
+      .scanline {
+        position: absolute;
+        width: 100%;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #e1af4d, transparent);
+        box-shadow: 0 0 15px #e1af4d;
+        animation: holographic-scan 3s infinite linear;
       }
     </style>
   <script type="importmap">

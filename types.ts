@@ -1,5 +1,4 @@
 
-
 export enum Category {
   WOMEN = 'Women',
   MEN = 'Men',
@@ -7,6 +6,8 @@ export enum Category {
   WATCHES = 'Watches',
   BAGS = 'Bags'
 }
+
+export type FabricType = 'flowing' | 'rigid' | 'stretch';
 
 export type SortOption = 'newest' | 'price_asc' | 'price_desc';
 export type Role = 'User' | 'Partner' | 'Admin';
@@ -33,12 +34,19 @@ export interface PartnerReview {
 }
 
 export interface DeliveryDetails {
-  courier: string; // e.g., 'Uber Package', 'Bolt Send', 'Gokada', 'DHL', 'Private Rider'
+  courier: string;
   riderName?: string;
   riderPhone?: string;
-  trackingNumber?: string; // or Tracking Link
+  trackingNumber?: string;
   dispatchTime: string;
   estimatedArrival?: string;
+}
+
+export interface FitMetadata {
+  shoulderWidth?: number; // Normalized 0-1
+  waistWidth?: number;
+  hipsWidth?: number;
+  length?: number;
 }
 
 export interface Product {
@@ -50,7 +58,7 @@ export interface Product {
   retailPrice: number;
   buyPrice?: number;
   isForSale?: boolean;
-  isAvailable?: boolean; // New flag for "Out of Order"
+  isAvailable?: boolean;
   ownerId?: string;
   images: string[];
   description: string;
@@ -62,6 +70,10 @@ export interface Product {
   rentalCount?: number;
   autoSellAfterRentals?: number;
   rentalDuration?: number;
+  // Metaverse Features
+  threeDModelType?: 'gown' | 'tuxedo' | 'top' | 'accessory'; 
+  fitMetadata?: FitMetadata;
+  fabricType?: FabricType;
 }
 
 export interface ProductFilter {
@@ -73,8 +85,8 @@ export interface ProductFilter {
   maxPrice: number;
   sortBy: SortOption;
   duration: string;
-  state: string; // New
-  city: string; // New
+  state: string;
+  city: string;
 }
 
 export interface ChatMessage {
@@ -92,12 +104,13 @@ export interface Transaction {
   description: string;
   date: string;
   status: 'Pending' | 'Completed' | 'Failed';
-  paymentMethod?: string; // e.g. "Wallet", "Bank Transfer", "Card ending ****"
+  paymentMethod?: string;
 }
 
 export interface UserProfile {
   name: string;
   memberSince: string;
-  subscriptionTier: 'Ordinary' | 'Premium'; // Updated
+  subscriptionTier: 'Ordinary' | 'Premium';
   activeRentals: number;
+  savedAvatarData?: string; // Serialized landmark data
 }

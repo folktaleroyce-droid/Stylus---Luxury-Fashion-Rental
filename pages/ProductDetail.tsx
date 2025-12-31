@@ -1,12 +1,14 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../components/Button';
-import { Shield, Clock, Calendar as CalendarIcon, Check, ArrowLeft, Ruler, Star, Truck, AlertTriangle, X, Heart, ShoppingBag, Lock, DollarSign, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Info, ZoomIn, Maximize2, AlertCircle } from 'lucide-react';
+import { Shield, Clock, Calendar as CalendarIcon, Check, ArrowLeft, Ruler, Star, Truck, AlertTriangle, X, Heart, ShoppingBag, Lock, DollarSign, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Info, ZoomIn, Maximize2, AlertCircle, Sparkles } from 'lucide-react';
 import { useProduct } from '../context/ProductContext';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useAuth } from '../context/AuthContext';
 import { getDeliveryEstimate } from '../services/geminiService';
+import { VirtualTryOn } from '../components/VirtualTryOn';
 
 export const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -25,6 +27,7 @@ export const ProductDetail: React.FC = () => {
   const [deliveryEstimate, setDeliveryEstimate] = useState<string>('Calculating...');
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [isImageLoading, setIsImageLoading] = useState(false);
+  const [showMetaverse, setShowMetaverse] = useState(false);
   
   // Calendar State
   const [startDate, setStartDate] = useState<Date | null>(null);
@@ -34,10 +37,9 @@ export const ProductDetail: React.FC = () => {
   const [openPolicy, setOpenPolicy] = useState<string | null>('shipping');
 
   useEffect(() => {
-      // Get AI Delivery Estimate
       const fetchDelivery = async () => {
           if (currentUser?.location) {
-              const estimate = await getDeliveryEstimate(currentUser.location, "London, UK"); // Mock origin
+              const estimate = await getDeliveryEstimate(currentUser.location, "London, UK"); 
               setDeliveryEstimate(estimate);
           } else {
               setDeliveryEstimate("2-4 Business Days");
@@ -46,7 +48,6 @@ export const ProductDetail: React.FC = () => {
       fetchDelivery();
   }, [currentUser]);
 
-  // Keyboard navigation for lightbox
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (!product) return;
     if (e.key === 'ArrowRight') {
@@ -68,9 +69,8 @@ export const ProductDetail: React.FC = () => {
   const isWishlisted = isInWishlist(product.id);
   const currentRentalPrice = selectedDuration === 4 ? product.rentalPrice : selectedDuration === 8 ? Math.round(product.rentalPrice * 1.75) : Math.round(product.rentalPrice * 2.4);
   const isRentable = !product.rentalCount || product.rentalCount < 5;
-  const isAvailable = product.isAvailable !== false; // Default true if undefined
+  const isAvailable = product.isAvailable !== false;
 
-  // --- Calendar Helpers ---
   const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
   const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
   
@@ -91,14 +91,13 @@ export const ProductDetail: React.FC = () => {
   const isDateInRentalRange = (date: Date) => {
     if (!startDate) return false;
     const endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + selectedDuration - 1); // Inclusive
+    endDate.setDate(startDate.getDate() + selectedDuration - 1);
     return date > startDate && date <= endDate;
   };
 
   const getEndDate = () => {
       if (!startDate) return null;
       const end = new Date(startDate);
-      // Duration includes the start date, so add duration - 1
       end.setDate(startDate.getDate() + selectedDuration - 1);
       return end;
   };
@@ -117,12 +116,10 @@ export const ProductDetail: React.FC = () => {
     const firstDay = getFirstDayOfMonth(year, month);
     const days = [];
 
-    // Empty cells
     for (let i = 0; i < firstDay; i++) {
         days.push(<div key={`empty-${i}`} className="h-10 w-10"></div>);
     }
 
-    // Actual days
     for (let day = 1; day <= daysInMonth; day++) {
         const date = new Date(year, month, day);
         const disabled = isDateDisabled(date);
@@ -147,7 +144,6 @@ export const ProductDetail: React.FC = () => {
             </button>
         );
     }
-
     return days;
   };
 
@@ -185,11 +181,17 @@ export const ProductDetail: React.FC = () => {
     alert(`${type === 'rent' ? 'Rental' : 'Purchase'} added to bag.`);
   };
 
+  const handleMetaverseConfirm = (size: string, confidence: number) => {
+      setSelectedSize(size);
+      setShowMetaverse(false);
+      // We can automatically trigger "Add to Bag" or just set the state
+      alert(`Metaverse Biometrics confirmed! Selected size: ${size} (${confidence}% fit accuracy)`);
+  };
+
   const togglePolicy = (policy: string) => {
     setOpenPolicy(openPolicy === policy ? null : policy);
   };
 
-  // Lightbox & Main Gallery Navigation Controls
   const nextImage = (e?: React.MouseEvent) => {
       e?.stopPropagation();
       setIsImageLoading(true);
@@ -208,18 +210,25 @@ export const ProductDetail: React.FC = () => {
   return (
     <div className="min-h-screen bg-espresso pt-8 pb-20 animate-fade-in relative">
         
+        {/* Virtual Try-On Entry */}
+        {showMetaverse && (
+            <VirtualTryOn 
+                product={product} 
+                onClose={() => setShowMetaverse(false)} 
+                onConfirmFit={handleMetaverseConfirm} 
+            />
+        )}
+
         {/* Full Screen Lightbox Gallery */}
         {isLightboxOpen && (
             <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col justify-center items-center animate-fade-in" onClick={() => setIsLightboxOpen(false)}>
                 <button className="absolute top-6 right-6 text-cream/70 hover:text-white p-2 z-50" onClick={() => setIsLightboxOpen(false)}>
                     <X size={32} />
                 </button>
-                
                 <div className="relative w-full h-[80vh] flex items-center justify-center px-4 sm:px-12">
                     <button onClick={prevImage} className="absolute left-2 sm:left-4 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-sm z-50">
                         <ChevronLeft size={32} />
                     </button>
-                    
                     <img 
                         src={product.images[activeImageIndex]} 
                         alt={`View ${activeImageIndex + 1}`} 
@@ -227,13 +236,10 @@ export const ProductDetail: React.FC = () => {
                         onLoad={handleImageLoad}
                         onClick={(e) => e.stopPropagation()} 
                     />
-                    
                     <button onClick={nextImage} className="absolute right-2 sm:right-4 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-sm z-50">
                         <ChevronRight size={32} />
                     </button>
                 </div>
-
-                {/* Lightbox Thumbnails */}
                 <div className="mt-6 flex gap-3 overflow-x-auto px-4 w-full justify-center max-w-4xl mx-auto custom-scrollbar" onClick={(e) => e.stopPropagation()}>
                     {product.images.map((img, idx) => (
                         <button 
@@ -252,11 +258,9 @@ export const ProductDetail: React.FC = () => {
             <Link to="/catalog" className="text-golden-orange mb-8 inline-flex items-center gap-2 hover:text-white transition-colors">&larr; Back to Collection</Link>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-                 {/* Image Gallery - Multiple Views */}
+                 {/* Image Gallery */}
                  <div>
-                     <div 
-                        className="mb-4 relative h-[600px] w-full bg-black/20 rounded-sm overflow-hidden group"
-                     >
+                     <div className="mb-4 relative h-[600px] w-full bg-black/20 rounded-sm overflow-hidden group">
                          <img 
                             src={product.images[activeImageIndex] || product.images[0]} 
                             className={`w-full h-full object-cover shadow-2xl transition-all duration-700 ${isImageLoading ? 'blur-sm grayscale' : ''}`} 
@@ -265,58 +269,41 @@ export const ProductDetail: React.FC = () => {
                             onClick={() => setIsLightboxOpen(true)}
                          />
                          
-                         {/* Hover Navigation for Main Image */}
+                         {/* Metaverse HUD Pulse Button */}
+                         <button 
+                            onClick={() => setShowMetaverse(true)}
+                            className="absolute bottom-6 left-6 z-20 bg-golden-orange/90 backdrop-blur-md text-espresso font-bold py-3 px-6 rounded-sm shadow-[0_0_20px_rgba(225,175,77,0.5)] flex items-center gap-2 hover:scale-105 transition-all group/btn animate-pulse"
+                         >
+                            <Sparkles size={18} className="group-hover/btn:rotate-12 transition-transform" /> 
+                            TRY IN METAVERSE 
+                         </button>
+
                          {product.images.length > 1 && (
                              <>
-                                <button 
-                                    onClick={prevImage} 
-                                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/60 text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-md hover:scale-110 z-10"
-                                >
-                                    <ChevronLeft size={24}/>
-                                </button>
-                                <button 
-                                    onClick={nextImage} 
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/60 text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-md hover:scale-110 z-10"
-                                >
-                                    <ChevronRight size={24}/>
-                                </button>
-                                
-                                {/* Indicators */}
+                                <button onClick={prevImage} className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/60 text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-md hover:scale-110 z-10"><ChevronLeft size={24}/></button>
+                                <button onClick={nextImage} className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/60 text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-md hover:scale-110 z-10"><ChevronRight size={24}/></button>
                                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 pointer-events-none">
                                     {product.images.map((_, idx) => (
-                                        <div 
-                                            key={idx} 
-                                            className={`w-2 h-2 rounded-full transition-all shadow-md ${activeImageIndex === idx ? 'bg-golden-orange scale-125' : 'bg-white/50'}`}
-                                        />
+                                        <div key={idx} className={`w-2 h-2 rounded-full transition-all shadow-md ${activeImageIndex === idx ? 'bg-golden-orange scale-125' : 'bg-white/50'}`}/>
                                     ))}
                                 </div>
                              </>
                          )}
-
                          <div className="absolute inset-x-0 bottom-0 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-12 pointer-events-none">
                              <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full text-white text-xs flex items-center gap-2 border border-white/10 pointer-events-auto cursor-pointer hover:bg-black/80 transition-colors" onClick={() => setIsLightboxOpen(true)}>
                                 <Maximize2 size={12}/> View Full Screen
                              </div>
                          </div>
-
                          <div className="absolute top-4 right-4 flex gap-2 pointer-events-auto" onClick={e => e.stopPropagation()}>
                              <button onClick={() => toggleWishlist(product)} className={`p-3 rounded-full backdrop-blur-md transition-all ${isWishlisted ? 'bg-golden-orange text-espresso shadow-[0_0_15px_rgba(225,175,77,0.5)]' : 'bg-black/30 text-cream hover:bg-white/20'}`}>
                                  <Heart size={20} className={isWishlisted ? 'fill-current' : ''} />
                              </button>
                          </div>
                      </div>
-                     
-                     {/* Thumbnail Filmstrip */}
                      {product.images.length > 1 && (
                          <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
                              {product.images.map((img, idx) => (
-                                 <button 
-                                    key={idx} 
-                                    onClick={() => { setIsImageLoading(true); setActiveImageIndex(idx); }} 
-                                    className={`relative w-20 h-24 flex-shrink-0 rounded-sm overflow-hidden transition-all duration-300 ${activeImageIndex === idx ? 'ring-2 ring-golden-orange ring-offset-2 ring-offset-espresso opacity-100' : 'opacity-60 hover:opacity-100 grayscale hover:grayscale-0'}`}
-                                 >
-                                     <img src={img} className="w-full h-full object-cover" alt="" />
-                                 </button>
+                                 <button key={idx} onClick={() => { setIsImageLoading(true); setActiveImageIndex(idx); }} className={`relative w-20 h-24 flex-shrink-0 rounded-sm overflow-hidden transition-all duration-300 ${activeImageIndex === idx ? 'ring-2 ring-golden-orange ring-offset-2 ring-offset-espresso opacity-100' : 'opacity-60 hover:opacity-100 grayscale hover:grayscale-0'}`}><img src={img} className="w-full h-full object-cover" alt="" /></button>
                              ))}
                          </div>
                      )}
@@ -332,15 +319,12 @@ export const ProductDetail: React.FC = () => {
                         {product.reviews.length > 0 && (
                             <div className="flex items-center gap-1 bg-white/5 px-3 py-1 rounded-full border border-white/5">
                                 <Star size={14} className="fill-golden-orange text-golden-orange" />
-                                <span className="text-sm font-bold text-cream">
-                                    {(product.reviews.reduce((acc, r) => acc + r.rating, 0) / product.reviews.length).toFixed(1)}
-                                </span>
+                                <span className="text-sm font-bold text-cream">{(product.reviews.reduce((acc, r) => acc + r.rating, 0) / product.reviews.length).toFixed(1)}</span>
                                 <span className="text-xs text-cream/50 underline cursor-pointer ml-1">View Reviews</span>
                             </div>
                         )}
                      </div>
                      
-                     {/* Prices */}
                      <div className="flex flex-wrap items-end gap-8 mb-8 border-b border-white/10 pb-6">
                          <div className={`bg-[#2a1208] px-6 py-4 rounded border border-golden-orange/20 relative overflow-hidden ${!isRentable ? 'opacity-50 grayscale' : ''}`}>
                              <div className="absolute top-0 right-0 w-16 h-16 bg-golden-orange/10 rounded-bl-full"></div>
@@ -359,18 +343,6 @@ export const ProductDetail: React.FC = () => {
                          )}
                      </div>
 
-                     {/* Availability Warning */}
-                     {!isAvailable && (
-                         <div className="mb-6 p-4 bg-red-900/10 border border-red-500/20 rounded-sm flex items-start gap-3">
-                             <AlertCircle className="text-red-500 shrink-0 mt-0.5" size={18} />
-                             <div>
-                                 <p className="text-red-400 font-bold uppercase text-xs">Temporarily Unavailable</p>
-                                 <p className="text-cream/70 text-sm mt-1">This item is currently out of order or under maintenance. Please check back later.</p>
-                             </div>
-                         </div>
-                     )}
-
-                     {/* Main Booking Interface */}
                      <div className={`bg-[#1f0c05] p-8 border border-white/10 mb-8 shadow-xl rounded-sm transition-opacity ${!isAvailable ? 'opacity-50 pointer-events-none' : ''}`}>
                          <div className="mb-6">
                              <div className="flex justify-between items-center mb-3">
@@ -386,51 +358,29 @@ export const ProductDetail: React.FC = () => {
                          
                          {isRentable ? (
                              <>
-                                {/* CALENDAR & DURATION */}
                                 <div className="mb-6 p-6 bg-black/20 border border-white/5 rounded-sm">
                                     <div className="flex items-center justify-between mb-4">
                                         <div className="flex items-center gap-2">
                                             <CalendarIcon size={16} className="text-golden-orange"/>
                                             <span className="text-xs uppercase text-cream/80 tracking-widest font-bold">Availability</span>
                                         </div>
-                                        
-                                        {/* Duration Selector */}
                                         <div className="flex flex-col items-end">
                                             <div className="flex bg-white/5 rounded p-1">
                                                 {[4, 8, 12].map(d => (
-                                                    <button 
-                                                        key={d}
-                                                        onClick={() => setSelectedDuration(d as any)}
-                                                        className={`px-3 py-1 text-[10px] uppercase font-bold rounded transition-colors ${selectedDuration === d ? 'bg-golden-orange text-espresso' : 'text-cream/50 hover:text-white'}`}
-                                                    >
-                                                        {d} Days
-                                                    </button>
+                                                    <button key={d} onClick={() => setSelectedDuration(d as any)} className={`px-3 py-1 text-[10px] uppercase font-bold rounded transition-colors ${selectedDuration === d ? 'bg-golden-orange text-espresso' : 'text-cream/50 hover:text-white'}`}>{d} Days</button>
                                                 ))}
                                             </div>
-                                            <p className="text-[10px] text-cream/30 mt-1 uppercase tracking-wider">*Fixed rental periods only</p>
                                         </div>
                                     </div>
-
-                                    {/* Calendar UI */}
                                     <div className="mb-4">
                                         <div className="flex justify-between items-center mb-4">
                                             <button onClick={handlePrevMonth} className="text-cream/50 hover:text-golden-orange"><ChevronLeft size={16}/></button>
-                                            <span className="text-sm font-serif text-cream font-bold">
-                                                {viewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
-                                            </span>
+                                            <span className="text-sm font-serif text-cream font-bold">{viewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}</span>
                                             <button onClick={handleNextMonth} className="text-cream/50 hover:text-golden-orange"><ChevronRight size={16}/></button>
                                         </div>
-                                        <div className="grid grid-cols-7 gap-1 text-center mb-2">
-                                            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
-                                                <span key={d} className="text-[10px] uppercase text-cream/30">{d}</span>
-                                            ))}
-                                        </div>
-                                        <div className="grid grid-cols-7 gap-1 place-items-center">
-                                            {renderCalendar()}
-                                        </div>
+                                        <div className="grid grid-cols-7 gap-1 text-center mb-2">{['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (<span key={d} className="text-[10px] uppercase text-cream/30">{d}</span>))}</div>
+                                        <div className="grid grid-cols-7 gap-1 place-items-center">{renderCalendar()}</div>
                                     </div>
-
-                                    {/* Selection Summary */}
                                     <div className="border-t border-white/10 pt-4 flex justify-between items-center">
                                         <div>
                                             <p className="text-[10px] text-cream/40 uppercase mb-1">Check-in</p>
@@ -448,7 +398,6 @@ export const ProductDetail: React.FC = () => {
                                         </div>
                                     </div>
                                 </div>
-                                
                                 <div className="flex items-center gap-2 mb-6">
                                     <input type="checkbox" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)} className="accent-golden-orange w-4 h-4 cursor-pointer" />
                                     <span className="text-xs text-cream/70">I agree to the <Link to="/terms" className="underline cursor-pointer hover:text-white">Rental Policy</Link> & coverage terms.</span>
@@ -461,39 +410,16 @@ export const ProductDetail: React.FC = () => {
                              </div>
                          )}
 
-                         {/* Action Buttons - Side by Side */}
                          <div className="flex flex-col sm:flex-row gap-4">
-                             <Button 
-                                fullWidth 
-                                onClick={() => handleTransaction('rent')} 
-                                disabled={!isRentable || !isAuthenticated || currentUser?.verificationStatus !== 'Verified' || !isAvailable} 
-                                className="flex-1 py-4 text-base font-bold tracking-widest shadow-[0_0_20px_rgba(225,175,77,0.2)] disabled:opacity-50 disabled:cursor-not-allowed"
-                             >
+                             <Button fullWidth onClick={() => handleTransaction('rent')} disabled={!isRentable || !isAuthenticated || currentUser?.verificationStatus !== 'Verified' || !isAvailable} className="flex-1 py-4 text-base font-bold tracking-widest shadow-[0_0_20px_rgba(225,175,77,0.2)] disabled:opacity-50 disabled:cursor-not-allowed">
                                  {isAvailable ? "ADD TO BAG - RENT" : "UNAVAILABLE"}
                              </Button>
                              {(product.isForSale || !isRentable) && (
-                                 <Button 
-                                    fullWidth 
-                                    variant="secondary" 
-                                    onClick={() => handleTransaction('buy')} 
-                                    disabled={!isAuthenticated || currentUser?.verificationStatus !== 'Verified' || !isAvailable}
-                                    className="flex-1 py-4 text-base font-bold tracking-widest"
-                                >
+                                 <Button fullWidth variant="secondary" onClick={() => handleTransaction('buy')} disabled={!isAuthenticated || currentUser?.verificationStatus !== 'Verified' || !isAvailable} className="flex-1 py-4 text-base font-bold tracking-widest">
                                      BUY NOW (${product.buyPrice})
                                  </Button>
                              )}
                          </div>
-
-                         {(!isAuthenticated || currentUser?.verificationStatus !== 'Verified') && (
-                             <div className="mt-6 bg-red-900/10 border border-red-500/20 p-4 flex items-start gap-3 rounded-sm">
-                                 <Lock size={16} className="text-red-400 mt-0.5 shrink-0"/> 
-                                 <div>
-                                     <p className="text-red-300 text-sm font-bold">Account Verification Required</p>
-                                     <p className="text-red-400/70 text-xs mt-1">Complete verification in dashboard to unlock rentals and purchases.</p>
-                                     <Link to="/dashboard" className="text-xs text-red-300 underline mt-2 inline-block hover:text-white">Go to Verification</Link>
-                                 </div>
-                             </div>
-                         )}
                      </div>
 
                      <div className="space-y-6">
@@ -507,7 +433,6 @@ export const ProductDetail: React.FC = () => {
                              </div>
                          </div>
 
-                         {/* Rental Policies Accordion */}
                          <div className="border-t border-white/10 pt-4">
                              <h3 className="text-xs uppercase text-cream/40 font-bold tracking-widest mb-4">Rental Policies & Guarantees</h3>
                              {[
@@ -516,20 +441,11 @@ export const ProductDetail: React.FC = () => {
                                  { id: 'insurance', title: 'Damage & Insurance', icon: <Shield size={16}/>, content: "Minor wear and tear (e.g., loose threads, missing buttons) is covered. Significant damage or stains may incur a repair fee. Optional full insurance is available at checkout for $15." }
                              ].map((item) => (
                                  <div key={item.id} className="border-b border-white/5">
-                                     <button 
-                                        onClick={() => togglePolicy(item.id)} 
-                                        className="w-full py-4 flex items-center justify-between text-left hover:text-golden-orange transition-colors"
-                                     >
-                                         <div className="flex items-center gap-3 text-sm font-bold uppercase tracking-wide text-cream/80">
-                                             {item.icon} {item.title}
-                                         </div>
+                                     <button onClick={() => togglePolicy(item.id)} className="w-full py-4 flex items-center justify-between text-left hover:text-golden-orange transition-colors">
+                                         <div className="flex items-center gap-3 text-sm font-bold uppercase tracking-wide text-cream/80">{item.icon} {item.title}</div>
                                          {openPolicy === item.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                                      </button>
-                                     {openPolicy === item.id && (
-                                         <div className="pb-4 pl-7 pr-4 text-sm text-cream/60 leading-relaxed animate-fade-in">
-                                             {item.content}
-                                         </div>
-                                     )}
+                                     {openPolicy === item.id && (<div className="pb-4 pl-7 pr-4 text-sm text-cream/60 leading-relaxed animate-fade-in">{item.content}</div>)}
                                  </div>
                              ))}
                          </div>
